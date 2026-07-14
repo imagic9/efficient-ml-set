@@ -1,0 +1,26 @@
+# Session handoffs — local only, not published
+Handoff/
+
+# Instructor-provided assignment materials
+*.docx
+
+# Large model checkpoints (results are captured in the notebooks/JSON)
+*.pt
+*.pth
+*.onnx
+
+# Datasets and environments
+data/
+venv/
+.venv/
+env/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

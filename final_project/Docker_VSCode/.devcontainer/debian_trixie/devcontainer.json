@@ -1,0 +1,8 @@
+{
+    "name": "Debian",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "runArgs": ["--platform", "linux/arm64"],
+    "mounts": [
+        "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+    ]
+}
