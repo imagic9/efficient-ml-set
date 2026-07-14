@@ -1,0 +1,134 @@
+{
+  "config": {
+    "top_k": 8,
+    "short_epochs": 15,
+    "lr": 0.05,
+    "seed": 42
+  },
+  "rows": [
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "conv3x3",
+          "mbconv"
+        ],
+        "width": 1.0,
+        "act": "relu6"
+      },
+      "params": 743178,
+      "proxy_val_acc": 0.7340000003814697,
+      "short_val_acc": 0.8631999995231628
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "conv3x3",
+          "conv3x3"
+        ],
+        "width": 0.75,
+        "act": "relu6"
+      },
+      "params": 524554,
+      "proxy_val_acc": 0.7330000001907349,
+      "short_val_acc": 0.865199999332428
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "mbconv",
+          "mbconv"
+        ],
+        "width": 1.25,
+        "act": "relu6"
+      },
+      "params": 931370,
+      "proxy_val_acc": 0.7328000002861023,
+      "short_val_acc": 0.8400000008583068
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "conv3x3",
+          "conv3x3"
+        ],
+        "width": 1.0,
+        "act": "relu"
+      },
+      "params": 929802,
+      "proxy_val_acc": 0.7320000001907349,
+      "short_val_acc": 0.8775999997138977
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "conv3x3",
+          "conv3x3"
+        ],
+        "width": 1.0,
+        "act": "relu6"
+      },
+      "params": 929802,
+      "proxy_val_acc": 0.7318,
+      "short_val_acc": 0.8800000000953674
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "conv3x3",
+          "mbconv"
+        ],
+        "width": 1.0,
+        "act": "gelu"
+      },
+      "params": 743178,
+      "proxy_val_acc": 0.7314000001907348,
+      "short_val_acc": 0.8665999999046325
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "mbconv",
+          "mbconv"
+        ],
+        "width": 1.0,
+        "act": "leakyrelu"
+      },
+      "params": 600714,
+      "proxy_val_acc": 0.7313999994277954,
+      "short_val_acc": 0.8391999998092652
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "conv3x3",
+          "mbconv"
+        ],
+        "width": 1.25,
+        "act": "relu6"
+      },
+      "params": 1155530,
+      "proxy_val_acc": 0.7313999994277954,
+      "short_val_acc": 0.8528
+    }
+  ],
+  "kendall_tau": 0.10910894511799618,
+  "kendall_p": 0.7083840532183997,
+  "spearman_rho": 0.19162020190612145,
+  "spearman_p": 0.6494102011224531
+}

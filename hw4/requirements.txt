@@ -1,0 +1,20 @@
+# HW4 environment. Trained on gx10 (NVIDIA GB10, ARM64, CUDA 13.0) where torch
+# and torchvision are the +cu130 builds below; on other machines install the torch
+# build matching your CUDA/CPU from https://pytorch.org (the code is CPU-compatible).
+torch==2.11.0
+torchvision==0.26.0
+numpy>=1.26
+matplotlib>=3.8
+tqdm>=4.66
+
+# NAS search + rank-correlation study
+hyperopt>=0.2.7
+scipy>=1.11
+
+# notebook build/execution
+nbformat>=5.9
+nbconvert>=7.10
+ipykernel>=6.29
+
+# tests
+pytest>=8.0
