@@ -38,33 +38,41 @@ proxy?" with a number (Kendall τ / Spearman ρ), not a hunch.
   "select its sub-path, recalibrate its BatchNorm on a few batches, score on val" —
   **no per-candidate training**.
 
-- **Search — TPE** (`src/nas_search.py`) — Hyperopt's Tree-structured Parzen
-  Estimator over the discrete `hp.choice` space; objective = one-shot proxy validation
-  loss. Every trial logs #params + proxy val-accuracy (for the scatter) and the
-  running-best loss (for the convergence curve). Revisited architectures are cached.
+- **Search — TPE + random control** (`src/nas_search.py`) — Hyperopt's Tree-structured
+  Parzen Estimator over the discrete `hp.choice` space; objective = one-shot proxy
+  validation loss. Every trial logs #params + proxy val-accuracy (for the scatter) and
+  the running-best loss vs. **#unique architectures** (cache hits add no information).
+  A **random search** over the same supernet is run as a control, so any advantage is
+  attributed to TPE rather than to an early lucky sample.
 
 - **Retrain** (`run_retrain.py`) — the proxy only *ranks*; the deliverable number
   comes from training the selected design from scratch as an ordinary network. We
   compare test accuracy + parameter count against **two** baselines: the frozen HW1
   VGG11 (the same baseline used across HW1–HW3), and an in-space "default" design
-  (all `conv3x3`, width 1.0, ReLU) trained with the identical recipe — so the gain is
-  attributed to the search, not to a different architecture family.
+  (all `conv3x3`, width 1.0, ReLU) trained with the identical recipe. Because the gap
+  is small, best and default are each trained over **several seeds** (per-seed
+  deterministic batch order) and reported as **mean ± std**.
+
+- **Proxy-correlation bonus** (`run_proxy_corr.py`) — a **stratified** sample across
+  proxy quantiles, each short-trained from scratch over a couple of seeds; Kendall τ /
+  Spearman ρ with p-values on the whole range (coarse filtering) and on the top slice
+  (fine ranking).
 
 - **Methodology** — the whole search and every intermediate number are on a held-out
-  **validation** split; the **test** set is measured exactly once per final model;
-  `inference_mode` in eval. Single-seed numbers are labelled as such.
+  **validation** split; the **test** set is measured once per final (model, seed);
+  `inference_mode` in eval. Single-seed parts (search/supernet) are labelled as such.
 
 ## Reproduce
 
 ```bash
-# 1-3: train the one-shot supernet, then TPE-search it (validation only)
+# 1-3: train the one-shot supernet, then search it with TPE + random control (val only)
 python run_search.py     --data-dir ./data --supernet-epochs 100 --evals 250
 
-# 4: retrain the best-found design from scratch; compare to baselines (test once)
-python run_retrain.py    --baseline ../hw1/results/baseline.pt --epochs 120
+# 4: retrain the best-found design from scratch over seeds; compare to baselines
+python run_retrain.py    --baseline ../hw1/results/baseline.pt --epochs 120 --seeds 42,43,44
 
-# bonus: is the one-shot proxy trustworthy? (rank correlation, validation only)
-python run_proxy_corr.py --top-k 8 --short-epochs 15
+# bonus: is the one-shot proxy trustworthy? (stratified rank correlation, val only)
+python run_proxy_corr.py --n-bins 4 --per-bin 4 --top-k 6 --seeds 42,43 --short-epochs 15
 
 # quick wiring check (tiny configs, seconds)
 python run_search.py --smoke && python run_retrain.py --smoke && python run_proxy_corr.py --smoke

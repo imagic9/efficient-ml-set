@@ -26,11 +26,18 @@ def _eval_transform():
 
 
 def build_loaders(data_dir: str, batch_size: int = 256, num_workers: int = 8,
-                  val_size: int = 5000, seed: int = 42):
+                  val_size: int = 5000, seed: int = 42, shuffle_seed=None):
     """Return (train_loader, val_loader, test_loader).
 
     The 50k training images are split into train / val; the 10k official test
     set is kept untouched for the final report number.
+
+    `seed` fixes the train/val split (kept identical across every run so the test
+    set identity never changes). `shuffle_seed`, if given, drives the train
+    DataLoader's shuffle via its own Generator, so the batch order depends *only*
+    on that seed -- not on how much RNG the model construction happened to consume.
+    This lets two different architectures see the same data order at a given seed
+    (a controlled comparison), and makes multi-seed averaging reproducible.
     """
     train_full = datasets.CIFAR10(data_dir, train=True, download=True,
                                   transform=_train_transform())
@@ -50,8 +57,9 @@ def build_loaders(data_dir: str, batch_size: int = 256, num_workers: int = 8,
     val_set = torch.utils.data.Subset(val_full, val_idx)
 
     common = dict(num_workers=num_workers, pin_memory=True)
+    gen = torch.Generator().manual_seed(shuffle_seed) if shuffle_seed is not None else None
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True,
-                              drop_last=False, **common)
+                              drop_last=False, generator=gen, **common)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, **common)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, **common)
     return train_loader, val_loader, test_loader

@@ -1,25 +1,261 @@
 {
   "config": {
-    "top_k": 8,
+    "n_bins": 4,
+    "per_bin": 4,
+    "top_k": 6,
     "short_epochs": 15,
-    "lr": 0.05,
-    "seed": 42
+    "seeds": [
+      42,
+      43
+    ]
   },
   "rows": [
     {
       "arch": {
         "ops": [
+          "dwsep",
+          "dwsep",
+          "dwsep",
+          "mbconv"
+        ],
+        "width": 0.5,
+        "act": "leakyrelu"
+      },
+      "params": 116715,
+      "proxy_val_acc": 0.6656000000953675,
+      "short_val_acc": 0.7772,
+      "short_per_seed": [
+        0.787800000667572,
+        0.766599999332428
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
           "conv3x3",
+          "conv3x3",
+          "dwsep",
+          "mbconv"
+        ],
+        "width": 0.5,
+        "act": "relu"
+      },
+      "params": 133482,
+      "proxy_val_acc": 0.6929999995231628,
+      "short_val_acc": 0.8031999993801118,
+      "short_per_seed": [
+        0.791199999332428,
+        0.8151999994277954
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "mbconv",
+          "dwsep",
+          "mbconv",
+          "dwsep"
+        ],
+        "width": 1.25,
+        "act": "silu"
+      },
+      "params": 362074,
+      "proxy_val_acc": 0.7020000004768372,
+      "short_val_acc": 0.8654000000476837,
+      "short_per_seed": [
+        0.8665999993324279,
+        0.8642000007629395
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "dwsep",
+          "conv3x3",
+          "conv3x3"
+        ],
+        "width": 1.25,
+        "act": "silu"
+      },
+      "params": 1403210,
+      "proxy_val_acc": 0.7074000002861023,
+      "short_val_acc": 0.8685000003814698,
+      "short_per_seed": [
+        0.8672000003814697,
+        0.8698000003814698
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "conv3x3",
+          "dwsep",
+          "mbconv"
+        ],
+        "width": 0.75,
+        "act": "gelu"
+      },
+      "params": 293914,
+      "proxy_val_acc": 0.7077999999046326,
+      "short_val_acc": 0.8336999998092651,
+      "short_per_seed": [
+        0.8345999998092651,
+        0.8327999998092651
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "mbconv",
+          "mbconv",
+          "mbconv",
+          "dwsep"
+        ],
+        "width": 1.0,
+        "act": "gelu"
+      },
+      "params": 264858,
+      "proxy_val_acc": 0.712999999332428,
+      "short_val_acc": 0.8670000004768372,
+      "short_per_seed": [
+        0.8688000005722046,
+        0.8652000003814697
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "dwsep",
+          "mbconv",
+          "conv3x3"
+        ],
+        "width": 1.0,
+        "act": "leakyrelu"
+      },
+      "params": 756874,
+      "proxy_val_acc": 0.7162000008583069,
+      "short_val_acc": 0.8612000001430511,
+      "short_per_seed": [
+        0.8629999995231629,
+        0.8594000007629394
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "dwsep",
+          "conv3x3",
+          "conv3x3"
+        ],
+        "width": 1.0,
+        "act": "relu"
+      },
+      "params": 899338,
+      "proxy_val_acc": 0.7186000002861023,
+      "short_val_acc": 0.8610000005245209,
+      "short_per_seed": [
+        0.8626000003814698,
+        0.859400000667572
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "dwsep",
+          "mbconv",
+          "mbconv",
+          "conv3x3"
+        ],
+        "width": 0.75,
+        "act": "relu"
+      },
+      "params": 444235,
+      "proxy_val_acc": 0.7189999996185302,
+      "short_val_acc": 0.8391999999523163,
+      "short_per_seed": [
+        0.8371999996185303,
+        0.8412000002861023
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
           "mbconv",
           "conv3x3",
+          "mbconv",
+          "conv3x3"
+        ],
+        "width": 0.75,
+        "act": "silu"
+      },
+      "params": 463498,
+      "proxy_val_acc": 0.7206000002861023,
+      "short_val_acc": 0.8606000001430512,
+      "short_per_seed": [
+        0.8625999997138977,
+        0.8586000005722045
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "mbconv",
+          "dwsep"
+        ],
+        "width": 1.0,
+        "act": "leakyrelu"
+      },
+      "params": 265866,
+      "proxy_val_acc": 0.7244000004768372,
+      "short_val_acc": 0.869000000667572,
+      "short_per_seed": [
+        0.8710000007629395,
+        0.8670000005722046
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "mbconv",
+          "mbconv",
+          "mbconv",
           "mbconv"
         ],
         "width": 1.0,
-        "act": "relu6"
+        "act": "silu"
       },
-      "params": 743178,
-      "proxy_val_acc": 0.7340000003814697,
-      "short_val_acc": 0.8631999995231628
+      "params": 599706,
+      "proxy_val_acc": 0.7262000006675721,
+      "short_val_acc": 0.8235999997138977,
+      "short_per_seed": [
+        0.8056000000953675,
+        0.841599999332428
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "mbconv",
+          "dwsep"
+        ],
+        "width": 1.0,
+        "act": "gelu"
+      },
+      "params": 265866,
+      "proxy_val_acc": 0.7267999998092651,
+      "short_val_acc": 0.8696999999523163,
+      "short_per_seed": [
+        0.8708000005722046,
+        0.8685999993324279
+      ]
     },
     {
       "arch": {
@@ -30,11 +266,15 @@
           "conv3x3"
         ],
         "width": 0.75,
-        "act": "relu6"
+        "act": "gelu"
       },
       "params": 524554,
-      "proxy_val_acc": 0.7330000001907349,
-      "short_val_acc": 0.865199999332428
+      "proxy_val_acc": 0.7316000002861023,
+      "short_val_acc": 0.8706999996185303,
+      "short_per_seed": [
+        0.8667999995231629,
+        0.8745999997138977
+      ]
     },
     {
       "arch": {
@@ -42,93 +282,145 @@
           "conv3x3",
           "mbconv",
           "mbconv",
-          "mbconv"
+          "conv3x3"
+        ],
+        "width": 1.0,
+        "act": "leakyrelu"
+      },
+      "params": 787338,
+      "proxy_val_acc": 0.7366000008583069,
+      "short_val_acc": 0.8724999994277953,
+      "short_per_seed": [
+        0.875399999332428,
+        0.8695999995231628
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "mbconv",
+          "conv3x3"
+        ],
+        "width": 0.75,
+        "act": "gelu"
+      },
+      "params": 445354,
+      "proxy_val_acc": 0.7386000008583069,
+      "short_val_acc": 0.8672000007629395,
+      "short_per_seed": [
+        0.8660000007629395,
+        0.8684000007629394
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "mbconv",
+          "conv3x3"
+        ],
+        "width": 1.25,
+        "act": "relu"
+      },
+      "params": 1226090,
+      "proxy_val_acc": 0.739800000667572,
+      "short_val_acc": 0.8794999996185303,
+      "short_per_seed": [
+        0.882799999332428,
+        0.8761999999046326
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "mbconv",
+          "conv3x3"
         ],
         "width": 1.25,
         "act": "relu6"
       },
-      "params": 931370,
-      "proxy_val_acc": 0.7328000002861023,
-      "short_val_acc": 0.8400000008583068
+      "params": 1226090,
+      "proxy_val_acc": 0.7405999994277954,
+      "short_val_acc": 0.8773000001430511,
+      "short_per_seed": [
+        0.8768000005722046,
+        0.8777999997138977
+      ]
     },
     {
       "arch": {
         "ops": [
           "conv3x3",
           "mbconv",
+          "mbconv",
+          "conv3x3"
+        ],
+        "width": 1.0,
+        "act": "relu6"
+      },
+      "params": 787338,
+      "proxy_val_acc": 0.7409999996185302,
+      "short_val_acc": 0.8695999998092652,
+      "short_per_seed": [
+        0.8695999993324279,
+        0.8696000002861023
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
           "conv3x3",
+          "mbconv",
+          "mbconv",
+          "conv3x3"
+        ],
+        "width": 1.0,
+        "act": "gelu"
+      },
+      "params": 787338,
+      "proxy_val_acc": 0.7421999994277955,
+      "short_val_acc": 0.8765000000000001,
+      "short_per_seed": [
+        0.8795999999046326,
+        0.8734000000953674
+      ]
+    },
+    {
+      "arch": {
+        "ops": [
+          "conv3x3",
+          "mbconv",
+          "mbconv",
           "conv3x3"
         ],
         "width": 1.0,
         "act": "relu"
       },
-      "params": 929802,
-      "proxy_val_acc": 0.7320000001907349,
-      "short_val_acc": 0.8775999997138977
-    },
-    {
-      "arch": {
-        "ops": [
-          "conv3x3",
-          "mbconv",
-          "conv3x3",
-          "conv3x3"
-        ],
-        "width": 1.0,
-        "act": "relu6"
-      },
-      "params": 929802,
-      "proxy_val_acc": 0.7318,
-      "short_val_acc": 0.8800000000953674
-    },
-    {
-      "arch": {
-        "ops": [
-          "conv3x3",
-          "mbconv",
-          "conv3x3",
-          "mbconv"
-        ],
-        "width": 1.0,
-        "act": "gelu"
-      },
-      "params": 743178,
-      "proxy_val_acc": 0.7314000001907348,
-      "short_val_acc": 0.8665999999046325
-    },
-    {
-      "arch": {
-        "ops": [
-          "conv3x3",
-          "mbconv",
-          "mbconv",
-          "mbconv"
-        ],
-        "width": 1.0,
-        "act": "leakyrelu"
-      },
-      "params": 600714,
-      "proxy_val_acc": 0.7313999994277954,
-      "short_val_acc": 0.8391999998092652
-    },
-    {
-      "arch": {
-        "ops": [
-          "conv3x3",
-          "mbconv",
-          "conv3x3",
-          "mbconv"
-        ],
-        "width": 1.25,
-        "act": "relu6"
-      },
-      "params": 1155530,
-      "proxy_val_acc": 0.7313999994277954,
-      "short_val_acc": 0.8528
+      "params": 787338,
+      "proxy_val_acc": 0.7423999998092652,
+      "short_val_acc": 0.8733000005722046,
+      "short_per_seed": [
+        0.8774000007629394,
+        0.8692000003814697
+      ]
     }
   ],
-  "kendall_tau": 0.10910894511799618,
-  "kendall_p": 0.7083840532183997,
-  "spearman_rho": 0.19162020190612145,
-  "spearman_p": 0.6494102011224531
+  "full": {
+    "kendall_tau": 0.5714285714285714,
+    "kendall_p": 0.0001552628136398587,
+    "spearman_rho": 0.7870129870129869,
+    "spearman_p": 2.309278639660772e-05
+  },
+  "top": {
+    "kendall_tau": -0.06666666666666665,
+    "kendall_p": 1.0,
+    "spearman_rho": 0.028571428571428574,
+    "spearman_p": 0.9571545189504373
+  },
+  "top_k": 6
 }

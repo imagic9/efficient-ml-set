@@ -1,71 +1,92 @@
-# HW4 — Neural Architecture Search with Hyperopt · REPORT
+# ДЗ4 — Neural Architecture Search з Hyperopt · ЗВІТ
 
-**Course:** Efficient ML, SET University · **Dataset:** CIFAR-10
+Код і результати в репо: [imagic9/efficient-ml-set → hw4](https://github.com/imagic9/efficient-ml-set/tree/main/hw4)
 
-## Task
-Search a discrete space of architectures (block op × width × activation) with
-Hyperopt **TPE**, using **weight sharing**; plot running-best loss vs. trial and
-accuracy vs. #params; retrain the best design from scratch vs. a baseline; report
-how informative the one-shot proxy was.
+**Курс:** Efficient ML, SET University · **Датасет:** CIFAR-10
 
-## Setup
-- **Search space** (`src/search_space.py`): 4 stages, each a block op ∈
-  {conv3x3, dwsep, mbconv}; global width ∈ {0.5, 0.75, 1.0, 1.25}; global
-  activation ∈ {ReLU, ReLU6, SiLU, GELU, LeakyReLU} → **1620** archs.
-- **One-shot supernet** (`src/supernet.py`): shared weights at max width, all ops as
-  parallel branches, trained with Single-Path One-Shot (uniform random path/step,
-  100 epochs). Per-candidate BN recalibrated before scoring.
-- **Search** (`src/nas_search.py`): Hyperopt TPE, objective = one-shot proxy val loss,
-  250 trials (139 unique archs, 111 cached revisits).
-- **Retrain** (120 epochs, seed 42): best design
-  from scratch vs. frozen HW1 VGG11 and an in-space default (all conv3x3/1.0×/ReLU).
-- **Methodology:** all search/intermediate numbers on validation; test measured once
-  per final model; single-seed (labelled as such).
+## Завдання
+Пошук у дискретному просторі архітектур (операція блоку × ширина × активація) за
+допомогою Hyperopt **TPE** зі **спільними вагами (weight sharing)**; графіки
+running-best loss vs. номер trial і accuracy vs. кількість параметрів; retrain
+найкращої архітектури з нуля проти baseline; звіт про те, наскільки інформативним був
+one-shot proxy.
 
-## Headline results (test — once per model)
+## Постановка
+- **Простір пошуку** (`src/search_space.py`): 4 стадії, у кожній операція ∈
+  {conv3x3, dwsep, mbconv}; глобальна ширина ∈ {0.5, 0.75, 1.0, 1.25}; глобальна
+  активація ∈ {ReLU, ReLU6, SiLU, GELU, LeakyReLU} → **1620** архітектур.
+- **One-shot supernet** (`src/supernet.py`): спільні ваги на макс. ширині, усі операції
+  як паралельні гілки; тренування Single-Path One-Shot (рівноймовірна випадкова
+  *архітектура* на крок, 100 епох). BN рекалібрується під кожного
+  кандидата перед оцінкою.
+- **Пошук** (`src/nas_search.py`): Hyperopt TPE, ціль = one-shot proxy val loss,
+  250 trial-ів (139 унікальних архітектур, 111 кеш-візитів), +
+  **random-search контроль** на тій самій supernet.
+- **Retrain** (120 епох, seed-и 42,43,44):
+  найкраща архітектура з нуля проти замороженої VGG11 з ДЗ1 і in-space default
+  (усі conv3x3/1.0×/ReLU); порядок батчів детермінований на кожен seed, наводимо mean±std.
+- **Методологія:** увесь пошук і проміжні числа — на validation; test вимірюється рівно
+  раз на кожну фінальну (модель, seed); `inference_mode` в оцінці.
 
-| Model | Params | vs baseline | Test acc |
+## Головні результати (test — mean±std на 3 seed-ах)
+
+| Модель | Параметри | vs baseline | Test acc |
 |---|---|---|---|
-| Baseline VGG11 (HW1) | 9.49M | 1.0× | 90.71% |
-| In-space default (conv3x3/1.0×/ReLU) | 0.96M | 9.8× smaller | 90.26% |
-| **Found by search** (conv3x3/mbconv/conv3x3/mbconv, 1.0×, relu6) | **0.74M** | **12.8× smaller** | **90.69%** |
+| Baseline VGG11 (ДЗ1, reference — 1 запуск) | 9.49M | 1.0× | 90.71% |
+| In-space default (conv3x3/1.0×/ReLU) | 0.96M | 9.8× менше | 90.16 ± 0.17% |
+| **Знайдена пошуком** (conv3x3/mbconv/mbconv/conv3x3, 1.0×, relu) | **0.79M** | **12.1× менше** | **91.02 ± 0.16%** |
 
-The searched design reaches **90.69%** — essentially baseline accuracy
-(-0.02 pp) at **12.8× fewer parameters**, and +0.43 pp over
-the in-space default.
+**Основний висновок — знайдена архітектура vs in-space default** (обидві на 3
+seed-ах, ідентичний рецепт): **+0.86 п.п.** (91.02 ± 0.16%
+проти 90.16 ± 0.17%) — розрив перевищує сумарний розкид
+(±0.16/±0.17 п.п.), тож пошук реально дав кращу
+архітектуру. Проти **VGG11** знайдена мережа — +0.31 п.п. при
+**12.1× менше параметрів**; але VGG11 має лише **один історичний запуск**, тож це
+порівняння з reference-точкою, а не статистично доведена перевага.
 
-## What the search found
-TPE converged on a clear structural motif (top-15 distinct designs by proxy):
-stage 0 → conv3x3 (conv3x3×15), stage 1 → mbconv (mbconv×15),
-stage 2 → conv3x3×10, mbconv×5, stage 3 → mbconv×10, conv3x3×5; width
-1.0×9, 1.25×4, 0.75×2; activation relu6×7, relu×4, gelu×3, leakyrelu×1. The worst designs (all-dwsep,
-0.5× width) collapse to ~67% proxy accuracy and are reliably rejected.
+## Що знайшов пошук
+Пошук збігся на чіткий структурний мотив (топ-15 унікальних дизайнів за proxy):
+стадія 0 → conv3x3 (conv3x3×15), стадія 1 → mbconv (mbconv×13, conv3x3×2),
+стадія 2 → mbconv×13, conv3x3×2, стадія 3 → conv3x3×13, mbconv×2; ширина
+1.0×8, 1.25×4, 0.75×3; активація relu×6, gelu×4, relu6×3, leakyrelu×2. Найгірші дизайни (усі-dwsep,
+0.5× ширина) падають до ~67% proxy-точності й впевнено відсіюються. TPE вийшов на
+найкращий proxy-loss за 48 унікальних архітектур; на цьому просторі TPE
+лише трохи кращий за random (74.24% vs 74.04%) — хороша зона
+широка (random-контроль — один прогін, тож твердження слабке).
 
-## How informative was the one-shot proxy? (bonus)
-Top-8 by proxy, each trained 15
-epochs from scratch: **Kendall τ = 0.11, Spearman ρ = 0.19** (weak positive).
-Among the top designs the proxy spans only 0.3 pp while real
-short-training spans 4.1 pp — under shared weights the best
-architectures are nearly indistinguishable, so fine ranking is noise.
+## Наскільки інформативний one-shot proxy? (бонус)
+Оцінка на **стратифікованій** вибірці з 21 архітектур, що покриває весь діапазон
+proxy (15 епох з нуля × 2 seed-и):
 
-**Two-part answer:** the proxy is **very** informative for *coarse filtering* (it nails
-the good region and discards weak ops/widths) but **weak** for *picking the single
-winner* (τ=0.11). Best used as a filter (1620 → a dozen), with the final choice
-decided by short honest from-scratch training.
+- **Грубий відсів (уся вибірка, n=21):** Kendall τ = **0.57**
+  (p<0.001), Spearman ρ = **0.79**
+  (p<0.001) — proxy надійно відрізняє погані архітектури від хороших.
+- **Тонке ранжування (топ-6):** Kendall τ = **-0.07**
+  (p=1.000) — незначущо; серед топу proxy займає лише
+  0.4 п.п., тоді як реальне навчання — 1.2 п.п., тож
+  найкращі дизайни під спільними вагами нерозрізнимі.
 
-## What worked / what didn't / how to improve
-- **Worked:** 12.8× smaller net at baseline accuracy; weight sharing made the
-  search cheap; TPE + proxy find the good region confidently.
-- **Didn't:** fine proxy ranking is weak (co-adaptation of shared weights flattens
-  strong candidates); absolute proxy accuracy (~73%) is far below real (84–91%).
-- **Improve:** train the supernet longer with fairness tricks (FairNAS / sandwich
-  rule); larger val subset + more BN recal batches; widen the space (depth / kernel /
-  stride); multi-seed mean±std (all numbers here are single-seed).
+**Двошарова відповідь:** proxy — надійний **грубий фільтр** (1620 → десяток),
+але **слабкий у виборі єдиного переможця**; фінал варто вирішувати коротким навчанням з
+нуля (як у цьому бонусі).
 
-## Reproduce
+## Що спрацювало / що ні / як покращити
+- **Спрацювало:** мережа 12.1× менша за VGG11 на рівні його точності; weight
+  sharing зробив пошук дешевим; proxy фільтрує хорошу зону зі значущою кореляцією
+  (τ=0.57, p<0.001); розрив best↔default значущий.
+- **Не спрацювало:** тонке ранжування proxy слабке (co-adaptation вирівнює сильних
+  кандидатів); абсолютна proxy-точність (~73%) далеко нижча за реальну (84–91%); TPE лише
+  трохи кращий за random на цьому просторі широкого оптимуму.
+- **Як покращити:** random-контроль на 3–5 seed-ах (band/mean); довше тренувати supernet
+  з fairness-трюками (FairNAS / sandwich rule) щоб підняти τ на топі; більша під-вибірка
+  val + більше BN-рекалібрації; ширший простір (глибина / kernel / stride), де TPE
+  виразніше обжене random; більше seed-ів для retrain.
+
+## Відтворення
 ```bash
+# тренує supernet з нуля і шукає (supernet.pt *.pt не комітиться — gitignored)
 python run_search.py     --supernet-epochs 100 --evals 250
-python run_retrain.py    --baseline ../hw1/results/baseline.pt --epochs 120
-python run_proxy_corr.py --top-k 8 --short-epochs 15
+python run_retrain.py    --baseline ../hw1/results/baseline.pt --epochs 120 --seeds 42,43,44
+python run_proxy_corr.py --n-bins 4 --per-bin 4 --top-k 6 --seeds 42,43 --short-epochs 15
 python tests/test_search_space.py && python tests/test_supernet.py
 ```

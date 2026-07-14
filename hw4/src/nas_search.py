@@ -13,7 +13,7 @@ is the validation loss; validation accuracy and parameter count are recorded too
 revisited by TPE are served from a cache so the trial log stays honest.
 """
 import numpy as np
-from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+from hyperopt import fmin, tpe, rand, hp, STATUS_OK, Trials
 
 from .search_space import OPS, WIDTHS, ACTS, NUM_STAGES, arch_key, count_arch_params
 from .supernet import recalibrate_bn, evaluate_subnet
@@ -35,14 +35,19 @@ def _params_to_arch(params):
     }
 
 
-def search_tpe(model, train_loader, val_loader, device, max_evals=200, seed=42,
-               recal_batches=64):
-    """Run TPE search over the supernet. Returns (best_arch, records).
+_ALGO = {"tpe": tpe.suggest, "random": rand.suggest}
 
-    `records` is an ordered list, one entry per trial (in trial order):
-        {trial, arch, params, val_loss, val_acc, best_loss_so_far, cached}
-    where `params` is the standalone parameter count and `best_loss_so_far` gives
-    the running-best proxy loss for the convergence plot.
+
+def run_search(model, train_loader, val_loader, device, max_evals=200, seed=42,
+               recal_batches=64, algo="tpe"):
+    """Run a Hyperopt search (algo="tpe" or "random") over the supernet.
+
+    Returns (best_arch, records). `records` is an ordered list, one per trial:
+        {trial, arch, params, val_loss, val_acc, best_loss_so_far,
+         n_unique_so_far, cached}
+    `n_unique_so_far` counts *distinct* architectures evaluated up to and including
+    this trial -- the honest x-axis for a convergence plot, since cache hits add no
+    new information. Random search is the control that isolates what TPE contributes.
     """
     model.eval()
     cache, records = {}, []
@@ -65,9 +70,10 @@ def search_tpe(model, train_loader, val_loader, device, max_evals=200, seed=42,
             "val_loss": val_loss,
             "val_acc": val_acc,
             "best_loss_so_far": best,
+            "n_unique_so_far": len(cache),
             "cached": cached,
         })
-        print(f"  trial {len(records):3d}/{max_evals}  "
+        print(f"  [{algo}] trial {len(records):3d}/{max_evals}  "
               f"ops={'/'.join(arch['ops'])} w={arch['width']} act={arch['act']:9s} "
               f"params={records[-1]['params']/1e6:.2f}M  "
               f"val_acc={val_acc:.4f} val_loss={val_loss:.4f}"
@@ -75,22 +81,53 @@ def search_tpe(model, train_loader, val_loader, device, max_evals=200, seed=42,
         return {"loss": val_loss, "status": STATUS_OK}
 
     trials = Trials()
-    fmin(objective, build_space(), algo=tpe.suggest, max_evals=max_evals,
+    fmin(objective, build_space(), algo=_ALGO[algo], max_evals=max_evals,
          trials=trials, rstate=np.random.default_rng(seed), show_progressbar=False)
 
     best = min(records, key=lambda r: r["val_loss"])
     return best["arch"], records
 
 
-def top_k_by_proxy(records, k):
-    """The k distinct architectures with the highest proxy validation accuracy."""
+def distinct_records(records):
+    """One record per distinct architecture (first occurrence), proxy val_acc kept."""
     seen, out = set(), []
-    for r in sorted(records, key=lambda r: r["val_acc"], reverse=True):
+    for r in records:
         key = arch_key(r["arch"])
         if key in seen:
             continue
         seen.add(key)
         out.append(r)
-        if len(out) >= k:
-            break
     return out
+
+
+def top_k_by_proxy(records, k):
+    """The k distinct architectures with the highest proxy validation accuracy."""
+    ranked = sorted(distinct_records(records), key=lambda r: r["val_acc"], reverse=True)
+    return ranked[:k]
+
+
+def stratified_by_proxy(records, n_bins=4, per_bin=5):
+    """Sample distinct archs evenly across the proxy-accuracy range.
+
+    Ranking only the top-k cannot show whether the proxy is good at *coarse*
+    filtering -- for that we need candidates spanning the whole proxy range. We sort
+    the distinct archs by proxy val_acc, cut into `n_bins` equal-size quantile bins,
+    and take up to `per_bin` from each (evenly spaced within the bin). Returns them
+    sorted by proxy val_acc (ascending), de-duplicated.
+    """
+    ranked = sorted(distinct_records(records), key=lambda r: r["val_acc"])
+    n = len(ranked)
+    picked, seen = [], set()
+    for b in range(n_bins):
+        segment = ranked[b * n // n_bins:(b + 1) * n // n_bins]
+        if not segment:
+            continue
+        # evenly spaced indices within the bin, up to per_bin of them
+        k = min(per_bin, len(segment))
+        idxs = sorted(set(round(i * (len(segment) - 1) / max(1, k - 1)) for i in range(k)))
+        for j in idxs:
+            key = arch_key(segment[j]["arch"])
+            if key not in seen:
+                seen.add(key)
+                picked.append(segment[j])
+    return sorted(picked, key=lambda r: r["val_acc"])

@@ -20,15 +20,35 @@ def plot_history(history, title="Training", has_val=True):
     return fig
 
 
-def plot_search_convergence(records, title="TPE search: running-best proxy loss"):
-    """Running-best validation loss vs. trial number (the convergence curve)."""
-    trials = [r["trial"] + 1 for r in records]
-    per_trial = [r["val_loss"] for r in records]
-    best = [r["best_loss_so_far"] for r in records]
+def _best_vs_unique(records):
+    """Running-best proxy loss as a function of #distinct architectures evaluated.
+
+    Cache hits add no information, so the honest x-axis is the count of unique
+    architectures, not raw trial number. Returns (unique_counts, running_best).
+    """
+    xs, ys, seen_best, last = [], [], float("inf"), None
+    for r in records:
+        seen_best = min(seen_best, r["val_loss"])
+        u = r["n_unique_so_far"]
+        if u != last:                          # one point per new unique architecture
+            xs.append(u); ys.append(seen_best); last = u
+        else:
+            ys[-1] = seen_best                 # a cache hit can't raise the best
+    return xs, ys
+
+
+def plot_search_convergence(records, rand_records=None,
+                            title="Search convergence: running-best proxy loss"):
+    """Running-best validation loss vs. #unique architectures, TPE vs. random."""
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.scatter(trials, per_trial, s=14, color="tab:gray", alpha=0.5, label="trial loss")
-    ax.plot(trials, best, color="tab:blue", lw=2, label="running best")
-    ax.set_xlabel("trial number"); ax.set_ylabel("validation loss (one-shot proxy)")
+    tx, ty = _best_vs_unique(records)
+    ax.plot(tx, ty, color="tab:blue", lw=2, marker=".", ms=5, label="TPE")
+    if rand_records:
+        rx, ry = _best_vs_unique(rand_records)
+        ax.plot(rx, ry, color="tab:orange", lw=2, marker=".", ms=5,
+                ls="--", label="random search")
+    ax.set_xlabel("number of distinct architectures evaluated")
+    ax.set_ylabel("running-best validation loss (one-shot proxy)")
     ax.set_title(title); ax.legend(); ax.grid(alpha=0.3)
     fig.tight_layout()
     return fig
@@ -61,22 +81,27 @@ def plot_acc_vs_params(records, best_arch=None,
 
 
 def plot_proxy_correlation(proxy_acc, real_acc, tau=None, rho=None,
+                           tau_p=None, rho_p=None,
                            title="One-shot proxy vs. from-scratch accuracy"):
-    """Bonus: does the proxy rank architectures the way real training does?"""
-    fig, ax = plt.subplots(figsize=(6.5, 6))
+    """Bonus: does the proxy rank architectures the way real training does?
+
+    Points span the whole proxy range (stratified sample), so a strong overall
+    trend here is evidence of good *coarse* filtering. y and x use independent
+    scales (proxy is systematically lower than real training) -- what matters is
+    monotonicity, i.e. rank agreement, not the diagonal.
+    """
+    fig, ax = plt.subplots(figsize=(7, 5.5))
     ax.scatter([a * 100 for a in proxy_acc], [a * 100 for a in real_acc],
-               s=60, color="tab:blue", zorder=3)
-    lo = min(min(proxy_acc), min(real_acc)) * 100 - 1
-    hi = max(max(proxy_acc), max(real_acc)) * 100 + 1
-    ax.plot([lo, hi], [lo, hi], ls="--", color="gray", lw=1, label="y = x")
+               s=55, color="tab:blue", zorder=3)
     ax.set_xlabel("one-shot proxy val accuracy, %")
     ax.set_ylabel("short from-scratch val accuracy, %")
+    pfmt = lambda p: "p<0.001" if p < 0.001 else f"p={p:.3f}"
     sub = []
     if tau is not None:
-        sub.append(f"Kendall τ = {tau:.2f}")
+        sub.append(f"Kendall τ = {tau:.2f}" + (f" ({pfmt(tau_p)})" if tau_p is not None else ""))
     if rho is not None:
-        sub.append(f"Spearman ρ = {rho:.2f}")
-    ax.set_title(title + ("\n" + "   ".join(sub) if sub else ""))
-    ax.legend(); ax.grid(alpha=0.3); ax.set_aspect("equal", adjustable="box")
+        sub.append(f"Spearman ρ = {rho:.2f}" + (f" ({pfmt(rho_p)})" if rho_p is not None else ""))
+    ax.set_title(title + ("\n" + "    ".join(sub) if sub else ""))
+    ax.grid(alpha=0.3)
     fig.tight_layout()
     return fig
