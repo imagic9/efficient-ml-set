@@ -3,6 +3,9 @@ Handoff/
 
 # Instructor-provided assignment materials
 *.docx
+# Per-homework task/materials folders — local only, never published
+hw*/task/
+final_project/task/
 
 # Large model checkpoints (results are captured in the notebooks/JSON)
 *.pt
