@@ -22,6 +22,17 @@ from torchvision.models import MobileNet_V2_Weights, mobilenet_v2
 # 256x192; that control is not this module's to decide.
 INPUT_SHAPE_IMAGENET = (1, 3, 224, 224)
 
+# The provisional Core input from DESIGN §5.5, NCHW: 256 wide by 192 high. It is not
+# ImageNet's, and the difference is the whole point — a square letterbox spends 27% of
+# every inference on grey bars, where this spends 2.6%.
+#
+# "Provisional" is load-bearing: C1a resolves the pre-registered 224x224-versus-256x192
+# control on real validation data, and only the winner enters the M0-M4 contract.
+# MobileNetV2 accepts both: it is fully convolutional into a global average pool, and
+# both dimensions stay divisible by 32, so its five downsampling stages produce a clean
+# 6x8 feature map here rather than a ragged one.
+INPUT_SHAPE_PROVISIONAL_CORE = (1, 3, 192, 256)
+
 # torchvision's ImageNet normalisation, repeated in DESIGN §5.6 line 603. The C++
 # preprocessor must match these exactly or P1 parity fails.
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
