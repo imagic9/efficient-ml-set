@@ -147,3 +147,34 @@ def test_no_dataset_or_key_material_is_tracked() -> None:
         if f.endswith(forbidden_suffixes) or "id_ed25519" in f or "id_rsa" in f
     ]
     assert not offenders, f"must not be tracked: {offenders}"
+
+
+def test_no_credential_shaped_string_is_tracked() -> None:
+    """Filenames are the easy half; the content is what actually leaks.
+
+    The repository is public, so a committed token is compromised the moment it
+    is pushed and stays in history after any 'fix'. This is cheap enough to run
+    on every commit and catastrophic enough to be worth it.
+    """
+    import subprocess
+
+    patterns = [
+        r"(ghp_|gho_|ghs_|github_pat_)[A-Za-z0-9]{20,}",  # GitHub tokens
+        r"AKIA[0-9A-Z]{16}",  # AWS access key id
+        r"-----BEGIN [A-Z ]*PRIVATE KEY-----",  # any private key
+        r"xox[baprs]-[A-Za-z0-9-]{10,}",  # Slack
+    ]
+
+    hits: list[str] = []
+    for pattern in patterns:
+        found = subprocess.run(
+            ["git", "grep", "-nIE", pattern],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        # git grep exits 1 when there are no matches, which is the good case.
+        if found.returncode == 0 and found.stdout.strip():
+            hits.extend(found.stdout.strip().splitlines())
+
+    assert not hits, f"credential-shaped strings are tracked: {hits}"

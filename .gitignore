@@ -61,6 +61,12 @@ onnxruntime_profile_*.json
 id_ed25519*
 id_rsa*
 
+# A dotfile .env conventionally holds credentials. Note this is NOT `*.env`:
+# configs/env/pins.env is shell-sourceable version pins with no secrets in it,
+# and it must be committed — the Dockerfile and setup scripts read it.
+.env
+.env.*
+
 # OS / editor
 .DS_Store
 .idea/
