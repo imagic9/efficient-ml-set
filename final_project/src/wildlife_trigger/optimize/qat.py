@@ -174,15 +174,27 @@ class QuantConv2d(nn.Module):
 
 
 class QuantLinear(nn.Module):
-    """The Linear counterpart of QuantConv2d, for the classifier head."""
+    """The Linear counterpart of QuantConv2d, for the classifier head.
+
+    Unlike QuantConv2d this also quantizes its *input*, which is not redundant.
+    `torch.flatten` sits between the pooled vector's quantizer and this layer, so
+    the Gemm's activation input is the Flatten's output — a tensor boundary no
+    other module can reach. Without a quantizer here ORT sees a bare
+    `Flatten -> Gemm` with nothing to match, and the classifier stays float while
+    every convolution around it runs as integer. Measured: that is exactly what
+    happened, and ORT's own PTQ output puts a DequantizeLinear in the same place
+    (`/Flatten_output_0_DequantizeLinear`).
+    """
 
     def __init__(self, linear: nn.Linear):
         super().__init__()
         self.linear = linear
+        self.input_quant = activation_fake_quant()
         self.weight_quant = weight_fake_quant()
         self.output_quant = activation_fake_quant()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.input_quant(x)
         weight = self.weight_quant(self.linear.weight)
         return self.output_quant(F.linear(x, weight, self.linear.bias))
 
