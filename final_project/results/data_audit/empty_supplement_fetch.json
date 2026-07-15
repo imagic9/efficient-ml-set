@@ -1,0 +1,18 @@
+{
+  "task": "B2-fetch",
+  "requested": 5000,
+  "fetched": 5000,
+  "failures": [],
+  "failure_count": 0,
+  "downsized": 4955,
+  "already_within_cap": 45,
+  "resample_filter": "LANCZOS",
+  "jpeg_quality": 90,
+  "max_long_side_cap": 1024,
+  "observed_max_long_side": 1024,
+  "cap_holds": true,
+  "total_downsized_bytes": 1159209392,
+  "manifest": "data/manifests/cct_empty_train_v1.jsonl",
+  "manifest_sha256": "40c2d4012297d087004ef2d952c97079b89eb79d270a54032d0852cff6533afa",
+  "why_step_7": "LILA serves per-image downloads at original resolution while CCT-20 is capped at 1024 px. Without this, `empty` would be the only training class carrying double resolution -- a label-correlated feature that is absent from val/test and therefore silently inflates the bobcat false-fire rate exactly where it is measured (DESIGN \u00a75.2)."
+}

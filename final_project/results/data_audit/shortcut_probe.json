@@ -1,0 +1,15 @@
+{
+  "task": "B2-shortcut-probe",
+  "held_out_accuracy": 0.5775,
+  "chance": 0.5,
+  "samples_per_pool": 2000,
+  "held_out_samples": 800,
+  "verdict": "closed as far as this probe can tell",
+  "blocks_training": false,
+  "thresholds": {
+    "attention": 0.6,
+    "blocking": 0.75
+  },
+  "probe_sees": "the decoded, resized RGB tensor only \u2014 never file size or JPEG headers, which the real model never sees either",
+  "caveat": "Rule 3 makes the supplement location-disjoint, so backgrounds genuinely differ and that confound is unavoidable (DESIGN \u00a75.2). This probe cannot tell 'different camera' from 'different encoder'; a positive result says investigate, not which cause."
+}

@@ -1,0 +1,802 @@
+{
+  "gate": "B",
+  "passed": true,
+  "checks": {
+    "count_train": {
+      "passed": true,
+      "detail": {
+        "observed": 13553,
+        "expected": 13553
+      }
+    },
+    "count_cis_val": {
+      "passed": true,
+      "detail": {
+        "observed": 3484,
+        "expected": 3484
+      }
+    },
+    "count_cis_test": {
+      "passed": true,
+      "detail": {
+        "observed": 15827,
+        "expected": 15827
+      }
+    },
+    "count_trans_val": {
+      "passed": true,
+      "detail": {
+        "observed": 1725,
+        "expected": 1725
+      }
+    },
+    "count_trans_test": {
+      "passed": true,
+      "detail": {
+        "observed": 23275,
+        "expected": 23275
+      }
+    },
+    "category_count_is_16": {
+      "passed": true,
+      "detail": [
+        "opossum",
+        "raccoon",
+        "squirrel",
+        "bobcat",
+        "skunk",
+        "dog",
+        "coyote",
+        "rabbit",
+        "bird",
+        "cat",
+        "badger",
+        "empty",
+        "car",
+        "deer",
+        "fox",
+        "rodent"
+      ]
+    },
+    "animal_count_is_14": {
+      "passed": true,
+      "detail": 14
+    },
+    "non_animal_classes_are_car_and_empty": {
+      "passed": true,
+      "detail": [
+        "car",
+        "empty"
+      ]
+    },
+    "labels_are_within_the_frozen_class_set": {
+      "passed": true,
+      "detail": []
+    },
+    "unique_ids_train": {
+      "passed": true,
+      "detail": 0
+    },
+    "unique_ids_cis_val": {
+      "passed": true,
+      "detail": 0
+    },
+    "unique_ids_cis_test": {
+      "passed": true,
+      "detail": 0
+    },
+    "unique_ids_trans_val": {
+      "passed": true,
+      "detail": 0
+    },
+    "unique_ids_trans_test": {
+      "passed": true,
+      "detail": 0
+    },
+    "no_image_in_two_splits": {
+      "passed": true,
+      "detail": {}
+    },
+    "known_train_cis_val_overlap": {
+      "passed": true,
+      "detail": {
+        "observed": {
+          "sequences": 224,
+          "cis_val_images": 270,
+          "bobcat_images": 10
+        },
+        "expected": {
+          "sequences": 224,
+          "cis_val_images": 270,
+          "bobcat_images": 10
+        }
+      }
+    },
+    "cis_val_clean_fingerprint": {
+      "passed": true,
+      "detail": {
+        "observed": {
+          "images": 3214,
+          "bobcat_images": 144
+        },
+        "expected": {
+          "images": 3214,
+          "bobcat_images": 144
+        }
+      }
+    },
+    "cis_val_clean_shares_no_sequence_with_train": {
+      "passed": true,
+      "detail": 0
+    },
+    "no_sequence_overlap_train_cis_test": {
+      "passed": true,
+      "detail": 0
+    },
+    "no_sequence_overlap_train_trans_val": {
+      "passed": true,
+      "detail": 0
+    },
+    "no_sequence_overlap_train_trans_test": {
+      "passed": true,
+      "detail": 0
+    },
+    "no_sequence_overlap_cis_val_cis_test": {
+      "passed": true,
+      "detail": 0
+    },
+    "train_locations_disjoint_from_trans_val": {
+      "passed": true,
+      "detail": []
+    },
+    "train_locations_disjoint_from_trans_test": {
+      "passed": true,
+      "detail": []
+    },
+    "supplement_size_is_5000": {
+      "passed": true,
+      "detail": 5000
+    },
+    "supplement_ids_disjoint": {
+      "passed": true,
+      "detail": 0
+    },
+    "supplement_sequences_disjoint": {
+      "passed": true,
+      "detail": 0
+    },
+    "supplement_locations_disjoint": {
+      "passed": true,
+      "detail": []
+    },
+    "supplement_is_all_empty": {
+      "passed": true,
+      "detail": [
+        [
+          [
+            "empty"
+          ],
+          5000
+        ]
+      ]
+    },
+    "supplement_downsized_to_1024": {
+      "passed": true,
+      "detail": {
+        "max_long_side": 1024
+      }
+    },
+    "supplement_records_both_geometries_and_checksums": {
+      "passed": true,
+      "detail": "DESIGN \u00a75.2 step 8"
+    },
+    "supplement_geometry_consistent_with_sm_splits": {
+      "passed": true,
+      "detail": {
+        "supplement_dominant": "1024x747",
+        "supplement_dominant_share": 0.985,
+        "cct20_dominant": "1024x747"
+      }
+    },
+    "shortcut_probe_near_chance": {
+      "passed": true,
+      "detail": {
+        "accuracy": 0.5775,
+        "verdict": "closed as far as this probe can tell"
+      }
+    },
+    "multi_label_count_train": {
+      "passed": true,
+      "detail": {
+        "observed": 7,
+        "expected": 7
+      }
+    },
+    "multi_label_count_cis_val": {
+      "passed": true,
+      "detail": {
+        "observed": 0,
+        "expected": 0
+      }
+    },
+    "multi_label_count_cis_test": {
+      "passed": true,
+      "detail": {
+        "observed": 1,
+        "expected": 1
+      }
+    },
+    "multi_label_count_trans_val": {
+      "passed": true,
+      "detail": {
+        "observed": 61,
+        "expected": 61
+      }
+    },
+    "multi_label_count_trans_test": {
+      "passed": true,
+      "detail": {
+        "observed": 9,
+        "expected": 9
+      }
+    },
+    "every_record_carries_an_ordered_label_set": {
+      "passed": true,
+      "detail": "labels must be a sorted list on every record"
+    },
+    "primary_label_is_none_exactly_when_multi_class": {
+      "passed": true,
+      "detail": "cross-entropy excludes these; target-presence still counts them"
+    },
+    "zero_validation_support_is_exactly_deer_and_fox": {
+      "passed": true,
+      "detail": [
+        "deer",
+        "fox"
+      ]
+    },
+    "badger_support_is_one_image_one_sequence": {
+      "passed": true,
+      "detail": {
+        "images": 1,
+        "sequences": 1
+      }
+    },
+    "manifest_paths_exist": {
+      "passed": true,
+      "detail": []
+    }
+  },
+  "failed_checks": [],
+  "validation_support": {
+    "opossum": {
+      "images": 918,
+      "sequences": 306
+    },
+    "raccoon": {
+      "images": 294,
+      "sequences": 98
+    },
+    "squirrel": {
+      "images": 205,
+      "sequences": 69
+    },
+    "bobcat": {
+      "images": 937,
+      "sequences": 315
+    },
+    "skunk": {
+      "images": 91,
+      "sequences": 33
+    },
+    "dog": {
+      "images": 223,
+      "sequences": 75
+    },
+    "coyote": {
+      "images": 309,
+      "sequences": 119
+    },
+    "rabbit": {
+      "images": 462,
+      "sequences": 157
+    },
+    "bird": {
+      "images": 67,
+      "sequences": 25
+    },
+    "cat": {
+      "images": 261,
+      "sequences": 87
+    },
+    "badger": {
+      "images": 1,
+      "sequences": 1
+    },
+    "deer": {
+      "images": 0,
+      "sequences": 0
+    },
+    "fox": {
+      "images": 0,
+      "sequences": 0
+    },
+    "rodent": {
+      "images": 135,
+      "sequences": 45
+    }
+  },
+  "class_distribution": {
+    "train": [
+      [
+        "opossum",
+        2726
+      ],
+      [
+        "rabbit",
+        2443
+      ],
+      [
+        "coyote",
+        1409
+      ],
+      [
+        "cat",
+        1287
+      ],
+      [
+        "squirrel",
+        1250
+      ],
+      [
+        "raccoon",
+        1027
+      ],
+      [
+        "dog",
+        820
+      ],
+      [
+        "bobcat",
+        786
+      ],
+      [
+        "car",
+        668
+      ],
+      [
+        "bird",
+        484
+      ],
+      [
+        "rodent",
+        375
+      ],
+      [
+        "skunk",
+        229
+      ],
+      [
+        "deer",
+        42
+      ],
+      [
+        "badger",
+        9
+      ],
+      [
+        "fox",
+        5
+      ]
+    ],
+    "cis_val": [
+      [
+        "empty",
+        995
+      ],
+      [
+        "rabbit",
+        493
+      ],
+      [
+        "opossum",
+        490
+      ],
+      [
+        "coyote",
+        285
+      ],
+      [
+        "squirrel",
+        222
+      ],
+      [
+        "cat",
+        192
+      ],
+      [
+        "raccoon",
+        169
+      ],
+      [
+        "bobcat",
+        154
+      ],
+      [
+        "rodent",
+        143
+      ],
+      [
+        "dog",
+        139
+      ],
+      [
+        "bird",
+        114
+      ],
+      [
+        "skunk",
+        43
+      ],
+      [
+        "car",
+        41
+      ],
+      [
+        "deer",
+        3
+      ],
+      [
+        "badger",
+        1
+      ]
+    ],
+    "cis_test": [
+      [
+        "opossum",
+        4524
+      ],
+      [
+        "rabbit",
+        1758
+      ],
+      [
+        "cat",
+        1632
+      ],
+      [
+        "coyote",
+        1326
+      ],
+      [
+        "empty",
+        1180
+      ],
+      [
+        "raccoon",
+        1047
+      ],
+      [
+        "bobcat",
+        897
+      ],
+      [
+        "dog",
+        845
+      ],
+      [
+        "car",
+        791
+      ],
+      [
+        "squirrel",
+        659
+      ],
+      [
+        "bird",
+        574
+      ],
+      [
+        "rodent",
+        233
+      ],
+      [
+        "skunk",
+        194
+      ],
+      [
+        "deer",
+        162
+      ],
+      [
+        "badger",
+        4
+      ],
+      [
+        "fox",
+        2
+      ]
+    ],
+    "trans_val": [
+      [
+        "bobcat",
+        793
+      ],
+      [
+        "opossum",
+        444
+      ],
+      [
+        "raccoon",
+        129
+      ],
+      [
+        "dog",
+        96
+      ],
+      [
+        "cat",
+        72
+      ],
+      [
+        "rabbit",
+        70
+      ],
+      [
+        "skunk",
+        63
+      ],
+      [
+        "empty",
+        61
+      ],
+      [
+        "coyote",
+        51
+      ],
+      [
+        "bird",
+        7
+      ]
+    ],
+    "trans_test": [
+      [
+        "opossum",
+        5505
+      ],
+      [
+        "raccoon",
+        5469
+      ],
+      [
+        "bobcat",
+        2338
+      ],
+      [
+        "coyote",
+        2249
+      ],
+      [
+        "empty",
+        1778
+      ],
+      [
+        "cat",
+        1418
+      ],
+      [
+        "car",
+        1113
+      ],
+      [
+        "squirrel",
+        1051
+      ],
+      [
+        "dog",
+        888
+      ],
+      [
+        "rabbit",
+        846
+      ],
+      [
+        "skunk",
+        328
+      ],
+      [
+        "bird",
+        224
+      ],
+      [
+        "rodent",
+        62
+      ],
+      [
+        "badger",
+        14
+      ],
+      [
+        "fox",
+        1
+      ]
+    ]
+  },
+  "location_distribution": {
+    "train": [
+      [
+        "38",
+        4047
+      ],
+      [
+        "88",
+        1655
+      ],
+      [
+        "115",
+        1497
+      ],
+      [
+        "120",
+        1370
+      ],
+      [
+        "33",
+        1238
+      ],
+      [
+        "43",
+        1215
+      ],
+      [
+        "61",
+        993
+      ],
+      [
+        "90",
+        586
+      ],
+      [
+        "108",
+        538
+      ],
+      [
+        "51",
+        414
+      ]
+    ],
+    "cis_val": [
+      [
+        "38",
+        799
+      ],
+      [
+        "43",
+        520
+      ],
+      [
+        "115",
+        491
+      ],
+      [
+        "33",
+        473
+      ],
+      [
+        "88",
+        352
+      ],
+      [
+        "61",
+        277
+      ],
+      [
+        "108",
+        180
+      ],
+      [
+        "51",
+        165
+      ],
+      [
+        "90",
+        131
+      ],
+      [
+        "120",
+        96
+      ]
+    ],
+    "cis_test": [
+      [
+        "38",
+        4927
+      ],
+      [
+        "43",
+        2373
+      ],
+      [
+        "33",
+        2286
+      ],
+      [
+        "120",
+        1625
+      ],
+      [
+        "61",
+        1104
+      ],
+      [
+        "88",
+        1093
+      ],
+      [
+        "51",
+        940
+      ],
+      [
+        "115",
+        785
+      ],
+      [
+        "108",
+        404
+      ],
+      [
+        "90",
+        290
+      ]
+    ],
+    "trans_val": [
+      [
+        "125",
+        1725
+      ]
+    ],
+    "trans_test": [
+      [
+        "46",
+        6276
+      ],
+      [
+        "100",
+        4890
+      ],
+      [
+        "78",
+        2359
+      ],
+      [
+        "105",
+        2169
+      ],
+      [
+        "0",
+        1861
+      ],
+      [
+        "7",
+        1853
+      ],
+      [
+        "130",
+        1455
+      ],
+      [
+        "28",
+        1333
+      ],
+      [
+        "40",
+        1079
+      ]
+    ]
+  },
+  "source_hashes": {
+    "eccv_18_annotations.tar.gz": "e31d0162d411fb031ba4741758a54fa15cc7257df6f344581f5fda612b2cc974",
+    "eccv_18_all_images_sm.tar.gz": "50d0e46d4f42c4891d99a13cda80b6c062d3586d79296edc9d1406a5e7cc4b20",
+    "caltech_camera_traps.json.zip": "976bd9bc9380df7a03018ac70b5340bd2ff81d79a99271058f026a539450d1d6"
+  }
+}
