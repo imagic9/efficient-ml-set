@@ -36,6 +36,18 @@ env/
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
+.pytest_cache/
+*.egg-info/
+.ruff_cache/
+
+# C++ build outputs
+build/
+cmake-build-*/
+compile_commands.json
+
+# Temporary benchmark output
+*.perf
+onnxruntime_profile_*.json
 
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being

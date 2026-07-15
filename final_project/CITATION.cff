@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you reference this project, please cite it as below."
+title: "Wildlife camera-trap shutter trigger on Raspberry Pi 5"
+abstract: >-
+  A CPU-only C++ application that classifies a wildlife camera-trap frame with a
+  quantized and pruned MobileNetV2 and emits an emulated shutter signal when a
+  configured target animal is present. Course project for Efficient ML at SET
+  University, measuring latency, throughput, memory and model-size effects of
+  structured pruning and INT8 quantization on a Raspberry Pi 5.
+authors:
+  - family-names: "Vadym"
+    alias: "imagic9"
+version: "0.1.0"
+license: MIT
+repository-code: "https://github.com/imagic9/efficient-ml-set"
+keywords:
+  - edge-ai
+  - quantization
+  - structured-pruning
+  - onnxruntime
+  - raspberry-pi
+  - camera-trap
+references:
+  - type: article
+    title: "Recognition in Terra Incognita"
+    authors:
+      - family-names: Beery
+        given-names: Sara
+      - family-names: "Van Horn"
+        given-names: Grant
+      - family-names: Perona
+        given-names: Pietro
+    year: 2018
+    collection-title: "European Conference on Computer Vision (ECCV)"
+  - type: article
+    title: "MobileNetV2: Inverted Residuals and Linear Bottlenecks"
+    authors:
+      - family-names: Sandler
+        given-names: Mark
+    year: 2018
+    url: "https://arxiv.org/abs/1801.04381"
