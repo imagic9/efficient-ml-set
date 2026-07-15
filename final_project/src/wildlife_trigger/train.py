@@ -407,12 +407,22 @@ def run(config: TrainConfig) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True, type=Path)
-    parser.add_argument("--override", nargs="*", default=[], help="key=value")
+    # action="extend", not the default "store": with plain nargs="*" a second --override
+    # silently REPLACES the first rather than adding to it, so half an experiment's
+    # settings vanish without a word. That is not hypothetical — it launched a C1a arm
+    # with the wrong step budget and the wrong dataset.
+    parser.add_argument(
+        "--override", nargs="*", action="extend", default=[], help="key=value"
+    )
     args = parser.parse_args()
 
     raw = yaml.safe_load(args.config.read_text())
     for override in args.override:
         key, _, value = override.partition("=")
+        if key not in raw and key not in TrainConfig.__dataclass_fields__:
+            # A typo'd key would otherwise be accepted and ignored, and the run would
+            # quietly use the config's default.
+            parser.error(f"unknown config key: {key!r}")
         current = raw.get(key)
         if isinstance(current, bool) or value in ("true", "false"):
             raw[key] = value == "true"
