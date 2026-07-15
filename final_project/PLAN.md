@@ -162,7 +162,15 @@ Depends on: A1.
 - [ ] Record the target distro/glibc/compiler contract, pin the matching container
       base by digest, and add `ldd` plus required-`GLIBC_*` symbol checks. If exact
       compatibility cannot be proved, make the pinned on-Pi source build the
-      deployment path.
+      deployment path. A0 measured gx10 at glibc **2.39** against Pi OS Bookworm's
+      **2.36**, so the base is `debian:bookworm-slim`: a binary linked against 2.36
+      loads on a newer Pi OS, and the reverse does not.
+- [ ] Install and pin `qemu-user` in that container for ISA-level checks. A0
+      measured `-cpu cortex-a76` advertising exactly the Pi 5 feature set
+      (`asimd`+`asimddp`, no `sve`/`sve2`/`i8mm`/`bf16`) and `-cpu cortex-a72` the
+      Pi 4 one (no `asimddp`). ORT dispatches kernels from these bits at runtime, so
+      emulation reproduces the Pi's kernel choice and numerics. It reproduces
+      **nothing** about latency — no emulated timing enters a results table.
 - [ ] Pin compiler, CMake, OpenCV, ONNX, ONNX Runtime, and Python dependencies.
 - [ ] Add environment-capture tooling and resolved run-config serialization.
 - [ ] Add checkpoint/resume and persistent logging for every long-running job.
@@ -192,7 +200,13 @@ Depends on: A2.
       one fused-node name as the sole proof of INT8 execution.
 - [ ] Verify FP32/PTQ/QAT use the same P0-accepted opset. Compare
       `ORT_ENABLE_EXTENDED` later only as an explicitly named E6 candidate.
-- [ ] Pin versions only after FP32/PTQ/QAT all work end to end.
+- [ ] Re-run all three models under `qemu-aarch64 -cpu cortex-a76` in the same
+      container. Confirm integer execution survives without `i8mm`/`sve2` and record
+      the operator/data-type coverage ORT picks instead. A QAT path that only works
+      because gx10 has `i8mm` is a **P0 failure**; this is the cheapest place to
+      find that out.
+- [ ] Pin versions only after FP32/PTQ/QAT all work end to end, natively and under
+      `-cpu cortex-a76`.
 
 **Output:** P0 evidence that all three model forms execute in ARM64 C++ and the
 QAT artifact is genuinely quantized.
@@ -620,6 +634,16 @@ Depends on: E5, Gate D.
 - [ ] Run Python-vs-C++ validation dataset parity.
 - [ ] On `gx10`, run all unit/integration/self-tests under both a clean native
       CPU-only build and the target-compatible ARM64 build.
+- [ ] **Run P1-P4 for M0 and every shortlisted model under
+      `qemu-aarch64 -cpu cortex-a76`** and record score deltas against native gx10,
+      not just decision agreement. This is the pre-rental rehearsal of the §12.2
+      parity claim: emulation withholds `i8mm`/`sve2`, so ORT dispatches the Pi's
+      kernels and any divergence surfaces here, in minutes, instead of on Day 4 with
+      the rental clock running. Expect the FP32 arm to move and INT8 not to.
+- [ ] If the RPi 4 contingency is live, repeat under `-cpu cortex-a72` for
+      dispatch evidence; Cortex-A72 has no `asimddp` and INT8 will differ.
+- [ ] Record emulated **correctness** only. Emulated latency is not evidence and
+      must not reach a results table.
 
 **Gate E6:** the C++ application is correct before performance claims are made.
 

@@ -281,6 +281,41 @@ test. If exact compatibility cannot be proved before rental, the deployment bund
 must include pinned source/build automation and compile on the Pi during
 provisioning.
 
+#### Three compatibility layers, three different answers
+
+`gx10` and the Pi differ in three independent ways. Conflating them is how a
+project arrives at Day 4 of a rental with a surprise, so each gets its own control:
+
+| Layer | Divergence | Control | Speed |
+|---|---|---|---|
+| ABI / glibc | Ubuntu 24.04 glibc 2.39 vs Pi OS Bookworm glibc 2.36 | `debian:bookworm-slim` container, pinned by digest | native |
+| ISA features | X925/A725 has `i8mm`+`sve2`; Cortex-A76 has neither | `qemu-aarch64 -cpu cortex-a76` | ~30x slower |
+| Microarchitecture, latency, thermals | out-of-order width, caches, memory bandwidth, throttling | **the real Pi, and nothing else** | — |
+
+Layer 1 needs no emulation: `gx10` is already `aarch64`, so a bookworm container
+runs natively at full speed. Build against the *oldest* plausible target — a binary
+linked against glibc 2.36 still loads on a newer Pi OS, while the reverse fails.
+
+Layer 2 is what emulation is for. Measured on `gx10`, `qemu-aarch64 -cpu cortex-a76`
+advertises exactly `asimd` + `asimddp` and withholds `sve`, `sve2`, `i8mm`, `bf16` —
+the Pi 5 feature set. ORT/MLAS selects kernels from these HWCAP bits at runtime, so
+under emulation it dispatches **the kernels the Pi would dispatch**, in the same
+accumulation order, producing the same numbers. This makes the parity strata of
+section 12.2 verifiable *before* the rental instead of during it. The ~30x cost is
+minutes on the 1,000-frame subset.
+
+Layer 3 has no substitute. QEMU models no caches, no memory bandwidth, and no
+microarchitecture, so **an emulated timing is never latency evidence** and never
+appears in a results table. Gate F and the real Pi remain mandatory; the assignment
+requires native RPi execution.
+
+**The Pi 4 contingency is not ISA-equivalent.** Measured: `-cpu cortex-a72`
+advertises `asimd` but **no `asimddp`**. Cortex-A72 predates the dot-product
+extension, so INT8 there runs a materially slower path than on the A76. Section 12.1
+permits RPi 4 because the assignment does, not because it is a like-for-like
+substitute; run the shortlist under `-cpu cortex-a72` for dispatch evidence before
+relying on that contingency, and never present Pi 4 numbers as Pi 5 numbers.
+
 The rented Raspberry Pi target (Pi 5 preferred, RPi 4 contingency) is the only
 second execution environment. It is used only for Phase F provisioning,
 target-hardware smoke/parity checks, and final CPU
@@ -1008,7 +1043,12 @@ Before full training:
    `ORT_ENABLE_EXTENDED` only as an explicitly named E6 performance candidate.
 6. Verify FP32/PTQ/QAT graphs use the same accepted opset and that integer
    execution evidence does not depend on a single fused-node name.
-7. Pin compatible versions only after this succeeds.
+7. Re-run the same three models under `qemu-aarch64 -cpu cortex-a76` inside the same
+   container. Confirm ORT still executes integer kernels when `i8mm` and `sve2` are
+   withheld, and capture the operator/data-type coverage it selects instead. A QAT
+   path that only works because `gx10` has `i8mm` is a P0 failure, not a success —
+   this is the cheapest place to discover that.
+8. Pin compatible versions only after this succeeds.
 
 ### P1 — preprocessing parity
 
@@ -1176,7 +1216,11 @@ professional camera-trigger latency.
 ### 12.1 Hardware scope
 
 - rented Raspberry Pi 5, BCM2712, CPU-only, or documented RPi 4 contingency if
-  Pi 5 cannot be provisioned;
+  Pi 5 cannot be provisioned. The two are not interchangeable for this project's
+  question: Pi 5's Cortex-A76 has `asimddp`, Pi 4's Cortex-A72 does not, so INT8
+  takes a slower path there and the M1/M2/M4 conclusions may differ. Treat RPi 4 as
+  a permitted degraded target, label its numbers as such, and never merge them into
+  a Pi 5 table;
 - no physical camera/GPIO/power meter;
 - batch size 1;
 - exact OS, kernel, compiler, OpenCV, ORT, CPU governor, cooling exposure, and
@@ -1618,6 +1662,9 @@ All plots include units, sample counts, split, model ID, and commit/run ID.
 | The chosen QAT library cannot export deployable QDQ ONNX for MobileNetV2 | No library is pre-committed; P0 walks the ranked candidate list in §8.2, stops at the first that ORT executes as integer, and records every rejection as evidence |
 | Pruning breaks depthwise groups or residual shapes | Restrict Core roots to coupled expansion-channel groups; assert group/residual shapes and export after every step |
 | `gx10` latency misranks Cortex-A76 candidates | Use it only for pathology detection; shortlist by validation/MACs/size and select on Pi validation latency |
+| A kernel path works on `gx10` only because it has `i8mm`/`sve2` | Re-run P0 and E6 under `qemu-aarch64 -cpu cortex-a76`, which advertises exactly the Pi 5 feature set. Divergence there predicts Pi divergence and costs minutes instead of a rental day |
+| Emulated timings get mistaken for target evidence | QEMU models no caches, bandwidth, or microarchitecture. Emulation produces correctness and dispatch evidence only; no emulated number enters a results table |
+| RPi 4 contingency is treated as Pi 5-equivalent | Cortex-A72 has **no `asimddp`**, so INT8 runs a slower path. Measure under `-cpu cortex-a72` before relying on it, and never present Pi 4 numbers as Pi 5 numbers |
 | Planned Pi 5 trial is lost | Try another Pi 5 provider, then RPi 4; if no Pi is available, Gate F fails and Core remains incomplete. Preserve a clearly labelled partial submission and never substitute `gx10` timings |
 | Confirmation seeds cannot finish inside the trial window | They never gate the freeze or Gate F; seed 42 is the deployed artifact; run seeds 17/73 asynchronously on `gx10`, but require completion before Gate G |
 | Pi parity subset disagrees with the frozen `gx10` reference | Stop and diagnose before claiming target equivalence. Report score/decision mismatch rates and treat Pi decisions as authoritative for affected frames. If unexplained, run full test accuracy on Pi; otherwise report the gx10 C++ accuracy only as gx10 evidence and explicitly withhold the Pi-equivalence claim |
@@ -1680,6 +1727,9 @@ Core is complete only when every item is true:
 - [ ] The same final model passes bobcat-only and multi-target policy tests without
       another model inference per frame.
 - [ ] ARM64 dry run succeeds from a clean environment.
+- [ ] P0 and E6 pass under `qemu-aarch64 -cpu cortex-a76`, proving integer
+      execution and parity survive without `i8mm`/`sve2`. No emulated timing appears
+      in any results table.
 - [ ] Pi baseline and optimized runs use the same application and protocol.
 - [ ] Full frozen cis-test/trans-test C++ evaluation runs on gx10; Pi parity subset
       decisions match the frozen reference for both M0-FP32 and the selected winner,
