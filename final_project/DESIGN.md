@@ -256,6 +256,20 @@ No separate local development machine or local ARM64 environment is part of the
 execution plan. Use isolated, pinned environments on `gx10`, and keep long jobs
 restartable with checkpoints and persistent logs.
 
+**Operational note — the boreal stack returns after a reboot.** `gx10` also hosts an
+unrelated `boreal_*` vLLM service stack (compose project `infra`, file
+`/data/v01/infra/docker-compose.llm.yml`). It was stopped for the duration of this
+project, which freed roughly 63 GB of GPU allocations and took available memory
+from 34.7 GB to 117.8 GB. It does **not** stay stopped across a reboot: the
+container restart policies alone would not revive it, but `boreal-stack.service` is
+enabled and runs `docker compose up -d --wait` 60 s after boot. So after any reboot,
+confirm `docker ps` before trusting a benchmark or a memory budget, and stop the
+stack again if it is back. The observability exporters (`node-exporter`,
+`dcgm-exporter`, `docker-ps-exporter`) are deliberately left running: together they
+cost about 366 MB and `dcgm-exporter` is a useful GPU metrics source. Record all
+co-tenants in every run's provenance; §12.4 forbids benchmarking beside a heavy
+workload, and `results/provenance/` is where that is proved rather than asserted.
+
 ARM64 instruction-set compatibility alone does not prove Raspberry Pi OS binary
 compatibility. The pre-Pi C++ build and bundle-install test must therefore run on
 `gx10` inside a clean target-compatible ARM64 container. Record the target
