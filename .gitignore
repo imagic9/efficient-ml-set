@@ -14,9 +14,20 @@ final_project/task/
 *.pt
 *.pth
 *.onnx
+# Small deterministic ONNX fixtures are part of the test suite and must ship.
+!final_project/tests/fixtures/**/*.onnx
+!final_project/cpp/tests/fixtures/**/*.onnx
 
-# Datasets and environments
-data/
+# Datasets.
+# Anchored on purpose: a bare `data/` also matches src/wildlife_trigger/data/,
+# configs/data/ and data/manifests/, all of which DESIGN §14 requires committed.
+/final_project/data/raw/
+/final_project/data/images/
+/final_project/data/interim/
+/final_project/data/cache/
+/hw*/data/
+
+# Environments
 venv/
 .venv/
 env/
