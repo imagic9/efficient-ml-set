@@ -97,11 +97,17 @@ def test_no_authored_file_is_silently_ignored() -> None:
         ".json", ".sh", ".env", ".cff", ".md",
     }
 
+    def is_generated(parts: tuple[str, ...]) -> bool:
+        # `pip install -e` drops *.egg-info full of .txt files that look authored
+        # but are build metadata. Matched by suffix because the directory name
+        # carries the package name and cannot be listed literally.
+        return bool(prune & set(parts)) or any(p.endswith(".egg-info") for p in parts)
+
     candidates: list[Path] = []
     for path in PROJECT_ROOT.rglob("*"):
         if not path.is_file():
             continue
-        if prune & set(path.relative_to(PROJECT_ROOT).parts):
+        if is_generated(path.relative_to(PROJECT_ROOT).parts):
             continue
         if path.suffix not in authored_suffixes:
             continue

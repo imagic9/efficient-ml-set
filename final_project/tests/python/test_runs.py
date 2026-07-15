@@ -28,17 +28,35 @@ def _isolate_logging():
             root.removeHandler(handler)
 
 
-def test_run_id_is_sortable_and_safe() -> None:
+def test_run_id_is_safe_as_a_directory_name() -> None:
     import datetime as dt
 
     when = dt.datetime(2026, 7, 15, 18, 30, 0, tzinfo=dt.timezone.utc)
     run_id = runs.make_run_id("C2", "m0/fp32 seed=42", when)
 
     assert run_id == "c2_m0_fp32_seed_42_20260715T183000Z"
-    assert "/" not in run_id and " " not in run_id, "must be a safe directory name"
+    # A run name comes from a config and can contain anything; a '/' would silently
+    # create a nested directory instead of the run.
+    assert "/" not in run_id and " " not in run_id
 
-    earlier = runs.make_run_id("C2", "x", when - dt.timedelta(hours=1))
-    assert earlier < run_id, "run ids must sort chronologically"
+
+def test_run_ids_sort_chronologically_within_a_name() -> None:
+    """The ordering `find_resumable` depends on — and its exact limit.
+
+    The id is `{phase}_{name}_{timestamp}`, so the name sorts before the time:
+    ids for *different* names do not order by time at all. That is fine, because
+    find_resumable filters to one name first, but it is worth pinning so nobody
+    later assumes a global chronological sort that does not exist.
+    """
+    import datetime as dt
+
+    when = dt.datetime(2026, 7, 15, 18, 30, 0, tzinfo=dt.timezone.utc)
+    earlier = runs.make_run_id("C2", "m0", when - dt.timedelta(hours=1))
+    later = runs.make_run_id("C2", "m0", when)
+    assert earlier < later
+
+    # Different names: ordering follows the name, not the clock.
+    assert runs.make_run_id("C2", "zzz", when - dt.timedelta(days=9)) > later
 
 
 def test_create_writes_config_and_provenance(tmp_path: Path) -> None:
