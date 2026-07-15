@@ -40,6 +40,40 @@ if(WILDLIFE_CPU_TARGET)
   target_compile_options(wildlife_trigger_core PUBLIC -mcpu=${WILDLIFE_CPU_TARGET})
 endif()
 
+# --- ONNX Runtime ------------------------------------------------------------
+# The prebuilt aarch64 tarball unpacked in the target container, located by
+# ORT_PREFIX (configs/env/pins.env sets it; the Dockerfile exports it). Found by
+# explicit path rather than find_package: ORT ships no CMake config in this
+# tarball, and a find_library search could silently bind to some other
+# libonnxruntime on the host -- exactly the kind of drift the pinned container
+# exists to prevent.
+set(ORT_PREFIX "$ENV{ORT_PREFIX}" CACHE PATH "ONNX Runtime install prefix")
+
+option(WILDLIFE_BUILD_ORT_TOOLS "Build the ONNX Runtime probe (needs ORT_PREFIX)" ON)
+
+if(WILDLIFE_BUILD_ORT_TOOLS)
+  if(NOT ORT_PREFIX OR NOT EXISTS "${ORT_PREFIX}/include/onnxruntime_cxx_api.h")
+    message(FATAL_ERROR
+      "WILDLIFE_BUILD_ORT_TOOLS is ON but ORT_PREFIX (\"${ORT_PREFIX}\") does not "
+      "contain include/onnxruntime_cxx_api.h. Build inside "
+      "wildlife-trigger-target:bookworm, where scripts/build_target_container.sh "
+      "installs the pinned ORT, or pass -DWILDLIFE_BUILD_ORT_TOOLS=OFF.")
+  endif()
+
+  add_library(onnxruntime SHARED IMPORTED)
+  set_target_properties(onnxruntime PROPERTIES
+    IMPORTED_LOCATION "${ORT_PREFIX}/lib/libonnxruntime.so"
+    INTERFACE_INCLUDE_DIRECTORIES "${ORT_PREFIX}/include")
+
+  add_executable(ort_probe tools/ort_probe.cpp)
+  target_link_libraries(ort_probe PRIVATE wildlife_trigger_core onnxruntime)
+  target_compile_options(ort_probe PRIVATE
+    $<$<CONFIG:Release>:-O3>
+    -Wall -Wextra -Wpedantic
+  )
+  message(STATUS "wildlife_trigger: ort_probe against ${ORT_PREFIX}")
+endif()
+
 include(CTest)
 if(BUILD_TESTING)
   add_subdirectory(tests)

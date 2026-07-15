@@ -244,6 +244,31 @@ def analyse(
     }
 
 
+def analyse_artifacts(
+    exported: Path, optimized: Path, profile: Path, label: str
+) -> dict:
+    """Reach the same verdict from files another call site produced.
+
+    The C++ probe runs inside the target container, which has no onnx/onnxruntime
+    Python. It writes the optimized graph and the profile; this reads them. The
+    verdict logic is therefore shared between the Python and C++ evidence rather
+    than reimplemented in C++ — asking the question twice is only worth anything
+    if both askers mean the same thing by it.
+    """
+    optimized_graph = graph_histogram(optimized)
+    executed = profile_coverage(profile)
+    return {
+        "label": label,
+        "model": str(exported),
+        "call_site": "c++",
+        "exported_graph": graph_histogram(exported),
+        "optimized_graph": optimized_graph,
+        "optimized_graph_path": str(optimized),
+        "execution": executed,
+        "verdict": verdict(optimized_graph, executed),
+    }
+
+
 def main() -> int:
     """Exit 0 = integer execution, 2 = ran but not integer, 1 = could not run.
 
@@ -258,9 +283,23 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True, type=Path)
     parser.add_argument("--label", required=True)
-    parser.add_argument("--workdir", required=True, type=Path)
+    parser.add_argument("--workdir", type=Path, help="Run a session here (Python).")
+    parser.add_argument(
+        "--from-artifacts",
+        action="store_true",
+        help="Do not run a session; judge the optimized graph and profile that "
+        "another call site (the C++ probe) already produced.",
+    )
+    parser.add_argument("--optimized", type=Path, help="With --from-artifacts.")
+    parser.add_argument("--profile", type=Path, help="With --from-artifacts.")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
+
+    if args.from_artifacts:
+        if not (args.optimized and args.profile):
+            parser.error("--from-artifacts requires --optimized and --profile")
+    elif not args.workdir:
+        parser.error("--workdir is required unless --from-artifacts is given")
 
     def emit(report: dict) -> None:
         print(json.dumps(report, indent=2))
@@ -270,7 +309,11 @@ def main() -> int:
             print(f"wrote {args.report}")
 
     try:
-        report = analyse(args.model, args.workdir, args.label)
+        report = (
+            analyse_artifacts(args.model, args.optimized, args.profile, args.label)
+            if args.from_artifacts
+            else analyse(args.model, args.workdir, args.label)
+        )
     except Exception as exc:
         emit(
             {
