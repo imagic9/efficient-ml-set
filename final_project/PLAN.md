@@ -142,17 +142,44 @@ model. The E chain therefore overlaps phases B-D rather than preceding them.
 
 Depends on: A0.
 
-- [ ] Create the package, configs, C++ directories, scripts, tests, notebooks,
+- [x] Create the package, configs, C++ directories, scripts, tests, notebooks,
       data-manifest directories, artifact directories, results, report, slides,
       demo, and deployment directories specified by DESIGN §14.
-- [ ] Add `.gitignore` rules for datasets, caches, credentials, build outputs,
+- [x] Add `.gitignore` rules for datasets, caches, credentials, build outputs,
       large checkpoints, and temporary benchmark files.
-- [ ] Add placeholder `SUBMISSION.md`, `CITATION.cff`, license, and artifact/data
+- [x] Add placeholder `SUBMISSION.md`, `CITATION.cff`, license, and artifact/data
       READMEs.
-- [ ] Establish Python and C++ test commands.
+- [x] Establish Python and C++ test commands.
 
 **Done when:** a clean checkout has an understandable structure and empty test
 suites execute successfully.
+
+**Done 2026-07-15.** Test commands, both verified on `gx10`:
+
+```bash
+python -m pytest tests/python                 # 28 passed
+cmake -S cpp -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j8
+ctest --test-dir build --output-on-failure    # 1/1 passed
+```
+
+Notes for later phases:
+
+- The issue #3 `.gitignore` fix is now proved on a live tree, not on hypothetical
+  paths: `src/wildlife_trigger/data/`, `configs/data/` and `data/manifests/` all
+  stage correctly.
+- `cpp/` ships a real `cpu_features` library, not a stub, and it is the first
+  thing wired through the emulation harness. Verified: the **same binary** reports
+  `asimd,asimddp` under `qemu-aarch64 -cpu cortex-a76` and
+  `asimd,asimddp,sve,sve2,i8mm,bf16` natively. That divergence is exactly the
+  mechanism by which ORT will select different kernels, so the E6 rehearsal rests
+  on a harness that is already known to work.
+- CMake **rejects** `-mcpu=native` unless `WILDLIFE_ALLOW_NATIVE=ON`; verified it
+  fires. Building with `-DWILDLIFE_CPU_TARGET=cortex-a76` works.
+- No C++ test framework and no vendored `nlohmann/json` yet. Both are deferred to
+  E1, when there is behaviour to assert and a caller that reads JSON;
+  `cpp/third_party/README.md` records the no-network vendoring contract.
+- `LICENSE` is MIT with Vadym as copyright holder.
 
 ### A2 — Reproducible environments
 
