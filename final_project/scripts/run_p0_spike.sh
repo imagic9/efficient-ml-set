@@ -84,7 +84,8 @@ echo
 echo "--- input fixture"
 "${PYTHON}" -m wildlife_trigger.validate.fixture \
     --output "${EVIDENCE}/input_1x3x224x224.bin" \
-    --shape 1 3 224 224
+    --shape 1 3 224 224 \
+    --report "${EVIDENCE}/input_fixture.json"
 
 # --- 3. Python ORT reference -------------------------------------------------
 

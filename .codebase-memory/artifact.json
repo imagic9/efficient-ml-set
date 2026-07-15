@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "133fb71d0b87d972d6aae40a25a32c6422f053cf",
+    "indexed_at": "2026-07-14T19:52:38Z",
+    "project": "efficientml",
+    "nodes": 1131,
+    "edges": 4286,
+    "original_size": 4587520,
+    "compressed_size": 758401,
+    "compression_level": 3
+}

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -55,6 +56,13 @@ def main() -> int:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--shape", required=True, type=int, nargs="+")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--report",
+        type=Path,
+        help="Persist the fixture's identity (shape, seed, SHA-256). The blob "
+        "itself is reproducible from the seed and is not worth committing; its "
+        "hash is, so a later run can prove it read the same bytes.",
+    )
     args = parser.parse_args()
 
     info = write_fixture(args.output, tuple(args.shape), args.seed)
@@ -63,6 +71,9 @@ def main() -> int:
         f"({info['elements']} float32, sha256 {info['sha256'][:12]}...)",
         file=sys.stdout,
     )
+    if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(info, indent=2) + "\n")
     return 0
 
 

@@ -53,6 +53,13 @@ compile_commands.json
 *.perf
 onnxruntime_profile_*.json
 
+# Raw tensor blobs: fixtures and model outputs under results/. Every one is
+# reproducible — the fixture from its recorded seed, the outputs by re-running the
+# probe — and each is ~600 KB of noise. What must be committed is their identity,
+# not their bytes: validate.fixture writes shape/seed/SHA-256 to input_fixture.json
+# beside them, so a later run can prove it read the same input.
+/final_project/results/**/*.bin
+
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being
 # swept up by `git add -A`.
