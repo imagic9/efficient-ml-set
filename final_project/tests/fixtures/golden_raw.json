@@ -1,0 +1,272 @@
+{
+  "task": "C0",
+  "count": 20,
+  "selected_from": [
+    "cis_val_clean",
+    "trans_val"
+  ],
+  "why_not_test": "DESIGN \u00a75.4 seals cis-test and trans-test. Fixtures drawn from them would commit test frames to the repository and be consulted throughout development.",
+  "tensor_shapes": "PROVISIONAL \u2014 not frozen here. PLAN C0 defers golden tensors until C1a selects the input contract (256x192 vs 224x224). Freezing them now would either pre-empt that decision or have to be redone.",
+  "fixtures": [
+    {
+      "image_id": "5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "bobcat"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "05082d05d7a8d3b017596bbaea015b4cf8293930634025a24c9adf6727a5d300",
+      "reason": "observed geometry 1024x747 (4843 frames in the corpus)"
+    },
+    {
+      "image_id": "5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "5858bfc0-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "empty"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "1dd2171b32292b730de826675b5197068bdfb809c39b26999232ffda25b46d74",
+      "reason": "empty frame: the dominant real-world input"
+    },
+    {
+      "image_id": "585c02ec-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "585c02ec-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "car"
+      ],
+      "observed_width": 1024,
+      "observed_height": 768,
+      "aspect_ratio": 1.33333,
+      "sha256": "7c967c86299bf7f9042e897968f9502a24abceac54cbde11707f4dbf1af8deeb",
+      "reason": "observed geometry 1024x768 (96 frames in the corpus)"
+    },
+    {
+      "image_id": "586e2db9-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "586e2db9-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "bird"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "15b7cdf24a198a9bccd851813d6ecdeac6c978d93c5818e29de0e2b16fae05cb",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "5883ea9d-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "5883ea9d-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "cat"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "d9400463c30c9e571b8a8251fbe424ebc3f757840d9d52a8f170ddb77bc46c62",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "58995b28-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58995b28-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "bobcat"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "8df0956b246abf6cf41120c4c751ef0186476d23924ed84e97f8cbe3f138da84",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "58adc360-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58adc360-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "opossum"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "850b074de0423cd754b345b27a2b3401f97c54581beb84426f1691d37f5bb9f4",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "58c34c6f-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58c34c6f-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "coyote"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "b0f60dbfc282f2f84a33bbdf5da9da8bdc9af9f35c2a5737463033418c5d6112",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "58d7a1e4-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58d7a1e4-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "bobcat"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "2db280ca7943a0918c75dddf3370be09667254db96cf919b154dab587bd1bce8",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "58e93a4e-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58e93a4e-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "opossum"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "29a2c41db34942a59836e09ecf9e85f9921226cbb9e240c575fd5d3e0dbc64c8",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "58fbec95-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58fbec95-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "squirrel"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "1b055971bb5b41eeefb54305edf9a8cf9c1c6dcd5b2867bf541c1866ba069b42",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "590ebc4c-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "590ebc4c-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "cat"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "4de6fc13fc80ad811f735c95c8b05eed446b7a4d343b560f76beccef70e22d94",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "592165ff-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "592165ff-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "opossum"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "637a2bfe9b33e4d1f177a6c145681fe3cb59a1c31bb04f8741ad66aaee7ae59d",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "59341c19-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59341c19-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "empty"
+      ],
+      "observed_width": 1024,
+      "observed_height": 768,
+      "aspect_ratio": 1.33333,
+      "sha256": "519e0d029c08363489e68ea796bd0f1eaae2f590589860516c79a31c32240b98",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "59641f42-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59641f42-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "rabbit"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "93e1a56f7a84f0483fc15a9f218d30289bae39bf4090fbe7dded4c2ead58a6f2",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "597cd605-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "597cd605-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "rabbit"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "c48c90e8e1ae1bf97089b75478a21221c555b2c3e6272a81600ada99511e8aee",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "599420af-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "599420af-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "opossum"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "ad9db5125b5e61284933cc284d78b3568842417671b95307867c33613ec166fc",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "59ac6c21-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59ac6c21-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "empty"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "5ae980fcc9163d895cc962b1affae22bdb76de5ae7819541fb2f00435d0a63e0",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "59c669db-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59c669db-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "opossum"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "53eded90f3a74ad00d036e62e8b1029363fcf864fcc27d1e0618037ac59ba1b6",
+      "reason": "spread across the corpus to reach the fixture floor"
+    },
+    {
+      "image_id": "59ddc268-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59ddc268-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "rabbit"
+      ],
+      "observed_width": 1024,
+      "observed_height": 747,
+      "aspect_ratio": 1.37082,
+      "sha256": "073102e9e0d081723cda72b4d3144bebce8b1b4799727edf72f13993547b7460",
+      "reason": "spread across the corpus to reach the fixture floor"
+    }
+  ]
+}
