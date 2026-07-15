@@ -46,6 +46,8 @@ protocol, risks, and the roadmap beyond the course.
 ## Contents
 
 - [`DESIGN.md`](DESIGN.md) — the living design note. Read this first.
+- [`PLAN.md`](PLAN.md) — the work plan: dependency graph, phase gates, and what has
+  to be true before the 5-day Pi trial is opened.
 - [`Docker_VSCode/`](Docker_VSCode/) — reference dev-container and example pipeline
   provided with the course: PyTorch → ONNX → C++ inference (ONNX Runtime + OpenCV),
   with an ARM64 VS Code dev-container so the C++ side can be built and tested

@@ -2,6 +2,7 @@
 
 Living design note for the Edge AI final project.
 Status: **design agreed, implementation not started.**
+Execution order, dependencies and phase gates live in [PLAN.md](PLAN.md).
 
 Numbers in this document are marked either as **measured/published** (with a
 source) or as **estimate** (to be replaced by our own measurements). Nothing here
@@ -206,9 +207,15 @@ animals they are hired to find:
 | Model | Params | Input | ~Compute |
 |---|---|---|---|
 | MobileNetV2 | 3.4M | 224² | **~0.3 GMAC** |
-| MegaDetector V6-compact (YOLOv10-class) | 2.3M | 640² | **~3.4 GMAC** |
+| MegaDetector `MDV6-yolov10-c` (YOLOv10-N class) | 2.3M | 640² | **~3.4 GMAC** |
 
 The "smaller" detector costs roughly **10× more** than the "bigger" classifier.
+
+**And that row is the detector's best case** — `MDV6-yolov10-c` is the cheapest
+variant in the family, quoted deliberately to give option B the strongest possible
+showing. It loses anyway. These are **published specifications, not a measurement of
+ours**: we never run MegaDetector (§5), because B's accuracy has a free upper bound
+below.
 
 **A vs B** (estimates, 70% empty):
 
@@ -232,16 +239,28 @@ buy accuracy.
 **smaller than 2×**. We would be paying ~20× the energy for a fraction of a
 doubling.
 
-**B is not discarded — it becomes a measured ceiling.** We evaluate the crop
-pipeline **offline** on the same test set, and report:
+**B is not discarded — it becomes a measured ceiling, and the measurement is free.**
 
-> "A detector cascade would cut our error by X pp. We declined it: it costs ~20×
-> the energy and ~9× the shutter lag, which kills both core promises. Here is the
-> price, and here is what we bought with it."
+We do not run MegaDetector to get it. **Our crop-teacher already is option B with a
+free, perfect detector**: it classifies ground-truth-box crops, and no real detector
+can find boxes better than the ground truth. So
+
+> accuracy(option B) ≤ accuracy(our crop-teacher)
+
+and the crop-teacher is built anyway — it is the KD teacher (§5) and ladder row 0.
+The number costs us nothing.
+
+**The bound is the stronger form of the argument, not a weaker substitute.** A
+single measured detector could always be waved away ("you picked the wrong
+detector", "a better one would win"). An upper bound cannot:
+
+> "Even granting option B a perfect detector for free, cropping buys X pp. It does
+> not get one for free — it pays ~20× the energy and ~9× the shutter lag, which
+> kills both of the product's promises. Here is the price, and here is what it
+> would have bought."
 
 That is the critical evaluation the rubric asks for, with numbers instead of
-opinions. We do not need to run B on the Pi to say it — accuracy offline, cost
-from MACs plus one confirming measurement.
+opinions — accuracy from a bound we already have, cost from MACs.
 
 ## 5. Crop-teacher + distillation — the crop, without paying for it
 
@@ -259,32 +278,99 @@ ON-DEVICE (Pi, every millijoule counts):
     student runs on the FULL FRAME, but inherits the teacher's knowledge
 ```
 
-The student learns to attend where the teacher looked, **without ever running a
-detector**. This is exactly what KD is for, and the camera-trap literature names
-it directly: *crop-based distillation — teacher box → student learns attention*.
+The student gets the benefit of the teacher's clear view **without ever running a
+detector** — the crop is a *training-time privilege*, not an inference-time cost.
+This is a known pattern (learning under privileged information; the camera-trap
+literature calls it crop-based distillation), and it makes distillation
+**load-bearing** here rather than cosmetic.
 
-This makes distillation **load-bearing** rather than cosmetic, and it yields a
-clean ablation:
+But it is worth being precise about what crosses the gap, because the usual phrasing
+oversells it.
 
-> full-frame student **without** KD **vs** the same student **with** KD from a
-> crop-trained teacher.
+### What actually transfers — and the control that keeps us honest
 
-If the second wins, we have shown that distillation transfers *attention*, not
-just soft-target smoothing — a stronger result than HW3's modest +0.1–0.2 pp.
+The camera-trap literature describes this as *"teacher box → student learns
+attention"*, and an earlier revision of this section repeated that phrasing. **We
+should not claim it.** The teacher's logits say **what** is in the frame, not
+**where**. No spatial information crosses the gap: the student receives a
+distribution over classes, and must locate the animal itself. Genuine spatial
+attention transfer (Zagoruyko & Komodakis) requires **aligned feature maps**, and
+ours cannot align — teacher and student see different inputs at different scales.
 
-**Teacher, staged** (unchanged decision):
+The honest mechanism is narrower and still worth having:
 
-1. **Our own FP32 crop-teacher** (ResNet50 / EfficientNet-B0 on GT crops) —
-   control, fully our own work, reuses the HW3 pipeline.
-2. **MegaDetector V6-compact** — upgrade. Trained on millions of camera-trap
-   images across hundreds of locations, so it generalizes to unseen locations,
-   which is exactly our weak spot. Also a data cleaner / pseudo-labeler.
-3. **Compare them.** "Does an externally-pretrained teacher beat a self-teacher
-   under domain shift?" is itself a result.
+> The teacher saw the animal clearly, so its soft label is **better-informed than
+> the ground-truth hard label** — most of all on the frames the student finds
+> hardest, where the animal is small, blurred or half out of frame. KD hands the
+> student a cleaner training signal, not a map.
 
-**Action item:** verify the license of the exact MegaDetector weights used — V6
-variants ship under mixed MIT / Apache-2.0 / **AGPL** terms depending on the YOLO
-backbone. Fine for coursework; must be checked and stated.
+**This also means we owe ourselves a cheaper control.** If a better view of the
+animal is what helps, then simply **feeding the student the crops as extra training
+data** — no teacher, no KD, one dataloader change — might capture much of the same
+gain. If it does, the teacher does not earn its complexity, and we should say so.
+
+So the ablation is a three-way, not a two-way:
+
+| | Student sees | Extra signal |
+|---|---|---|
+| **Row 1** — baseline | full frames | none |
+| **Row 2b** — crop augmentation **(the control)** | full frames + crops | none — crops are just more data |
+| **Row 2** — crop-teacher KD | full frames | teacher's soft labels from the crop |
+
+**Row 2 must beat row 2b, or KD is not the story.** Beating only row 1 would prove
+nothing except that crops contain information — which we already know. This is the
+same rule we hold ourselves to elsewhere: the fancy method has to beat the cheap one
+that shares its advantage, not just the naive one.
+
+A clean win here would still be a stronger result than HW3's modest +0.1–0.2 pp, and
+a null result is a genuine finding: *"privileged-view distillation did not beat
+simply training on the privileged view."*
+
+**The teacher is our own crop-teacher — ResNet50 / EfficientNet-B0 trained on the
+GT-box crops.** FP32, trained on gx10, never leaves gx10. It reuses the HW3
+pipeline, and it is ladder row 0 (the accuracy ceiling). That is the whole teacher
+story; §5's ablation runs entirely on it.
+
+**Why not MegaDetector as the teacher — settled.** An earlier revision proposed a
+"stage-2 upgrade": MegaDetector as a second, externally-pretrained teacher. That
+was incoherent, and the reason is simply what MegaDetector *is*:
+
+> **MegaDetector detects `animal` / `person` / `vehicle`. It does not classify
+> species.** Its documentation is explicit — *"It is an animal detector, not a
+> species classifier"* — it boxes objects and hands them to a downstream classifier
+> for species identification (**published**, microsoft/MegaDetector).
+
+A teacher must produce a soft distribution over *our* classes for the student to
+learn from. MegaDetector has no opinion about bobcat vs coyote, so it cannot be
+one. And its real competence — finding the box — buys little **on CCT-20
+specifically**, because the dataset already ships ground-truth boxes and our
+crop-teacher trains on those. A better box-finder, where the boxes are already
+known, is not worth much. No off-the-shelf species classifier matches CCT-20's 15
+classes either. **Our crop-teacher is not a fallback — it is the right teacher.**
+
+**So we do not run MegaDetector at all** (closed 2026-07-15). Its last remaining job
+— measuring option B's accuracy ceiling — evaporated once we noticed that the
+crop-teacher **is** option B with a free perfect detector, and therefore an upper
+bound on it (§4). We would have downloaded weights, stood up detector inference, and
+run 39k test images to obtain a *weaker* number than the one the critical path hands
+us for nothing.
+
+MegaDetector survives in this document as **two citations and one option**:
+
+- **§4 quotes its specifications** (2.3M params, ~3.4 GMAC @640²) for the
+  "parameters lie, MACs do not" argument. That is a citation, not a use — no weights
+  are downloaded and no license question arises.
+- **The Serengeti stretch** (§6) would genuinely need it — no ground-truth boxes
+  exist there, so a box source becomes useful. If we ever get there, revisit;
+  `MDV6-mit-yolov9-c` (9.7M, MIT) would be the variant, since the stretch is the
+  only scenario where weights actually get run.
+
+**Licensing — a footnote, as it should have been.** MegaDetector V6 ships nine
+variants under mixed MIT / Apache-2.0 / AGPL-3.0 terms depending on the backbone.
+This never constrained us: copyleft triggers on **distribution**, not on use. An
+earlier revision of this section inflated the question into a design driver and
+swapped model variants because of it; that was a mistake, and removing the run
+removed the question entirely.
 
 ## 6. Data — CCT-20
 
@@ -353,6 +439,26 @@ demonstration without paying for it in credibility.
 
 ## 7. Model & compression
 
+### The full model roster — three models, two ship
+
+Everything in this document reduces to these. Nothing else is trained or run.
+
+| Model | Job | Runs on | Compressed? |
+|---|---|---|---|
+| **Gate** — MobileNetV2 `w=0.35` @128² | empty / non-empty; rejects ~70% of frames | **The Pi** | Stays small by construction |
+| **Species** — MobileNetV2 @224², ImageNet-pretrained | 15 classes + empty; one forward serves every module | **The Pi** | **Yes — this is the model the whole ladder compresses** |
+| **Crop-teacher** — ResNet50 / EffNet-B0 on GT crops | Teaches Species via KD (§5). Ladder row 0. Doubles as option B's accuracy upper bound (§4) | gx10 only, training | No — never deployed, so its cost is irrelevant |
+
+**Three models, and we train all three.** MegaDetector is *cited* in §4 for its
+published MACs but never downloaded or run — the crop-teacher already bounds what a
+detector cascade could achieve (§4, §5).
+
+The compression ladder in this section is **one model, Species**. The gate is small
+by design; the teacher never leaves gx10, so its latency does not matter and it is
+never quantized, pruned, or exported.
+
+### The student
+
 **Student: MobileNetV2, pretrained on ImageNet, transfer-learned.**
 
 This reverses the earlier TinyCNN decision, and the reason matters: TinyCNN existed
@@ -374,7 +480,8 @@ set on **both** cis and trans:
 |---|---|---|
 | 0 | FP32 crop-teacher | Accuracy ceiling |
 | 1 | FP32 student, full frame, no KD | Uncompressed baseline |
-| 2 | FP32 student **+ crop-teacher KD** | Does KD transfer attention? (§5) |
+| 2b | FP32 student, **crops as extra training data**, no KD | **The control.** The cheap way to exploit crops (§5) |
+| 2 | FP32 student **+ crop-teacher KD** | Does KD beat **2b**? If it only beats 1, it proved nothing (§5) |
 | 3 | INT8 PTQ | Cheap quantization |
 | 4 | INT8 QAT | QAT > PTQ |
 | 5 | Structured-pruned + QAT | Real MAC reduction |
@@ -398,7 +505,7 @@ Notes:
 
 | Asset | Status |
 |---|---|
-| `hw3/src/distill.py` — `DistillLoss`, `kd_train` | **Direct reuse**, and now load-bearing (§5) |
+| `hw3/src/distill.py` — `DistillLoss`, `kd_train` | **Loss reused as-is** and now load-bearing (§5). **The data pipeline is not:** HW3 fed teacher and student the *same* input; here the teacher sees the crop and the student the full frame, so the dataset must yield `(full_frame, crop, label)` per image. Cross-input KD, not vanilla. |
 | `hw1/src/structured.py` — sensitivity-guided channel pruning (torch-pruning) | **Reuse**; example input 32×32 → 224² |
 | `hw2`/`hw3` `src/qat.py` — QAT loop, already accepts `teacher`/`distill` | **Loop reused**; quantizer replaced |
 | `hw1/src/prune.py` — `FineGrainedPruner` (unstructured) | The negative-result row |
@@ -525,13 +632,45 @@ by latency**, not measured. This goes on the limitations slide.
 
 | # | Item | Mitigation / decision rule |
 |---|---|---|
-| 1 | **13,553 training images is small** | ImageNet-pretrained transfer learning + aggressive augmentation. If trans-location recall collapses, consider training on the larger CCT split (106,428 / 65 locations) and keeping CCT-20 only for eval — at the cost of benchmark comparability. |
+| 1 | **13,553 training images is small** | ImageNet-pretrained transfer learning + aggressive augmentation. Fallback if trans recall collapses: **location-disjoint CCT extension** — see the box below. |
 | 2 | Trans-location recall may be poor (published error doubles) | This is the honest finding if it happens — report it. The crop-teacher KD (§5) is our main lever against it. |
 | 3 | Structured pruning on MobileNetV2 may give little | Report what we find; the ladder is designed to show it either way |
-| 4 | MegaDetector weight license (AGPL variants) | Check before use; state explicitly |
+| 4 | ~~MegaDetector weight license~~ | **Closed 2026-07-15:** not a constraint. Copyleft triggers on distribution; we run it offline on gx10 and never redistribute weights. `MDV6-yolov10-c` chosen on coherence with §4's cost row. License stated in the report — §5. |
 | 5 | Does the Hostpro Pi allow `vcgencmd` / governor control? | Verify on day 1 of the trial; if not, report what is available |
 | 6 | 15 C++ points are weaker without an own engine | §8 items 1–5; gate-engine option in reserve |
 | 7 | Latency estimates in this doc are estimates | Every one is replaced by a measurement before it enters the report |
+| 8 | ~~The stage-2 teacher~~ | **Closed 2026-07-15:** dropped. MegaDetector detects, it does not classify species, so it was never a possible teacher; no off-the-shelf classifier matches CCT-20's classes. **Our crop-teacher is the teacher** — §5. |
+
+### Risk 1, resolved: the data-extension trap (closed 2026-07-15)
+
+An earlier revision of this document proposed, if trans recall collapses, "training
+on the larger CCT split (106,428 / 65 locations)". **Both halves of that sentence
+were wrong, and the second one is a trap.**
+
+**The numbers were unverified.** The real full CCT is **243,187 images from 140
+camera locations**, 21 categories, ~66k boxes, **105 GB** (LILA / the CCT dataset
+page — **published**). The 106,428 / 65 figure does not correspond to anything we
+can source; it is struck.
+
+**The trap: full CCT is a *superset* of CCT-20** — the dataset page states CCT is
+"a superset of the data used in our ECCV18 paper". So CCT-20's 20 locations sit
+**inside** the 140. Training naively on full CCT would pull the **9 trans-test
+locations into the training set**, and "trans" would silently stop meaning *unseen
+location*. Our headline number — "will it work when I move my trap somewhere
+new?" — would become a lie, and a lie that *improves* the metric, which is the kind
+that survives review. This is location leakage: the domain-specific form of the
+no-leakage rule already stated in §6.
+
+**The rule, if we ever take this route:** train only on **CCT locations disjoint
+from all 20 CCT-20 locations** (~120 locations), verified by asserting an empty
+intersection of location IDs — an automated check in the data pipeline, not a
+promise. Costs: a 105 GB download (bandwidth and disk, plan ahead), the class map
+must be reconciled (21 categories vs 15 + empty), and comparability with the
+published CCT-20 baseline is lost — so the extension is reported as an **additional
+row**, never as a replacement for the headline number.
+
+**Status: contingency, not plan.** We take it only if trans recall collapses and
+crop-teacher KD (§5) fails to lift it.
 
 ## 12. Schedule — driven by the 5-day free trial
 
