@@ -36,6 +36,11 @@ if [[ ! -x "${PYTHON}" ]]; then
     exit 1
 fi
 
+# Start from an empty evidence directory. ORT stamps each profile with its own
+# timestamp, so re-running accumulates files rather than replacing them, and the
+# "newest profile" lookup below would eventually be choosing from a pile of runs at
+# different commits. Stale evidence that looks current is worse than none.
+rm -rf "${EVIDENCE}"
 mkdir -p "${MODELS}" "${EVIDENCE}"
 cd "${PROJECT_ROOT}"
 
@@ -48,7 +53,7 @@ echo "=============================================================="
 # non-contract opset are rejected there, not here.
 
 echo
-echo "--- M0: FP32 ImageNet MobileNetV2, opset ${P0_OPSET_EXPECTED:-17}"
+echo "--- M0: FP32 ImageNet MobileNetV2, opset ${P0_OPSET}"
 "${PYTHON}" -m wildlife_trigger.models.export \
     --output "${MODELS}/m0_fp32.onnx" \
     --describe-json "${EVIDENCE}/m0_fp32.export.json" >/dev/null

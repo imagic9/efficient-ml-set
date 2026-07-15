@@ -72,6 +72,24 @@ def test_verify_exported_opset_catches_a_graph_that_disagrees(tmp_path: Path) ->
         export.verify_exported_opset(path, expected=17)
 
 
+def test_pins_env_records_the_opset_the_code_enforces() -> None:
+    """pins.env exists so scripts and code cannot disagree; check that they don't.
+
+    `export.P0_OPSET` is what actually rejects an export. pins.env's `P0_OPSET` is
+    what the shell scripts and any human reader see. Two copies of a constant drift
+    silently, and this file's whole premise is that they must not.
+    """
+    pins = Path(__file__).resolve().parents[2] / "configs/env/pins.env"
+    recorded = {}
+    for line in pins.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            recorded[key.strip()] = value.strip().strip('"').split("  #")[0].strip()
+
+    assert recorded["P0_OPSET"] == str(export.P0_OPSET)
+
+
 # --- the verdict -------------------------------------------------------------
 
 

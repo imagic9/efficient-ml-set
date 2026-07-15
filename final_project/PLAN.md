@@ -280,34 +280,100 @@ matches.
 
 Depends on: A2.
 
-- [ ] Export ImageNet-pretrained MobileNetV2 FP32 to ONNX at provisional opset 17;
+- [x] Export ImageNet-pretrained MobileNetV2 FP32 to ONNX at provisional opset 17;
       explicitly reject the legacy opset-9 spike artifact.
-- [ ] Create a small static PTQ ONNX model.
-- [ ] Choose the QAT library here rather than assuming one. Try, in DESIGN §8.2
+- [x] Create a small static PTQ ONNX model.
+- [x] Choose the QAT library here rather than assuming one. Try, in DESIGN §8.2
       order, direct QDQ fake-quant + `torch.onnx.export`, then NVIDIA
       `pytorch-quantization`, then `torchao`; stop at the first that yields a QDQ
       graph ORT executes as integer. Record every rejected candidate and its
       failure — that is P0 evidence and belongs in the report.
-- [ ] Run one epoch/minimal step of the chosen QAT path and export deployable
+- [x] Run one epoch/minimal step of the chosen QAT path and export deployable
       INT8 ONNX.
-- [ ] On `gx10`, load all three models with the exact planned C++ ORT build
+- [x] On `gx10`, load all three models with the exact planned C++ ORT build
       inside the target-compatible ARM64 environment.
-- [ ] With the C++ API, start from `ORT_ENABLE_ALL`, call
+- [x] With the C++ API, start from `ORT_ENABLE_ALL`, call
       `SessionOptions::EnableProfiling(prefix)`, save the session-optimized graph,
       and run a fixture. Save profiles plus operator/data-type coverage; do not use
       one fused-node name as the sole proof of INT8 execution.
-- [ ] Verify FP32/PTQ/QAT use the same P0-accepted opset. Compare
+- [x] Verify FP32/PTQ/QAT use the same P0-accepted opset. Compare
       `ORT_ENABLE_EXTENDED` later only as an explicitly named E6 candidate.
-- [ ] Re-run all three models under `qemu-aarch64 -cpu cortex-a76` in the same
+- [x] Re-run all three models under `qemu-aarch64 -cpu cortex-a76` in the same
       container. Confirm integer execution survives without `i8mm`/`sve2` and record
       the operator/data-type coverage ORT picks instead. A QAT path that only works
       because gx10 has `i8mm` is a **P0 failure**; this is the cheapest place to
       find that out.
-- [ ] Pin versions only after FP32/PTQ/QAT all work end to end, natively and under
+- [x] Pin versions only after FP32/PTQ/QAT all work end to end, natively and under
       `-cpu cortex-a76`.
 
 **Output:** P0 evidence that all three model forms execute in ARM64 C++ and the
 QAT artifact is genuinely quantized.
+
+**Done 2026-07-15.** `scripts/run_p0_spike.sh` runs the whole gate unattended; all
+16 checks pass (`results/p0/p0_gate.json`). One command reproduces every claim
+below.
+
+*The QAT library question is answered, and the answer is that it was the wrong
+question.* Candidate 1 (DESIGN §8.2's first) works, so `pytorch-quantization` and
+`torchao` were never installed. But the first attempt at candidate 1 **failed** in
+exactly the way §8.2 warns about — a float graph carrying rounded weights: 45
+FusedConv + 5 Conv still running float, only 2 of 52 convolutions quantized. The
+cause was not the library. Fake-quant on the convolution *input* is what every
+TensorRT-oriented library emits, and ORT's float-level ConvActivationFusion reaches
+`Conv + Clip -> FusedConv` before the QDQ rule can match `DQ -> Conv -> Q`.
+Candidates 2 and 3 place QDQ the same way and would have reproduced the failure
+with more dependencies. **The axis that mattered was QDQ placement against ORT's
+fusion rules, not the library.** This belongs in the report's "what did not work".
+
+What P0 established, all measured, none assumed:
+
+| Fact | Evidence |
+|---|---|
+| M1 PTQ and M2 QAT both execute as **integer** in C++ ORT, natively and under `-cpu cortex-a76` | `p0_gate.json`, 16/16 |
+| The QAT and PTQ **optimized graphs are identical** — `QLinearConv:52, QLinearAdd:10, QGemm:1, QLinearGlobalAveragePool:1` | `*.coverage.json` |
+| Integer execution **survives the loss of `i8mm`/`sve2`**; the emulated CPU reports `asimd,asimddp` and `looks_like_pi5=true` | `*.cpp-qemu.probe.json` |
+| M0 FP32 does **not** report integer execution (the negative control) | `fp32_stays_float` |
+| C++ and Python ORT are both **1.27.0** and agree on argmax over a shared fixture blob | `*.probe.json` |
+| All three forms carry **opset 17** *after* PTQ/QAT rewrote the graph | `opset_parity.json` |
+
+Three findings that cost real time and would have cost more later:
+
+- **ORT requires rank-0 QDQ scales.** torch exports per-tensor scale/zero-point as
+  shape `[1]`. ORT refuses the graph outright — and `onnx.checker.check_model` with
+  `full_check=True` passes it. `optimize/qdq_scalar.py` repairs the rank and only
+  the rank. A structural check would have shipped this artifact.
+- **ReLU6 must be absorbed into the activation quantizer**, not left between Conv
+  and Q. This is exact rather than convenient (a quantizer over `[0, m<=6]` already
+  clamps as ReLU6 does), and `verify_relu6_removal_is_exact` measures it at 0.0
+  difference rather than arguing it. ORT's own PTQ quantizer does the same removal.
+- **The classifier's Gemm needs its flattened input quantized.** `torch.flatten`
+  sits between the pooled vector's quantizer and the Gemm, so nothing else can
+  reach that tensor; without it every convolution ran integer around a float
+  classifier.
+
+Two bugs found in this task's *own* checks, worth recording because both passed
+while proving nothing:
+
+- the Python/C++ agreement check compared the C++ blob against the C++ probe's own
+  report — C++ against itself — while Python was separately generating a different
+  input. Both call sites now read one shared fixture blob, and the gate refuses to
+  compare unless they did.
+- `ort_coverage` exited 1 both when a model was not integer and when ORT could not
+  load it, leaving a **stale report** on disk that read as a plausible result. Exit
+  codes are now 0/2/1 (integer / not-integer / could-not-run) and the report is
+  written even on failure.
+
+**Reproducibility:** `nn.Dropout` in the classifier draws from torch's *global* RNG,
+so the QAT export differed on every run (argmax 21, then 908) despite seeded data
+generators. Seeded in `optimize/qat.py`; two consecutive exports now produce
+byte-identical SHA-256.
+
+**Left for later:** ORT warns that a session-optimized graph serialized above
+`ORT_ENABLE_EXTENDED` "should only be used in the same environment the model was
+optimized in" — so the optimized graphs here are evidence of what ORT *chose*, and
+**must never be shipped to the Pi as artifacts**. E6/E7 ship the ordinary model and
+let the Pi optimize it. PTQ/QAT accuracy is meaningless here by construction: both
+used synthetic data, because no CCT download is permitted before Gate A.
 
 ### A4 — Mandatory early C++ vertical slice
 
