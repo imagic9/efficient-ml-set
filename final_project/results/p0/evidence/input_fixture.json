@@ -1,0 +1,14 @@
+{
+  "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/input_1x3x224x224.bin",
+  "shape": [
+    1,
+    3,
+    224,
+    224
+  ],
+  "dtype": "float32",
+  "seed": 0,
+  "elements": 150528,
+  "bytes": 602112,
+  "sha256": "f58703a9ac8ecda4f75937f08872426f72aad262382ce5540cb4809f09a17608"
+}

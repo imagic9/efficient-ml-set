@@ -1,0 +1,126 @@
+{
+  "label": "m1_ptq-cpp-native",
+  "model": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/models/m1_ptq.onnx",
+  "call_site": "c++",
+  "exported_graph": {
+    "op_types": {
+      "Add": 10,
+      "Conv": 52,
+      "DequantizeLinear": 172,
+      "Flatten": 1,
+      "Gemm": 1,
+      "GlobalAveragePool": 1,
+      "QuantizeLinear": 66
+    },
+    "node_count": 303,
+    "domains": {
+      "ai.onnx": 303
+    },
+    "initializer_dtypes": {
+      "float": 172,
+      "int32": 106,
+      "int8": 172
+    }
+  },
+  "optimized_graph": {
+    "op_types": {
+      "DequantizeLinear": 1,
+      "Flatten": 1,
+      "QGemm": 1,
+      "QLinearAdd": 10,
+      "QLinearConv": 52,
+      "QLinearGlobalAveragePool": 1,
+      "QuantizeLinear": 1,
+      "Transpose": 2
+    },
+    "node_count": 69,
+    "domains": {
+      "ai.onnx": 5,
+      "com.microsoft": 64
+    },
+    "initializer_dtypes": {
+      "float": 91,
+      "int32": 53,
+      "int8": 172
+    }
+  },
+  "optimized_graph_path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/cpp-native/m1_ptq/optimized.onnx",
+  "execution": {
+    "profile": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/cpp-native/m1_ptq/profile_2026-07-15_18-34-02_125.json",
+    "executed_ops": {
+      "DequantizeLinear": {
+        "float": 1,
+        "int8": 2
+      },
+      "Flatten": {
+        "int8": 1
+      },
+      "QGemm": {
+        "float": 3,
+        "int32": 1,
+        "int8": 4
+      },
+      "QLinearAdd": {
+        "float": 30,
+        "int8": 50
+      },
+      "QLinearConv": {
+        "float": 156,
+        "int32": 52,
+        "int8": 208
+      },
+      "QLinearGlobalAveragePool": {
+        "float": 2,
+        "int8": 3
+      },
+      "QuantizeLinear": {
+        "float": 2,
+        "int8": 1
+      },
+      "Transpose": {
+        "int8": 2
+      }
+    },
+    "execution_providers": {
+      "CPUExecutionProvider": 69
+    },
+    "node_events": 518
+  },
+  "verdict": {
+    "integer_kernels_in_graph": {
+      "QGemm": 1,
+      "QLinearAdd": 10,
+      "QLinearConv": 52,
+      "QLinearGlobalAveragePool": 1
+    },
+    "integer_kernels_executed": {
+      "QGemm": {
+        "float": 3,
+        "int32": 1,
+        "int8": 4
+      },
+      "QLinearAdd": {
+        "float": 30,
+        "int8": 50
+      },
+      "QLinearConv": {
+        "float": 156,
+        "int32": 52,
+        "int8": 208
+      },
+      "QLinearGlobalAveragePool": {
+        "float": 2,
+        "int8": 3
+      }
+    },
+    "float_compute_in_graph": {},
+    "float_compute_executed": {},
+    "float_compute_input_dtypes": [],
+    "qdq_nodes_remaining": {
+      "DequantizeLinear": 1,
+      "QuantizeLinear": 1
+    },
+    "integer_execution": true,
+    "explanation": "integer_execution is true only when at least one integer kernel actually executed AND no Conv/Gemm/MatMul float kernel executed. Presence of QuantizeLinear/DequantizeLinear proves nothing on its own: ORT can dequantize, compute in float, and requantize."
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/models/m0_fp32.onnx",
+  "sha256": "15b84361fa226d68698618be63eff6cac14fd5041da59563f9e050350905f5c6",
+  "size_bytes": 13992263,
+  "ir_version": 8,
+  "producer": "pytorch 2.11.0",
+  "opset_import": {
+    "": 17
+  },
+  "inputs": [
+    {
+      "name": "input",
+      "dtype": "FLOAT",
+      "shape": [
+        1,
+        3,
+        224,
+        224
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "name": "logits",
+      "dtype": "FLOAT",
+      "shape": [
+        1,
+        1000
+      ]
+    }
+  ],
+  "node_count": 170,
+  "op_types": {
+    "Add": 10,
+    "Clip": 35,
+    "Constant": 70,
+    "Conv": 52,
+    "Flatten": 1,
+    "Gemm": 1,
+    "GlobalAveragePool": 1
+  },
+  "exporter": "torchscript"
+}

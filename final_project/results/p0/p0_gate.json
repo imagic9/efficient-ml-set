@@ -1,0 +1,112 @@
+{
+  "gate": "P0",
+  "passed": true,
+  "checks": {
+    "opset_parity": {
+      "passed": true,
+      "detail": [
+        17
+      ]
+    },
+    "ptq_integer_python": {
+      "passed": true,
+      "detail": "python"
+    },
+    "ptq_integer_cpp_native": {
+      "passed": true,
+      "detail": "cpp-native"
+    },
+    "ptq_integer_cpp_qemu": {
+      "passed": true,
+      "detail": "cpp-qemu"
+    },
+    "qat_integer_python": {
+      "passed": true,
+      "detail": "python"
+    },
+    "qat_integer_cpp_native": {
+      "passed": true,
+      "detail": "cpp-native"
+    },
+    "qat_integer_cpp_qemu": {
+      "passed": true,
+      "detail": "cpp-qemu"
+    },
+    "fp32_stays_float": {
+      "passed": true,
+      "detail": "M0 must not report integer execution"
+    },
+    "m0_fp32_under_pi5_isa": {
+      "passed": true,
+      "detail": "asimd,asimddp"
+    },
+    "m1_ptq_under_pi5_isa": {
+      "passed": true,
+      "detail": "asimd,asimddp"
+    },
+    "m2_qat_under_pi5_isa": {
+      "passed": true,
+      "detail": "asimd,asimddp"
+    },
+    "m0_fp32_python_cpp_agree": {
+      "passed": true,
+      "detail": {
+        "python_argmax": 92,
+        "cpp_argmax": 92,
+        "argmax_matches": true,
+        "cpp_blob_matches_probe_report": true,
+        "python_output_mean": 8.59680149005726e-05,
+        "cpp_output_mean": 8.59680149005726e-05,
+        "fixture": {
+          "python": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/input_1x3x224x224.bin",
+          "cpp": "/work/results/p0/evidence/input_1x3x224x224.bin"
+        }
+      }
+    },
+    "m1_ptq_python_cpp_agree": {
+      "passed": true,
+      "detail": {
+        "python_argmax": 92,
+        "cpp_argmax": 92,
+        "argmax_matches": true,
+        "cpp_blob_matches_probe_report": true,
+        "python_output_mean": 4.189300670986995e-05,
+        "cpp_output_mean": 4.189300670986995e-05,
+        "fixture": {
+          "python": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/input_1x3x224x224.bin",
+          "cpp": "/work/results/p0/evidence/input_1x3x224x224.bin"
+        }
+      }
+    },
+    "m2_qat_python_cpp_agree": {
+      "passed": true,
+      "detail": {
+        "python_argmax": 908,
+        "cpp_argmax": 908,
+        "argmax_matches": true,
+        "cpp_blob_matches_probe_report": true,
+        "python_output_mean": 0.000146658654557541,
+        "cpp_output_mean": 0.000146658654557541,
+        "fixture": {
+          "python": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/input_1x3x224x224.bin",
+          "cpp": "/work/results/p0/evidence/input_1x3x224x224.bin"
+        }
+      }
+    },
+    "ptq_integer_survives_without_i8mm": {
+      "passed": true,
+      "detail": {
+        "native": true,
+        "cortex_a76": true
+      }
+    },
+    "qat_integer_survives_without_i8mm": {
+      "passed": true,
+      "detail": {
+        "native": true,
+        "cortex_a76": true
+      }
+    }
+  },
+  "failed_checks": []
+}

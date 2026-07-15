@@ -1,0 +1,37 @@
+{
+  "expected_opset": 17,
+  "models": {
+    "m0_fp32.onnx": {
+      "default_domain_opset": 17,
+      "all_domains": {
+        "": 17
+      },
+      "matches_contract": true
+    },
+    "m1_ptq.onnx": {
+      "default_domain_opset": 17,
+      "all_domains": {
+        "": 17,
+        "ai.onnx.ml": 5,
+        "ai.onnx.training": 1,
+        "ai.onnx.preview.training": 1,
+        "com.microsoft": 1,
+        "com.microsoft.experimental": 1,
+        "com.microsoft.nchwc": 1,
+        "org.pytorch.aten": 1
+      },
+      "matches_contract": true
+    },
+    "m2_qat.onnx": {
+      "default_domain_opset": 17,
+      "all_domains": {
+        "": 17
+      },
+      "matches_contract": true
+    }
+  },
+  "all_match_contract": true,
+  "observed_default_opsets": [
+    17
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "label": "m0_fp32-cpp-qemu",
+  "model": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/models/m0_fp32.onnx",
+  "call_site": "c++",
+  "exported_graph": {
+    "op_types": {
+      "Add": 10,
+      "Clip": 35,
+      "Constant": 70,
+      "Conv": 52,
+      "Flatten": 1,
+      "Gemm": 1,
+      "GlobalAveragePool": 1
+    },
+    "node_count": 170,
+    "domains": {
+      "ai.onnx": 170
+    },
+    "initializer_dtypes": {
+      "float": 106
+    }
+  },
+  "optimized_graph": {
+    "op_types": {
+      "Conv": 7,
+      "Flatten": 1,
+      "FusedConv": 45,
+      "Gemm": 1,
+      "GlobalAveragePool": 1
+    },
+    "node_count": 55,
+    "domains": {
+      "ai.onnx": 10,
+      "com.microsoft": 45
+    },
+    "initializer_dtypes": {
+      "float": 106
+    }
+  },
+  "optimized_graph_path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/cpp-qemu/m0_fp32/optimized.onnx",
+  "execution": {
+    "profile": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/cpp-qemu/m0_fp32/profile_2026-07-15_18-34-03_475.json",
+    "executed_ops": {
+      "Conv": {
+        "float": 21
+      },
+      "Flatten": {
+        "float": 1
+      },
+      "FusedConv": {
+        "float": 145
+      },
+      "Gemm": {
+        "float": 2
+      },
+      "GlobalAveragePool": {
+        "float": 1
+      }
+    },
+    "execution_providers": {
+      "CPUExecutionProvider": 55
+    },
+    "node_events": 170
+  },
+  "verdict": {
+    "integer_kernels_in_graph": {},
+    "integer_kernels_executed": {},
+    "float_compute_in_graph": {
+      "Conv": 7,
+      "FusedConv": 45,
+      "Gemm": 1
+    },
+    "float_compute_executed": {
+      "Conv": {
+        "float": 21
+      },
+      "FusedConv": {
+        "float": 145
+      },
+      "Gemm": {
+        "float": 2
+      }
+    },
+    "float_compute_input_dtypes": [
+      "float"
+    ],
+    "qdq_nodes_remaining": {},
+    "integer_execution": false,
+    "explanation": "integer_execution is true only when at least one integer kernel actually executed AND no Conv/Gemm/MatMul float kernel executed. Presence of QuantizeLinear/DequantizeLinear proves nothing on its own: ORT can dequantize, compute in float, and requantize."
+  }
+}
