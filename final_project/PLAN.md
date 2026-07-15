@@ -379,16 +379,70 @@ used synthetic data, because no CCT download is permitted before Gate A.
 
 Depends on: A3. This task implements the minimal smoke subset of E1-E5.
 
-- [ ] Export a deterministic 16-output smoke model and class map.
-- [ ] Run saved JPEG -> C++ decode/preprocess -> ORT -> generic policy ->
+- [x] Export a deterministic 16-output smoke model and class map.
+- [x] Run saved JPEG -> C++ decode/preprocess -> ORT -> generic policy ->
       `SHUTTER_TRIGGER` JSON.
-- [ ] Produce schema-valid per-stage benchmark JSON and system-monitor output.
-- [ ] Build and install a provisional ARM64 deployment bundle in the clean
+- [x] Produce schema-valid per-stage benchmark JSON and system-monitor output.
+- [x] Build and install a provisional ARM64 deployment bundle in the clean
       target-compatible environment.
-- [ ] Preserve the exact command, output, ORT profile, and bundle checksum.
+- [x] Preserve the exact command, output, ORT profile, and bundle checksum.
+
+**Done 2026-07-15.** `scripts/run_a4_slice.sh` runs the whole slice unattended; all
+29 checks pass (`results/a4/a4_gate.json`).
+
+*The slice earned its keep on its first run.* It failed immediately, with the model
+contract check refusing to infer: the smoke model had been exported at ImageNet's
+224x224 while the application defaults to DESIGN §5.5's provisional Core input of
+256x192. That mismatch would otherwise have surfaced during C1a — after training —
+as a model that silently could not be deployed. Both now read
+`INPUT_SHAPE_PROVISIONAL_CORE` from one place. This is the entire argument for
+building a vertical slice before the data exists, and it paid on day one.
+
+What A4 established:
+
+| Fact | Evidence |
+|---|---|
+| Full path works: JPEG -> C++ decode/preprocess -> ORT -> policy -> `SHUTTER_TRIGGER` JSON | `evidence/infer.native.json` |
+| The path runs under **`-cpu cortex-a76`** and agrees with the native run's decision | `evidence/infer.qemu.json` |
+| The policy loader **refuses all 12 invalid policies through the real CLI**, not only in ctest | `evidence/policy_rejections.json` |
+| A multi-target policy works on the same model with **no reload** (DESIGN §4) | `evidence/infer.multi_target.json` |
+| Benchmark JSON is schema-valid; p50<=p95<=p99 holds for every stage | `evidence/benchmark.native.json` |
+| Absent sensors report **`"unavailable"`**, never 0 | same |
+| Bundle: 7 files, checksums verify, **max GLIBC 2.34 <= the Pi's 2.36** | `evidence/bundle_audit.json` |
+| The staged bundle runs its own self-test from its own launcher | `evidence/bundle_self_test.json` |
+
+Judgement calls:
+
+- **`nlohmann/json` 3.12.0 vendored now**, not in E1. `third_party/README.md` said to
+  wait for a caller that reads JSON; A4's policy loader is that caller. GitHub
+  publishes no digest for the asset, so the hash was cross-checked by fetching the
+  same header from the tagged repo tree and confirming byte-identity — weaker than a
+  signed digest, and the strongest thing upstream offers. `scripts/verify_vendored.sh`
+  re-checks it as a gate.
+- **SHA-256 is implemented in-tree** (`cpp/src/hashing.cpp`) rather than linking
+  OpenSSL or vendoring a second dependency for ~60 lines. The only need is binding a
+  policy to a model by hash — no secrets, no adversary. Tested against the NIST
+  vectors including the multi-block padding case.
+- **The session-optimized graph is deliberately not bundled**, per P0's finding that
+  ORT considers it valid only in the environment that produced it.
+- **OpenCV is not bundled** — a known E7 gap, since bookworm gives 4.6.0 and a Trixie
+  Pi would give another soname.
+- The fixture JPEG is **synthetic** and says so; a bright shape sits near the frame
+  edge so a centre-cropping preprocessor would visibly lose it.
 
 **Gate A:** P0 passes and the thin C++ inference/benchmark/deployment path works
 end to end before data preparation or long training.
+
+**PASSED 2026-07-15**, 45 checks across both gates (`results/gate_a.json`):
+
+```bash
+python -m wildlife_trigger.validate.gate_a \
+    --p0 results/p0/p0_gate.json --a4 results/a4/a4_gate.json
+# PASS P0 (16 checks) · PASS A4 (29 checks) -> GATE A PASSED
+```
+
+Phase B (CCT-20 download) and Phase C (long training) are now permitted. Neither was
+started before this passed.
 
 ---
 
