@@ -212,14 +212,27 @@ def main() -> int:
         "classes:",
     ]
     for entry in classes:
-        flag = "true " if entry["selectable_target"] else "false"
+        name_field = f"{entry['name']},"
         lines.append(
             f"  - {{index: {entry['index']:2d}, category_id: {entry['category_id']:2d}, "
-            f"name: {entry['name']:<9} selectable_target: {flag}}}"
+            f"name: {name_field:<10} selectable_target: {str(entry['selectable_target']).lower()}}}"
         )
     args.classes_config.parent.mkdir(parents=True, exist_ok=True)
     args.classes_config.write_text("\n".join(lines) + "\n")
-    print(f"wrote {args.classes_config}")
+
+    # Parse what was just written. A generated config that does not load is a bug that
+    # surfaces in whatever reads it next, far from here — and the first version of
+    # this writer emitted a flow mapping with a missing comma, which is exactly the
+    # kind of typo that looks fine in a diff.
+    import yaml
+
+    parsed = yaml.safe_load(args.classes_config.read_text())
+    if [c["name"] for c in parsed["classes"]] != names:
+        raise RuntimeError(
+            f"{args.classes_config} does not round-trip: wrote {names}, "
+            f"read back {[c['name'] for c in parsed['classes']]}"
+        )
+    print(f"wrote {args.classes_config} (parses, {len(parsed['classes'])} classes)")
 
     per_split: dict[str, dict] = {}
     records_by_split: dict[str, list[dict]] = {}

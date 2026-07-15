@@ -53,6 +53,13 @@ compile_commands.json
 *.perf
 onnxruntime_profile_*.json
 
+# The per-image dimension index is a build intermediate: B0 writes it so B1 can
+# attach observed geometry without a second pass over 57,864 files, and once the
+# manifests carry observed_width/height per image it is redundant. The report that
+# matters — the distribution and DESIGN §5.5's checks — is committed under
+# results/data_audit/.
+/final_project/data/manifests/dimensions.json
+
 # Staged deployment bundles. A bundle is a build output — binary, libonnxruntime.so,
 # model — rebuilt by scripts/build_bundle.sh in the target container, ~20 MB, and
 # reproducible. What must be committed is the audit that describes it
