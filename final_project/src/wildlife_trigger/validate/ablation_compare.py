@@ -42,16 +42,40 @@ def load(path: Path) -> dict:
 
 
 def check_matched(runs: list[dict]) -> dict:
-    """Confirm the arms really were step-matched before comparing them."""
+    """Confirm the arms really were step-matched before comparing them.
+
+    Matching is a property of the **budget**, not of the steps consumed. Early stopping
+    is part of DESIGN §7.2's recipe and is applied identically to both arms, so an arm
+    that converges sooner and stops has told us something about itself — it has not
+    broken the comparison. But the reader must be able to see it: two arms that consumed
+    4,220 and 6,000 steps did not train equally long, and if the shorter one also scored
+    lower, "it stopped early" and "it is worse" are different claims.
+
+    So consumed steps are reported alongside, and a large gap is flagged rather than
+    silently averaged into a verdict.
+    """
     budgets = {r["run_name"]: r["budget"] for r in runs}
     max_steps = {b["max_steps"] for b in budgets.values()}
     head_steps = {b["head_steps"] for b in budgets.values()}
+    consumed = {name: b["steps"] for name, b in budgets.items()}
+
+    spread = (
+        (max(consumed.values()) - min(consumed.values())) / max(consumed.values())
+        if consumed
+        else 0.0
+    )
     return {
         "max_steps_identical": len(max_steps) == 1,
         "head_steps_identical": len(head_steps) == 1,
         "observed_max_steps": sorted(max_steps),
         "observed_head_steps": sorted(head_steps),
+        "steps_consumed": consumed,
+        "consumed_spread": round(spread, 4),
+        "an_arm_stopped_early": any(
+            b["steps"] < b["max_steps"] for b in budgets.values()
+        ),
         "per_run": budgets,
+        # The budget is what must match. Consumption is reported, not required.
         "matched": len(max_steps) == 1 and len(head_steps) == 1,
     }
 
@@ -110,6 +134,25 @@ def main() -> int:
         "same reason — 5 epochs of head training is 1,055 steps in one arm and 1,445 in",
         "the other.",
         "",
+    ]
+
+    if matched["an_arm_stopped_early"]:
+        lines += [
+            "### An arm stopped early",
+            "",
+            f"Steps actually consumed: `{matched['steps_consumed']}` "
+            f"(spread {matched['consumed_spread']:.1%} of the larger).",
+            "",
+            "Early stopping is part of DESIGN §7.2's recipe and was applied identically",
+            "to both arms, so this does not invalidate the comparison — an arm that",
+            "converged sooner has told us something about itself. But the arms did not",
+            "train for equally long, so read the score together with the steps:",
+            "*it stopped early* and *it is worse* are different claims, and only the",
+            "second is about the data.",
+            "",
+        ]
+
+    lines += [
         "## Results",
         "",
         "Selection score is mean bobcat F2 across cis-val-clean and trans-val at a fixed",
