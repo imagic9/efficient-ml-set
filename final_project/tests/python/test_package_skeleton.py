@@ -20,6 +20,7 @@ import pytest
 SUBPACKAGES = [
     "wildlife_trigger",
     "wildlife_trigger.data",
+    "wildlife_trigger.provenance",
     "wildlife_trigger.models",
     "wildlife_trigger.optimize",
     "wildlife_trigger.reporting",
@@ -60,7 +61,7 @@ def test_version_is_exposed() -> None:
         "artifacts/README.md",
         "deploy/pi/README.md",
         "results/provenance",
-        "scripts/capture_provenance.py",
+        "src/wildlife_trigger/provenance.py",
         "scripts/isa_probe.c",
         "tests/fixtures",
         "notebooks",

@@ -11,15 +11,25 @@ requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [{ name = "Vadym" }]
 
-# Loose here, exact in the lockfile. A2 pins the resolved versions; DESIGN §9.2
-# requires every run to record what it actually resolved to.
+# Ranges are fine for anything whose version cannot change a result. The two
+# exact pins are not style: they are a contract with the C++ side.
+#
+#   onnxruntime must equal the C++ ORT in configs/env/pins.env, or P3 measures the
+#   gap between two ORT releases instead of the gap between our two call sites.
+#
+#   opencv must stay on 4.x to match the C++ OpenCV 4.6 from bookworm apt. Left
+#   unpinned, pip resolves 5.0 and P1 ends up comparing OpenCV majors rather than
+#   our Python preprocessing against our C++ preprocessing.
+#
+# torch is installed separately from the CUDA index by scripts/setup_gx10.sh; the
+# range here only stops a stray reinstall from PyPI.
 dependencies = [
     "numpy>=2.0",
-    "torch>=2.5",
-    "torchvision>=0.20",
+    "torch>=2.11",
+    "torchvision>=0.26",
     "onnx>=1.16",
-    "onnxruntime>=1.19",
-    "opencv-python-headless>=4.10",
+    "onnxruntime==1.27.0",
+    "opencv-python-headless==4.13.0.92",
     "pyyaml>=6.0",
     "pillow>=10.0",
     "torch-pruning>=1.5",

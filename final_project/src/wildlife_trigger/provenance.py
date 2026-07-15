@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Capture the execution environment as machine-readable provenance.
 
-DESIGN §9.2 requires every run to record where it happened and with what. This
-script is the single implementation of that capture, used by PLAN A0 for the
-project start snapshot and reused by later phases for per-run provenance.
+DESIGN §9.2 requires every run to record where it happened and with what. This is
+the single implementation of that capture: A0 used it for the project-start
+snapshot, `runs.RunContext` calls it for every run, and it stays runnable on its
+own for ad-hoc snapshots.
 
 Never widen the environment capture to os.environ wholesale: it carries tokens
 and dataset credentials. ENV_SAFELIST below is the only environment exposed.
 
 Usage:
-    python scripts/capture_provenance.py --output results/provenance/project_start.json \
-        --label "A0 project start"
+    python -m wildlife_trigger.provenance \
+        --output results/provenance/project_start.json --label "A0 project start"
 """
 
 from __future__ import annotations
@@ -200,13 +201,23 @@ def collect_python() -> dict:
     }
 
 
-def collect_git(repo: Path) -> dict:
+def collect_git(start: Path) -> dict:
+    """Describe the git state of the repository containing `start`.
+
+    `repo_root` is resolved with `rev-parse --show-toplevel` rather than by
+    counting `..` from this file. Path arithmetic silently reports the wrong root
+    the moment the module moves — which is exactly what happened when this code
+    moved from scripts/ into the package, where the same `parents[2]` points at
+    the project directory instead of the repository.
+    """
+
     def git(*args: str) -> str | None:
-        return run(["git", "-C", str(repo), *args])
+        return run(["git", "-C", str(start), *args])
 
     porcelain = git("status", "--porcelain")
     return {
-        "repo_root": str(repo),
+        "repo_root": git("rev-parse", "--show-toplevel"),
+        "queried_from": str(start),
         "branch": git("rev-parse", "--abbrev-ref", "HEAD"),
         "commit": git("rev-parse", "HEAD"),
         "commit_short": git("rev-parse", "--short", "HEAD"),
@@ -249,8 +260,9 @@ def main() -> int:
     parser.add_argument(
         "--repo",
         type=Path,
-        default=Path(__file__).resolve().parents[2],
-        help="Repository root (default: infer from this file)",
+        default=Path.cwd(),
+        help="Any path inside the repository (default: cwd). The git root is "
+        "resolved from it, not assumed.",
     )
     args = parser.parse_args()
 
