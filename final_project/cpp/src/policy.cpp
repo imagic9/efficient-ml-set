@@ -87,7 +87,7 @@ Policy Policy::load(const std::string &path, const ClassMap &class_map,
     require_schema_version(document, path);
 
     Policy policy;
-    policy.policy_id = document.value("policy_id", std::string("<unnamed>"));
+    policy.policy_id_ = document.value("policy_id", std::string("<unnamed>"));
     policy.mode_ = document.at("mode").get<std::string>();
 
     if (policy.mode_ != "any") {
