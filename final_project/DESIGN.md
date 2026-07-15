@@ -145,19 +145,22 @@ not a physical GPIO transition.
 The neural network is shared by every target selection. A policy is a small
 configuration file, not a separate model. It selects one or more animal outputs
 that carry a usable threshold in the final 14-entry catalog and fires when any
-selected class passes its own threshold:
+selected class passes its own threshold. Runtime policies use JSON so the C++
+bundle can vendor one pinned header-only parser instead of relying on a system YAML
+library:
 
-```yaml
-schema_version: 1
-policy_id: bobcat_coyote_v1
-model_sha256: MODEL_SHA256
-class_map_sha256: CLASS_MAP_SHA256
-mode: any
-targets:
-  - class: bobcat
-    threshold: 0.42
-  - class: coyote
-    threshold: 0.55
+```json
+{
+  "schema_version": 1,
+  "policy_id": "bobcat_coyote_v1",
+  "model_sha256": "MODEL_SHA256",
+  "class_map_sha256": "CLASS_MAP_SHA256",
+  "mode": "any",
+  "targets": [
+    {"class": "bobcat", "threshold": 0.42},
+    {"class": "coyote", "threshold": 0.55}
+  ]
+}
 ```
 
 The numbers above illustrate the numeric schema only; generated policies must
@@ -169,8 +172,14 @@ list, duplicate/unknown/non-animal classes, classes carrying no calibrated
 threshold in the model's catalog, thresholds outside `[0, 1]`, unsupported modes,
 and model/class-map hash mismatches.
 
+Vendor a pinned `nlohmann/json` single header plus its license under
+`cpp/third_party/`; record version and SHA-256 in the dependency manifest. Policy
+parsing happens once at startup, never in the per-frame hot path. No network fetch
+or system JSON/YAML development package may be required to build the release
+bundle.
+
 The submission's primary evaluated policy remains the bobcat-only
-`bobcat_v1.yaml`. The same final model must also accept a multi-target example
+`bobcat_v1.json`. The same final model must also accept a multi-target example
 policy without another inference or model reload. This adds configuration-level
 modularity without adding networks or changing the benchmark question.
 
@@ -219,7 +228,9 @@ Catalog status is one of `two_domain_calibrated`, `single_domain_fallback`,
 numeric threshold plus calibration-domain/support/metric metadata; unavailable
 entries carry `threshold: null` and a reason. The catalog is bound to the final
 model and class map by hash, and the loader accepts targets only from the two
-selectable statuses.
+selectable statuses. Persist it as
+`artifacts/policies/threshold_catalog.json`; generated policies may reference only
+entries from that exact model-bound catalog.
 
 A new species outside the 16-class map requires labelled data, classifier-head
 adaptation, fine-tuning, export, and recalibration, but not training from random
@@ -247,10 +258,14 @@ restartable with checkpoints and persistent logs.
 
 ARM64 instruction-set compatibility alone does not prove Raspberry Pi OS binary
 compatibility. The pre-Pi C++ build and bundle-install test must therefore run on
-`gx10` inside a clean target-compatible ARM64 container matching the rented Pi's
-planned OS, glibc, compiler, OpenCV, and ONNX Runtime constraints as closely as
-possible. If a portable binary cannot be proven, the deployment bundle must
-include pinned source/build automation and compile on the Pi during provisioning.
+`gx10` inside a clean target-compatible ARM64 container. Record the target
+`/etc/os-release`, `uname -a`, compiler, and `ldd --version`; pin the container base
+image by digest to the same distro release and a glibc no newer than the target.
+Before packaging, run `ldd` plus ELF/required-`GLIBC_*` symbol inspection on the
+executable and every bundled shared library, then execute the clean install/smoke
+test. If exact compatibility cannot be proved before rental, the deployment bundle
+must include pinned source/build automation and compile on the Pi during
+provisioning.
 
 The rented Raspberry Pi target (Pi 5 preferred, RPi 4 contingency) is the only
 second execution environment. It is used only for Phase F provisioning,
@@ -529,6 +544,14 @@ Bursts contain correlated near-duplicate frames. For threshold selection, comput
 `seq_id`, then average those sequence values with equal weight. Keep ordinary
 frame-level recall as the primary reported product metric.
 
+Do not exclude short positive sequences or down-weight them by burst length: a
+one-frame visit is a real event the trigger must not silently ignore. To expose
+metric stability without changing the registered threshold rule, also report the
+positive-sequence length distribution, recall for length strata `1-2`, `3-5`, and
+`>5` frames where supported, and **event capture rate** = positive sequences with
+at least one trigger / all positive sequences. Sequence-cluster bootstrap intervals
+remain the uncertainty measure.
+
 Primary rule:
 
 1. Search all unique bobcat scores.
@@ -538,7 +561,7 @@ Primary rule:
    maximizing the mean frame-level F2 across cis-val-clean and trans-val and
    record which sequence-balanced recall constraint was not met.
 4. Save the threshold, calibration metrics, score distribution, and dataset hash
-   to `artifacts/policies/bobcat_v1.yaml`.
+   to `artifacts/policies/bobcat_v1.json`.
 5. Bootstrap complete `seq_id` clusters within each validation domain and save the
    95% interval/distribution of the selected threshold. The deployed point
    threshold still comes from the full cleaned validation data, not a bootstrap
@@ -567,6 +590,7 @@ Report separately for cis-test and trans-test:
 - false-fire rate = false triggers / non-bobcat frames;
 - fire rate = all triggers / all frames;
 - per-class support, recall, precision, and F1 for every class with positives;
+- event capture rate and positive-sequence recall by the registered length strata;
 - support-aware macro F1 over classes with at least 20 positive images and at
   least 5 positive `seq_id` values in that split; list the included classes;
 - confusion matrix;
@@ -633,7 +657,7 @@ The baseline is not complete until all exist:
 - FP32 ONNX export;
 - training history JSON/CSV;
 - validation predictions and logits;
-- calibrated policy YAML;
+- calibrated policy JSON;
 - model card;
 - parity report;
 - Pi benchmark row.
@@ -658,6 +682,12 @@ No candidate is assumed to win. Validation produces a deployable shortlist from
 M1-M4; real Pi validation latency selects the final optimized model before any
 test labels are opened.
 
+The provisional export contract is ONNX **opset 17** for M0-M4. P0 must verify
+that the pinned PyTorch exporter, ONNX checker, quantization path, and C++ ORT
+runtime all accept it. Use one opset across the comparison; change it only if P0
+proves a concrete incompatibility, then document and re-run every export/parity
+fixture. Opset 9 from the legacy course spike is forbidden.
+
 ### 8.1 PTQ — M1
 
 Use ONNX Runtime static quantization for the CNN.
@@ -671,10 +701,13 @@ reason to change the test protocol; QAT is the planned recovery path.
   including supplemental empty images;
 - test MinMax, Entropy, and Percentile calibration on validation only;
 - prefer per-channel signed INT8 weights and supported activation format;
-- export QDQ and, if CPU EP support warrants it, QOperator as an explicitly named
-  alternative;
+- use S8S8 QDQ as the primary static-quantization representation and, if measured
+  ARM CPU EP support warrants it, QOperator as an explicitly named alternative;
 - run ORT quantization debugging if accuracy drops materially;
-- record which nodes remain FP32 and why.
+- save the quantized and session-optimized graphs, ORT profile, operator/data-type
+  coverage, and record which nodes remain FP32 and why. Do not rely on one
+  version-specific kernel name such as `QLinearConv` as the sole proof of INT8
+  execution.
 
 Choose the PTQ configuration by validation bobcat F2 subject to measured model
 size and operator coverage. Do not select it using test labels.
@@ -689,7 +722,8 @@ QAT initializes from the FP32 M0 checkpoint, not from the PTQ model.
 - freeze BatchNorm statistics after the initial stabilization epoch unless
   validation proves otherwise;
 - export a real INT8 ONNX graph, not a float graph carrying rounded weights;
-- verify operator coverage and actual integer kernels in the ORT profile.
+- verify integer execution using the exported/optimized graphs, operator/data-type
+  coverage, ORT profile, and target latency together.
 
 Quantization APIs change over time. Parity gate P0 must prove one end-to-end QAT -> ONNX
 -> ORT C++ path and pin the exact compatible PyTorch/torchao/ONNX/ORT versions in
@@ -703,6 +737,17 @@ Use dependency-aware structured channel pruning. The existing homework
 shape, ignored layers, objective metric, residual/depthwise dependency handling,
 and output classifier.
 
+Core pruning roots are limited to the **expansion channels** inside MobileNetV2
+inverted residual blocks. A removal must be one verified dependency group spanning
+the expansion `1x1` output and BatchNorm, the corresponding depthwise-convolution
+input/output channels and groups, and the projection `1x1` input channels. Keep
+projection output widths, residual/add widths, the stem, final convolution, and
+16-output classifier fixed. Expansion channels are not independently removable:
+Torch-Pruning (or an equivalently tested dependency solver) must emit and validate
+the complete coupled group before mutation. Do not broaden Core to residual-width
+pruning unless the expansion-only search cannot create a valid candidate and the
+broader dependency contract is separately reviewed.
+
 Procedure:
 
 1. Profile the unpruned model's MACs and parameter count.
@@ -711,9 +756,12 @@ Procedure:
 3. Create candidates targeting approximately 15%, 30%, and 45% MAC reduction.
 4. Physically remove channels; zero masks alone do not qualify as structured
    pruning.
-5. Fine-tune each candidate with the same data and loss contract.
-6. Export each candidate and confirm that ONNX MACs and tensor shapes changed.
-7. Select one M3 candidate on the validation Pareto frontier for QAT.
+5. After every pruning step, assert equality of depthwise `groups`, `in_channels`,
+   and `out_channels`; residual-add shape equality; forward/backward execution;
+   and ONNX exportability.
+6. Fine-tune each candidate with the same data and loss contract.
+7. Export each candidate and confirm that ONNX MACs and tensor shapes changed.
+8. Select one M3 candidate on the validation Pareto frontier for QAT.
 
 The report must distinguish parameter reduction, MAC reduction, file size, and
 measured latency; they are not interchangeable.
@@ -768,8 +816,8 @@ python -m wildlife_trigger.calibrate --run-id RUN_ID --target bobcat
 The C++ application must expose:
 
 ```bash
-./wildlife_trigger infer --model model.onnx --policy bobcat_v1.yaml --image x.jpg
-./wildlife_trigger run-dataset --model model.onnx --policy bobcat_v1.yaml --manifest val.jsonl --output predictions.jsonl
+./wildlife_trigger infer --model model.onnx --policy bobcat_v1.json --image x.jpg
+./wildlife_trigger run-dataset --model model.onnx --policy bobcat_v1.json --manifest val.jsonl --output predictions.jsonl
 ./wildlife_trigger benchmark --model model.onnx --manifest benchmark.jsonl --threads 1 --warmup 100 --iterations 1000
 ./wildlife_trigger self-test --fixtures tests/fixtures/
 ```
@@ -820,13 +868,19 @@ Export is part of correctness, not packaging.
 
 Before full training:
 
-1. Export an ImageNet-pretrained MobileNetV2 FP32 model.
+1. Export an ImageNet-pretrained MobileNetV2 FP32 model at provisional opset 17;
+   reject the legacy opset-9 path.
 2. Produce a small PTQ model.
 3. Produce a one-epoch QAT model.
 4. On `gx10`, load all three with the exact planned ONNX Runtime C++ build in
    the target-compatible ARM64 environment.
-5. Run one image and capture an ORT profile.
-6. Pin compatible versions only after this succeeds.
+5. Create sessions with `ORT_ENABLE_ALL`, call the C++
+   `SessionOptions::EnableProfiling(prefix)` API, save the session-optimized graph,
+   run one image, and capture the profile/operator coverage. Compare
+   `ORT_ENABLE_EXTENDED` only as an explicitly named E6 performance candidate.
+6. Verify FP32/PTQ/QAT graphs use the same accepted opset and that integer
+   execution evidence does not depend on a single fused-node name.
+7. Pin compatible versions only after this succeeds.
 
 ### P1 — preprocessing parity
 
@@ -889,6 +943,12 @@ model optimization.
 
 Use C++17, CMake, OpenCV, and ONNX Runtime CPU Execution Provider. Pin the ORT
 version; do not retain the course container's obsolete hard-coded 1.14.1 package.
+Use a Release build and target-scoped `-O3`; do not set global
+`CMAKE_CXX_FLAGS_RELEASE`. Never use `-march=native` while building on `gx10`,
+because that selects the build host rather than the Pi. A Pi-specific build may
+use a recorded explicit CPU target (`cortex-a76` for Pi 5 or `cortex-a72` for Pi
+4), or `native` only when compilation runs on the same target Pi. Baseline and
+optimized models must be benchmarked with the same binary and compiler flags.
 
 ### Required components
 
@@ -896,6 +956,9 @@ version; do not retain the course container's obsolete hard-coded 1.14.1 package
    - validates model input/output names, shapes, and types;
    - owns ORT environment/session through RAII;
    - supports configured intra-op thread count;
+   - defaults to `ORT_ENABLE_ALL`, supports the registered E6 graph-level
+     comparison, and enables profiling with an explicit file prefix;
+   - can persist the session-optimized graph for operator/type inspection;
    - exposes model metadata and timing.
 2. `Preprocessor`
    - correct reference implementation;
@@ -903,7 +966,7 @@ version; do not retain the course container's obsolete hard-coded 1.14.1 package
    - reusable preallocated input buffer;
    - exact contract from section 5.5.
 3. `Policy`
-   - loads `mode: any` plus one or more class/threshold entries from YAML/JSON;
+   - loads `mode: any` plus one or more class/threshold entries from JSON;
    - validates schema, non-empty/unique known animal targets, threshold bounds,
      class mapping, and model hash;
    - emits the shutter decision plus the selected class scores and passing targets.
@@ -1197,6 +1260,9 @@ final_project/
     include/
     src/
     tests/
+    third_party/
+      nlohmann/json.hpp               # pinned single-header runtime policy parser
+      nlohmann/LICENSE.MIT
   scripts/
     setup_gx10.sh
     download_data.sh
@@ -1216,6 +1282,9 @@ final_project/
     README.md
   artifacts/
     policies/
+      bobcat_v1.json
+      bobcat_coyote_v1.json
+      threshold_catalog.json
     manifests/
     model_cards/
     checksums.sha256
@@ -1267,8 +1336,8 @@ will submit the following complete package:
    - FP32 baseline ONNX;
    - final optimized ONNX;
    - optional intermediate deployable models;
-   - primary bobcat policy YAML, final-model threshold catalog, and one validated
-     multi-target example policy;
+   - primary bobcat policy JSON, final-model threshold catalog JSON, and one
+     validated multi-target example policy JSON;
    - checksums and model cards.
 4. **Raspberry Pi deployment bundle**
    - release archive containing the C++ executable, required shared libraries or
@@ -1393,7 +1462,9 @@ All plots include units, sample counts, split, model ID, and commit/run ID.
 | 224-square letterbox wastes useful pixels | Resolve the pre-registered 224x224-vs-256x192 control before M0 |
 | PTQ loses accuracy on depthwise MobileNetV2 | This is pre-registered; use QAT/quantization debugging and keep PTQ as a negative result if necessary |
 | QAT export/runtime path is unstable | P0 before training; pin compatible versions; fail early rather than improvise during Pi trial |
+| Legacy opset 9 blocks quantization or changes export semantics | Start P0 at opset 17, require one accepted opset across M0-M4, and reject legacy spike artifacts |
 | Structured pruning does not speed MobileNetV2 | Show real MAC reduction and measured lack of speedup; final model may be unpruned QAT |
+| Pruning breaks depthwise groups or residual shapes | Restrict Core roots to coupled expansion-channel groups; assert group/residual shapes and export after every step |
 | `gx10` latency misranks Cortex-A76 candidates | Use it only for pathology detection; shortlist by validation/MACs/size and select on Pi validation latency |
 | Planned Pi 5 trial is lost | Try another Pi 5 provider, then RPi 4; if no Pi is available, Gate F fails and Core remains incomplete. Preserve a clearly labelled partial submission and never substitute `gx10` timings |
 | Confirmation seeds cannot finish inside the trial window | They never gate the freeze or Gate F; seed 42 is the deployed artifact; run seeds 17/73 asynchronously on `gx10`, but require completion before Gate G |
@@ -1406,6 +1477,7 @@ All plots include units, sample counts, split, model ID, and commit/run ID.
 | Five-day trial is spent debugging | Exact ARM64 dry run and one-command benchmark are prerequisites |
 | Full test transfer consumes about 6 GB and rental time | Run frozen full accuracy on gx10; Pi receives the fixed benchmark/parity subset by default |
 | ARM64 binary/ABI differs between gx10 and Pi | Prefer one proven official ORT AArch64 artifact in both target-compatible environments; otherwise build from pinned source on Pi |
+| `-march=native` targets gx10 instead of Pi | Use target-scoped Release `-O3`; only use explicit Pi CPU flags or `native` when compiling on the same Pi |
 | Scope creep | Only Core until Gate G; only crop-teacher KD afterward |
 | Public repo cannot store large models | GitHub Release/LFS plus hashes and download script |
 
@@ -1427,6 +1499,8 @@ Core is complete only when every item is true:
       with the empty ablation matched on optimizer steps rather than epochs.
 - [ ] M0, M1, M2, M3, and M4 results exist or a technically justified failed
       candidate is preserved and documented.
+- [ ] All deployed M0-M4 ONNX artifacts use the single opset accepted by P0
+      (provisionally 17); no opset-9 artifact enters the pipeline.
 - [ ] Thresholds use validation only.
 - [ ] The threshold catalog has status entries for all 14 animals, numeric
       thresholds for exactly 11 selectable targets, and null thresholds for
@@ -1442,6 +1516,10 @@ Core is complete only when every item is true:
 
 - [ ] Baseline and final ONNX models pass preprocessing/model/C++ parity.
 - [ ] C++ CLI, dataset runner, benchmark harness, and self-tests pass.
+- [ ] Runtime policy/catalog JSON parsing uses the pinned vendored header and
+      requires no system YAML/JSON development package.
+- [ ] Release builds use recorded target-safe flags, and ELF/glibc compatibility
+      checks or an on-Pi source build prove target loadability.
 - [ ] The same final model passes bobcat-only and multi-target policy tests without
       another model inference per frame.
 - [ ] ARM64 dry run succeeds from a clean environment.

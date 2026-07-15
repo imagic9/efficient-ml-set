@@ -2,6 +2,12 @@
 
 A simple project demonstrating PyTorch to ONNX model conversion and C++ inference using ONNX Runtime.
 
+> **Legacy smoke reference only.** This directory is not the final-project
+> application or deployment bundle. Its 224x224/ImageNet-1000 preprocessing,
+> provisional ONNX Runtime installer, and minimal CLI must not enter Core. Follow
+> `../DESIGN.md` and `../PLAN.md`: P0 pins the real toolchain/opset, and Phase E
+> replaces this program with the tested 16-output C++ application.
+
 ## Project Structure
 
 - `convert_to_onnx.py` - Python script to convert MobileNet V2 to ONNX format
@@ -22,8 +28,12 @@ Run the installation script to install all dependencies:
 
 ```bash
 chmod +x install_dependencies.sh
-./install_dependencies.sh
+ORT_VERSION=X.Y.Z ./install_dependencies.sh
 ```
+
+Use the provisional version under P0 and replace it with the accepted pinned
+version after FP32/PTQ/QAT C++ execution succeeds; this legacy script has no
+silent ONNX Runtime default.
 
 This script will:
 - Install Python dependencies (PyTorch, TorchVision, ONNX)
@@ -39,6 +49,8 @@ python3 convert_to_onnx.py
 ```
 
 This will create `mobilenet_v2.onnx` in the current directory.
+The smoke exporter now uses opset 17; Core still revalidates and pins its common
+M0-M4 opset through P0.
 
 ### Step 2: Build C++ Application
 

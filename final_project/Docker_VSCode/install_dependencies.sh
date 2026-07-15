@@ -2,6 +2,8 @@
 
 echo "Installing dependencies for ONNX MobileNet project..."
 
+: "${ORT_VERSION:?Set ORT_VERSION to the provisional/P0-approved ONNX Runtime version}"
+
 echo "=== Installing Python and dependencies ==="
 
 if [ -f /etc/debian_version ]; then
@@ -14,17 +16,17 @@ if [ -f /etc/debian_version ]; then
     echo "Installing ONNX Runtime..."
     ARCH=$(uname -m)
     if [ "$ARCH" = "x86_64" ]; then
-        ONNX_PACKAGE="onnxruntime-linux-x64-1.14.1.tgz"
-        ONNX_DIR="onnxruntime-linux-x64-1.14.1"
+        ONNX_PACKAGE="onnxruntime-linux-x64-${ORT_VERSION}.tgz"
+        ONNX_DIR="onnxruntime-linux-x64-${ORT_VERSION}"
     elif [ "$ARCH" = "aarch64" ]; then
-        ONNX_PACKAGE="onnxruntime-linux-aarch64-1.14.1.tgz"
-        ONNX_DIR="onnxruntime-linux-aarch64-1.14.1"
+        ONNX_PACKAGE="onnxruntime-linux-aarch64-${ORT_VERSION}.tgz"
+        ONNX_DIR="onnxruntime-linux-aarch64-${ORT_VERSION}"
     else
         echo "Unsupported architecture: $ARCH"
         exit 1
     fi
     
-    wget https://github.com/microsoft/onnxruntime/releases/download/v1.14.1/$ONNX_PACKAGE
+    wget "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ONNX_PACKAGE}"
     tar -xzf $ONNX_PACKAGE
     sudo cp -r $ONNX_DIR/include/* /usr/local/include/
     sudo cp -r $ONNX_DIR/lib/* /usr/local/lib/
@@ -40,17 +42,17 @@ elif [ -f /etc/redhat-release ]; then
     echo "Installing ONNX Runtime..."
     ARCH=$(uname -m)
     if [ "$ARCH" = "x86_64" ]; then
-        ONNX_PACKAGE="onnxruntime-linux-x64-1.14.1.tgz"
-        ONNX_DIR="onnxruntime-linux-x64-1.14.1"
+        ONNX_PACKAGE="onnxruntime-linux-x64-${ORT_VERSION}.tgz"
+        ONNX_DIR="onnxruntime-linux-x64-${ORT_VERSION}"
     elif [ "$ARCH" = "aarch64" ]; then
-        ONNX_PACKAGE="onnxruntime-linux-aarch64-1.14.1.tgz"
-        ONNX_DIR="onnxruntime-linux-aarch64-1.14.1"
+        ONNX_PACKAGE="onnxruntime-linux-aarch64-${ORT_VERSION}.tgz"
+        ONNX_DIR="onnxruntime-linux-aarch64-${ORT_VERSION}"
     else
         echo "Unsupported architecture: $ARCH"
         exit 1
     fi
     
-    wget https://github.com/microsoft/onnxruntime/releases/download/v1.14.1/$ONNX_PACKAGE
+    wget "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/${ONNX_PACKAGE}"
     tar -xzf $ONNX_PACKAGE
     sudo cp -r $ONNX_DIR/include/* /usr/local/include/
     sudo cp -r $ONNX_DIR/lib/* /usr/local/lib/

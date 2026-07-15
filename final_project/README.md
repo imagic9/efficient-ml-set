@@ -95,6 +95,12 @@ No candidate is assumed to win. Validation accuracy/MACs/size creates a pre-Pi
 shortlist; real Pi validation latency selects the final optimized model before
 test evaluation.
 
+P0 starts with ONNX opset 17 and accepts one common opset for M0-M4. PTQ uses S8S8
+QDQ as the primary representation. Structured pruning is restricted to verified
+MobileNetV2 expansion-channel dependency groups; residual/projection output widths
+stay fixed. C++ Release builds use target-scoped `-O3`, never `-march=native` when
+compiled on `gx10`.
+
 Gate/cascade, object detection, physical GPIO, power measurement, separate
 per-species networks/model packs, multi-label simultaneous-species recognition,
 illegal-logging detection, custom inference engines, NPU/Hailo, and battery-life
@@ -106,20 +112,21 @@ locked until the complete Core submission passes its Definition of Done.
 ### Configurable target policy
 
 The model always computes 14 animal scores plus `car` and `empty`. Selecting one
-or several catalog-supported animals changes only a YAML policy and adds no model
+or several catalog-supported animals changes only a JSON policy and adds no model
 inference:
 
-```yaml
-schema_version: 1
-policy_id: bobcat_coyote_v1
-model_sha256: MODEL_SHA256
-class_map_sha256: CLASS_MAP_SHA256
-mode: any
-targets:
-  - class: bobcat
-    threshold: 0.42
-  - class: coyote
-    threshold: 0.55
+```json
+{
+  "schema_version": 1,
+  "policy_id": "bobcat_coyote_v1",
+  "model_sha256": "MODEL_SHA256",
+  "class_map_sha256": "CLASS_MAP_SHA256",
+  "mode": "any",
+  "targets": [
+    {"class": "bobcat", "threshold": 0.42},
+    {"class": "coyote", "threshold": 0.55}
+  ]
+}
 ```
 
 The checked-in values above are schema examples, not final thresholds. The
@@ -128,6 +135,10 @@ The bundle contains a bobcat-only policy, a per-class threshold catalog, and one
 validated multi-target example. Unknown/duplicate classes, `car` or `empty` as a
 wildlife target, classes with no calibrated threshold, invalid thresholds,
 unsupported modes, and hash mismatches are rejected.
+
+The C++ bundle vendors a pinned `nlohmann/json` single header and license; policy
+parsing happens once at startup and requires no system YAML/JSON development
+package.
 
 Selecting an existing CCT-20 animal requires no retraining — but only where a
 threshold can be calibrated. CCT-20 validation has **zero `deer` and zero `fox`
@@ -266,12 +277,12 @@ python -m wildlife_trigger.calibrate --run-id RUN_ID --target bobcat
 ```bash
 ./wildlife_trigger infer \
   --model artifacts/models/final.onnx \
-  --policy artifacts/policies/bobcat_v1.yaml \
+  --policy artifacts/policies/bobcat_v1.json \
   --image demo/bobcat.jpg
 
 ./wildlife_trigger run-dataset \
   --model artifacts/models/final.onnx \
-  --policy artifacts/policies/bobcat_v1.yaml \
+  --policy artifacts/policies/bobcat_v1.json \
   --manifest data/manifests/benchmark_val_1000.jsonl \
   --output results/predictions.jsonl
 
@@ -313,9 +324,11 @@ runs must be checkpointed, logged, and safely resumable. GPU acceleration is for
 training; the final C++ inference path is still ONNX Runtime CPU EP.
 
 Pi compatibility is tested on `gx10` in a clean target-compatible ARM64 container.
-ARM64 alone does not guarantee matching Raspberry Pi OS/glibc dependencies. If a
-portable binary cannot be proven, the bundle includes pinned source/build scripts
-and compiles the C++ executable while provisioning the Pi.
+ARM64 alone does not guarantee matching Raspberry Pi OS/glibc dependencies. The
+pipeline pins a matching container base by digest and audits `ldd`/required
+`GLIBC_*` symbols. If a portable binary cannot be proven, the bundle includes
+pinned source/build scripts and compiles the C++ executable while provisioning the
+Pi.
 
 Do not hard-code private hostnames, usernames, SSH keys, tokens, or paths into the
 public repository. Private deployment values belong in ignored local config or
@@ -363,6 +376,7 @@ reported separately for cis-test and trans-test:
 - bobcat precision and F2;
 - false-fire rate and fire rate;
 - frame and sequence-balanced target recall;
+- event capture rate and recall by positive-sequence length strata;
 - per-class support and support-aware macro F1;
 - confusion matrix;
 - sequence-bootstrap metric and threshold intervals;
@@ -446,14 +460,15 @@ demo/          sample command/output and optional short recording
 
 | Existing asset | Core use |
 |---|---|
-| `Docker_VSCode/` | ARM64/C++/ONNX toolchain reference only |
+| `Docker_VSCode/` | Legacy ARM64/C++/ONNX toolchain reference only; its smoke code is not the final application |
 | `hw1/src/structured.py` | Starting point for dependency-aware structured pruning; must be adapted and tested |
 | `hw2`/`hw3` QAT code | Training-loop ideas only; Core requires a new deployable affine INT8 path proven in P0 |
 | `hw3/src/distill.py` | Post-Core crop-teacher KD Stretch only |
 | `hw4/` NAS/supernet | Search discipline, MBConv/width-space insight, and proxy-rank caveats only; no Core supernet because gx10 latency cannot rank Pi and NAS would add a second selection problem |
 
 Do not copy legacy preprocessing, input sizes, class counts, quantizers, or metrics
-without adapting them to DESIGN and proving parity.
+without adapting them to DESIGN and proving parity. In particular, no opset-9
+artifact or host-native compiler flag may enter Core.
 
 ---
 

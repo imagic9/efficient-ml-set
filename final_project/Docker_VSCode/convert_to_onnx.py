@@ -13,7 +13,8 @@ def convert_mobilenet_to_onnx():
         dummy_input,
         "mobilenet_v2.onnx",
         export_params=True,
-        opset_version=9,
+        # Legacy smoke export only. Core P0 revalidates and pins a common opset.
+        opset_version=17,
         do_constant_folding=True,
         input_names=['input'],
         output_names=['output'],

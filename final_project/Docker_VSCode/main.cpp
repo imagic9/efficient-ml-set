@@ -61,7 +61,7 @@ int main() {
         Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "ONNXInference");
         Ort::SessionOptions session_options;
         session_options.SetIntraOpNumThreads(1);
-        session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+        session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
         
         Ort::Session session(env, model_path.c_str(), session_options);
         

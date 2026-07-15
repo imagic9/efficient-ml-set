@@ -136,6 +136,10 @@ Depends on: A1.
 - [ ] Define the `gx10` CPU-only C++/ONNX Runtime development environment.
 - [ ] Define a clean target-compatible ARM64 container on `gx10` for Pi build,
       bundle-install, and full dry-run checks.
+- [ ] Record the target distro/glibc/compiler contract, pin the matching container
+      base by digest, and add `ldd` plus required-`GLIBC_*` symbol checks. If exact
+      compatibility cannot be proved, make the pinned on-Pi source build the
+      deployment path.
 - [ ] Pin compiler, CMake, OpenCV, ONNX, ONNX Runtime, and Python dependencies.
 - [ ] Add environment-capture tooling and resolved run-config serialization.
 - [ ] Add checkpoint/resume and persistent logging for every long-running job.
@@ -147,13 +151,19 @@ Depends on: A1.
 
 Depends on: A2.
 
-- [ ] Export ImageNet-pretrained MobileNetV2 FP32 to ONNX.
+- [ ] Export ImageNet-pretrained MobileNetV2 FP32 to ONNX at provisional opset 17;
+      explicitly reject the legacy opset-9 spike artifact.
 - [ ] Create a small static PTQ ONNX model.
 - [ ] Run one epoch/minimal step of the planned QAT path and export deployable
       INT8 ONNX.
 - [ ] On `gx10`, load all three models with the exact planned C++ ORT build
       inside the target-compatible ARM64 environment.
-- [ ] Run a fixture and save ORT profiles/operator coverage.
+- [ ] With the C++ API, start from `ORT_ENABLE_ALL`, call
+      `SessionOptions::EnableProfiling(prefix)`, save the session-optimized graph,
+      and run a fixture. Save profiles plus operator/data-type coverage; do not use
+      one fused-node name as the sole proof of INT8 execution.
+- [ ] Verify FP32/PTQ/QAT use the same P0-accepted opset. Compare
+      `ORT_ENABLE_EXTENDED` later only as an explicitly named E6 candidate.
 - [ ] Pin versions only after FP32/PTQ/QAT all work end to end.
 
 **Output:** P0 evidence that all three model forms execute in ARM64 C++ and the
@@ -329,10 +339,14 @@ Depends on: C2.
 - [ ] Search thresholds using cis-val-clean and trans-val only.
 - [ ] Apply the two-domain 90% sequence-balanced recall rule from DESIGN §6.3.
 - [ ] Bootstrap `seq_id` clusters and save the threshold distribution/95% interval.
-- [ ] Save `artifacts/policies/bobcat_v1.yaml` bound to class map/model hash.
+- [ ] Without excluding or down-weighting short sequences, report the positive
+      sequence-length distribution, `1-2`/`3-5`/`>5` recall where supported, and
+      event capture rate alongside frame/sequence-balanced recall.
+- [ ] Save `artifacts/policies/bobcat_v1.json` bound to class map/model hash.
 - [ ] Implement the versioned generic policy schema with `mode: any`, non-empty
       unique animal targets, per-class thresholds, and model/class-map hashes;
-      reject `car` and `empty` as wildlife targets.
+      reject `car` and `empty` as wildlife targets. Runtime policy and catalog
+      artifacts are JSON; training configuration may remain YAML.
 - [ ] Produce validation precision/recall/F2/false-fire/fire-rate results and score
       distributions.
 
@@ -343,7 +357,8 @@ report.
 
 Depends on: C3, C0.
 
-- [ ] Export FP32 ONNX with fixed input/output contract and metadata.
+- [ ] Export FP32 ONNX with fixed input/output contract, metadata, and the
+      P0-accepted opset (provisionally 17).
 - [ ] Pass P1 preprocessing parity against the reference C++ preprocessor.
 - [ ] Pass P2 PyTorch-vs-ORT FP32 parity.
 - [ ] Pass initial ORT Python-vs-C++ fixture parity.
@@ -374,7 +389,9 @@ Depends on: Gate C.
 
 - [ ] Build the fixed 1,024-image calibration manifest from training data only.
 - [ ] Generate MinMax, Entropy, and Percentile static INT8 candidates.
-- [ ] Inspect QDQ/QOperator coverage and remaining FP32 nodes.
+- [ ] Use S8S8 QDQ as the primary representation; test QOperator only as an
+      explicitly named ARM candidate. Save quantized/optimized graphs, ORT profile,
+      operator/data-type coverage, and remaining FP32 nodes.
 - [ ] Record the pre-registered MobileNetV2 PTQ risk before viewing results.
 - [ ] Run quantization debugging for material accuracy drops.
 - [ ] Calibrate candidate-specific bobcat policies on validation.
@@ -390,7 +407,9 @@ Depends on: Gate C, A3.
 - [ ] Run the validated affine INT8 fake-quant/QAT recipe.
 - [ ] Search only the documented low learning-rate range on validation.
 - [ ] Export a genuinely quantized ONNX graph.
-- [ ] Inspect integer operator coverage/profile.
+- [ ] Inspect integer execution using exported/optimized graphs,
+      operator/data-type coverage, ORT profile, and latency together rather than a
+      single version-specific fused-node name.
 - [ ] Calibrate policy and pass P3/P4.
 
 **Output:** selected M2 model, policy, profile, metrics, and comparison row.
@@ -399,11 +418,14 @@ Depends on: Gate C, A3.
 
 Depends on: Gate C.
 
-- [ ] Adapt `hw1/src/structured.py` to the frozen MobileNetV2 input, residual/
-      depthwise dependency groups, 16 outputs, and bobcat validation metrics.
+- [ ] Adapt `hw1/src/structured.py` to the frozen MobileNetV2 input and restrict
+      Core pruning roots to expansion channels. Each dependency group must couple
+      expansion output/BN, depthwise input/output/groups/BN, and projection input;
+      keep projection/residual widths, stem, final conv, and classifier fixed.
 - [ ] Profile M0 parameters/MACs.
 - [ ] Produce sensitivity evidence for dependency groups.
-- [ ] Add pruning correctness tests.
+- [ ] After each pruning step, test depthwise group/channel equality, residual-add
+      shapes, forward/backward execution, classifier width, and ONNX export.
 
 **Output:** sensitivity report and reproducible pruning config.
 
@@ -414,7 +436,8 @@ Depends on: D3.
 - [ ] Create approximately 15%, 30%, and 45% MAC-reduction candidates.
 - [ ] Physically remove channels and verify changed shapes/MACs.
 - [ ] Fine-tune each under the fixed data/loss contract.
-- [ ] Export and parity-check deployable candidates.
+- [ ] Export deployable candidates with the P0-accepted opset and parity-check
+      them; verify changed physical shapes/MACs in ONNX.
 - [ ] Calibrate policies and add all validation rows.
 - [ ] Select one M3 point for M4 using the validation Pareto frontier.
 
@@ -458,7 +481,11 @@ Depends on: A4; harden the smoke implementation using M0.
 - [ ] Replace the 145-line course smoke test with a C++17 application/library
       structure, tests, configuration, and CLI.
 - [ ] Implement RAII/error/logging conventions and deterministic JSON schemas.
-- [ ] Pin the ORT CPU EP build and compiler flags.
+- [ ] Vendor a pinned `nlohmann/json` single header plus license/version/hash;
+      require no system JSON/YAML development package for the runtime bundle.
+- [ ] Pin the ORT CPU EP build and compiler flags. Use target-scoped Release `-O3`;
+      forbid `-march=native` on `gx10`. Permit explicit Pi CPU tuning or `native`
+      only for a build performed on the same Pi.
 - [ ] Prefer one proven official ONNX Runtime Linux AArch64 artifact for the clean
       `gx10` target environment and Pi; fall back to pinned source build only if
       P0 proves the artifact incompatible.
@@ -477,8 +504,12 @@ Depends on: E1, C0; smoke path is provisional until C1a freezes the input.
 Depends on: E1, C4.
 
 - [ ] Implement model contract validation and ORT session/thread configuration.
+- [ ] Default to `ORT_ENABLE_ALL`, support the registered E6 graph-level
+      comparison, enable C++ profiling with an explicit file prefix, and support
+      persistence of the session-optimized graph.
 - [ ] Implement class-map/model-hash-bound loading of one or more target classes,
-      each with its own threshold; Core combination semantics are `mode: any`.
+      each with its own threshold from JSON policy/catalog artifacts; Core
+      combination semantics are `mode: any`.
 - [ ] Implement `SHUTTER_TRIGGER=0/1` output with selected scores and passing
       targets in the structured inference result.
 - [ ] Add single-target, multi-target, exact-boundary, `car`/`empty`/duplicate/
@@ -518,6 +549,9 @@ Depends on: E5, Gate D.
       with explicit validation accuracy/decision-drift evidence.
 - [ ] Measure supported ORT graph levels, threads 1/2/4, memory arena on/off, and
       stable CPU affinity if exposed; change one factor at a time.
+- [ ] Treat `ORT_ENABLE_ALL` as the default and `ORT_ENABLE_EXTENDED` as a measured
+      alternative; retain optimized graphs and profiles for both rather than
+      inferring execution type from node names alone.
 - [ ] Keep reduced decode only if validation bobcat metrics meet the predeclared
       tolerance; it is not preprocessing parity.
 - [ ] Run Python-vs-C++ validation dataset parity.
@@ -595,8 +629,8 @@ Depends on: F2.
 - [ ] Build 14 threshold-catalog status entries. Emit numeric thresholds for the
       **11 selectable targets** (nine two-domain and two single-domain fallbacks)
       and null thresholds for unavailable `badger`, `deer`, and `fox`. Generate
-      the bobcat policy and validated `bobcat_coyote_v1.yaml`, and record combined
-      validation false-fire metrics.
+      `threshold_catalog.json`, the bobcat policy, and validated
+      `bobcat_coyote_v1.json`; record combined validation false-fire metrics.
 - [ ] Freeze git commit, binary, selected model, policies, preprocessing/decode
       mode, ORT options, and thread count.
 - [ ] Archive freeze manifest before test evaluation.
@@ -662,7 +696,8 @@ Depends on: G1.
 - [ ] Complete and clean-run `notebooks/02_results_analysis.ipynb`.
 - [ ] Generate every table/figure required by DESIGN §17.
 - [ ] Compute sequence-bootstrap metric/threshold intervals, support-aware macro
-      F1, official-vs-clean cis-val effects, and per-location trans recall.
+      F1, official-vs-clean cis-val effects, per-location trans recall,
+      sequence-length-stratified recall, and event capture rate.
 - [ ] Report multi-label exclusions for confusion/macro metrics and retain those
       images in target-presence metrics.
 - [ ] Select representative failure cases without hiding negative results.
