@@ -111,13 +111,29 @@ model. The E chain therefore overlaps phases B-D rather than preceding them.
 
 ### A0 — Record starting state
 
-- [ ] Confirm access to the dedicated `gx10` working copy and capture
+- [x] Confirm access to the dedicated `gx10` working copy and capture
       `git status`, current branch/commit, disk space, CPU/GPU, ARM64 architecture,
       OS, CUDA, compiler, and available persistent-job mechanism.
-- [ ] Preserve unrelated user changes.
-- [ ] Create a dated run/session log.
+- [x] Preserve unrelated user changes.
+- [x] Create a dated run/session log.
 
 **Output:** `results/provenance/project_start.json` and newest handoff update.
+
+**Done 2026-07-15.** Captured by `scripts/capture_provenance.py`; run log at
+`results/provenance/RUNS.md`. Key facts that shape later tasks:
+
+- gx10 is Ubuntu 24.04 / **glibc 2.39**, but Raspberry Pi OS Bookworm ships glibc
+  2.36. A natively-built binary would request `GLIBC_2.38/2.39` symbols the target
+  cannot resolve, so A2's container must be `debian:bookworm-slim`. A binary built
+  against 2.36 still loads on a newer Pi OS; the reverse is false.
+- gx10 CPU is Cortex-X925 + A725 with `i8mm`, `sve`, `sve2`. Pi 5 Cortex-A76 has
+  none of these. This is the measured basis for the DESIGN §12.2 parity strata.
+- 20 cores, GB10 / CUDA 13.0 / torch 2.11.0+cu130, 502.8 GiB free, 117.8 GiB RAM
+  available after the boreal stack was stopped (see DESIGN §4 operational note).
+- `torch-pruning 1.6.1` is already present. `onnx`, `onnxruntime` and `opencv` are
+  not — A2 installs them.
+- gx10 cannot push to GitHub (403; the `~/.netrc` token lacks write). Artifacts
+  currently return to the workstation by `scp` and are committed there.
 
 ### A1 — Create repository skeleton
 
