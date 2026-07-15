@@ -53,6 +53,13 @@ compile_commands.json
 *.perf
 onnxruntime_profile_*.json
 
+# Staged deployment bundles. A bundle is a build output — binary, libonnxruntime.so,
+# model — rebuilt by scripts/build_bundle.sh in the target container, ~20 MB, and
+# reproducible. What must be committed is the audit that describes it
+# (evidence/bundle_audit.json records the file list, checksums and GLIBC ceiling),
+# not the bytes.
+/final_project/results/**/bundle/
+
 # Raw tensor blobs: fixtures and model outputs under results/. Every one is
 # reproducible — the fixture from its recorded seed, the outputs by re-running the
 # probe — and each is ~600 KB of noise. What must be committed is their identity,
