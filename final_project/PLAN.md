@@ -24,8 +24,9 @@ The executing agent must follow these rules:
 
 - use the dedicated `gx10` host for Phases A-E and G, including all data work,
   training, C++ work, shutter emulation, tests, dry runs, and deliverable builds;
-- use the rented Raspberry Pi 5 only for Phase F target-hardware verification
-  and final measurements; never present `gx10` timings as Pi results;
+- use the rented Raspberry Pi target (Pi 5 preferred, RPi 4 contingency) only for
+  Phase F target-hardware verification and final measurements; never present
+  `gx10` timings as Pi results;
 - keep bobcat as the primary graded target while implementing generic target-set
   configuration over the 14 animal outputs; `car` and `empty` are not targets;
 - work only on Core until Gate G passes;
@@ -244,6 +245,11 @@ Depends on: B3.
 - [ ] Produce class, location, sequence, split, and supplement statistics.
 - [ ] Verify multi-label counts 7 / 0 / 1 / 61 / 9 across the five official
       splits and test target-presence semantics.
+- [ ] Emit the per-class validation support table (images and sequences on
+      cis-val-clean and trans-val) and assert that the animal classes with zero
+      validation positives are exactly `deer` and `fox`, while `badger` has
+      exactly one positive image / one sequence. Record all three as unavailable
+      targets with null thresholds.
 - [ ] Render/inspect representative RGB, IR-like, empty, bobcat, small, portrait,
       and landscape samples.
 - [ ] Complete and execute `notebooks/01_data_audit.ipynb` from a clean kernel.
@@ -288,8 +294,13 @@ Depends on: Gate B.
 Depends on: C0, C1.
 
 - [ ] Run the matched no-empty 15-output versus 5k-empty 16-output ablation from
-      DESIGN §5.2 and record cis/trans empty false-fire effects.
-- [ ] Run the matched 224x224 versus 256x192 aspect-preserving input control.
+      DESIGN §5.2 and record cis/trans empty false-fire effects. Match the arms on
+      **optimizer steps, not epochs** (13,546 vs 18,546 images = +36.9% steps per
+      epoch); record steps, effective epochs, total images-seen, and non-empty
+      images-seen for both.
+- [ ] Select the data/head contract from those two provisional 256x192 runs, reuse
+      the winner as the landscape reference, and train exactly one additional
+      matched 224x224 run. Do not run an unnecessary full 2x2 control matrix.
 - [ ] Select/freeze the Core input using cis-val-clean/trans-val target metrics,
       real-pixel utilization, and MACs; prefer 256x192 when statistically tied.
 - [ ] Permit 320x240 only if both planned inputs fail the bobcat-recall rule.
@@ -544,12 +555,17 @@ Depends on: E7.
 **Gate E:** the deployment bundle and one-command benchmark work end to end. Do
 not rent the Pi before this gate.
 
-`gx10` dry-run latency is diagnostic only. Phase F remains mandatory because
-only measurements produced on the rented Pi 5 count as target-hardware evidence.
+`gx10` dry-run latency is diagnostic only. Phase F remains mandatory because only
+measurements produced on a Raspberry Pi count as target-hardware evidence.
 
 ---
 
-## 8. Phase F — five-day rented Raspberry Pi 5 trial
+## 8. Phase F — Raspberry Pi target trial (Pi 5 preferred)
+
+If the planned Pi 5 cannot be provisioned, use another Pi 5 provider and then an
+RPi 4 provider if necessary. The assignment permits both. If no Pi is available,
+Gate F fails and the result is a partial submission rather than completed Core;
+never replace Pi measurements with `gx10` timings.
 
 ### F1 — Day 1: provision and smoke test
 
@@ -576,15 +592,20 @@ Depends on: F2.
 - [ ] Repeat validation after any safe fix.
 - [ ] Select the final optimized model using validation accuracy, real Pi latency,
       model size, and simplicity; write `final_decision.md`.
-- [ ] On `gx10`, train confirmation seeds 17/73 for the selected transformation
-      with frozen hyperparameters; these measure variability and do not replace
-      the seed-42 deployment artifact.
-- [ ] Calibrate a final-model threshold catalog for all 14 animals; flag classes
-      lacking support, generate the bobcat policy and validated
-      `bobcat_coyote_v1.yaml`, and record combined validation false-fire metrics.
+- [ ] Build 14 threshold-catalog status entries. Emit numeric thresholds for the
+      **11 selectable targets** (nine two-domain and two single-domain fallbacks)
+      and null thresholds for unavailable `badger`, `deer`, and `fox`. Generate
+      the bobcat policy and validated `bobcat_coyote_v1.yaml`, and record combined
+      validation false-fire metrics.
 - [ ] Freeze git commit, binary, selected model, policies, preprocessing/decode
       mode, ORT options, and thread count.
 - [ ] Archive freeze manifest before test evaluation.
+- [ ] **Only after the freeze:** launch confirmation seeds 17/73 for the selected
+      transformation on `gx10` in the background with frozen hyperparameters. They
+      measure variability, never replace the seed-42 deployment artifact, and must
+      not gate this freeze, any later trial day, or Gate F. Retraining a
+      pruned+QAT candidate twice can outlast a trial day; they may finish after the
+      trial expires but must finish before Gate G and final submission.
 
 **Freeze gate:** no artifact or configuration changes after this point.
 
@@ -598,6 +619,11 @@ Depends on: F3.
       processes/repetitions as specified.
 - [ ] Run the fixed Pi parity subset and match decisions to the frozen gx10
       reference; full test transfer to Pi is optional, not required.
+- [ ] **If the parity subset disagrees, stop before claiming target equivalence.**
+      Report score and decision mismatch rates and treat Pi decisions as
+      authoritative for affected frames. If the difference cannot be explained,
+      either run full test accuracy on Pi or report the gx10 C++ accuracy only as
+      gx10 evidence with the Pi-equivalence claim explicitly withheld.
 - [ ] Capture raw per-frame predictions/timings/system logs.
 - [ ] Copy artifacts off the Pi immediately.
 
@@ -624,6 +650,8 @@ repetitions under a frozen protocol; full frozen test accuracy exists from gx10.
 Depends on: Gate F.
 
 - [ ] Validate and index all raw training/evaluation/parity/Pi result files.
+- [ ] Confirm seeds 17/73 have finished for M0 and the selected final
+      transformation; archive their variability metrics before continuing.
 - [ ] Create a machine-readable canonical results table.
 - [ ] Record missing/unavailable fields explicitly.
 

@@ -78,7 +78,8 @@ policy:
 - one inference per frame;
 - ONNX Runtime CPU Execution Provider;
 - C++17/OpenCV/ONNX Runtime application;
-- rented Raspberry Pi 5, CPU-only final measurements.
+- rented Raspberry Pi target, with Pi 5 preferred and RPi 4 accepted only as the
+  documented contingency; CPU-only final measurements.
 
 Core candidates:
 
@@ -105,7 +106,8 @@ locked until the complete Core submission passes its Definition of Done.
 ### Configurable target policy
 
 The model always computes 14 animal scores plus `car` and `empty`. Selecting one
-or several known animals changes only a YAML policy and adds no model inference:
+or several catalog-supported animals changes only a YAML policy and adds no model
+inference:
 
 ```yaml
 schema_version: 1
@@ -124,13 +126,18 @@ The checked-in values above are schema examples, not final thresholds. The
 pipeline replaces them with validation-calibrated values bound to the final model.
 The bundle contains a bobcat-only policy, a per-class threshold catalog, and one
 validated multi-target example. Unknown/duplicate classes, `car` or `empty` as a
-wildlife target, invalid thresholds, unsupported modes, and hash mismatches are
-rejected.
+wildlife target, classes with no calibrated threshold, invalid thresholds,
+unsupported modes, and hash mismatches are rejected.
 
-Selecting any of the 14 existing CCT-20 animals requires no retraining. Adding a
-species outside the 16-class map requires labelled data and fine-tuning. Detecting two
-different species simultaneously in one frame would require a multi-label model
-or detector and is outside Core.
+Selecting an existing CCT-20 animal requires no retraining — but only where a
+threshold can be calibrated. CCT-20 validation has **zero `deer` and zero `fox`
+positives**, while `badger` has only one positive image / one sequence. The catalog
+contains status entries for all 14 animals, but numeric thresholds for exactly
+**11 selectable targets**; `badger`, `deer`, and `fox` have null thresholds and
+are refused by the policy loader. Adding a species outside the 16-class map
+requires labelled data and fine-tuning. Detecting two different species
+simultaneously in one frame would require a multi-label model or detector and is
+outside Core.
 
 ---
 
@@ -314,7 +321,7 @@ Do not hard-code private hostnames, usernames, SSH keys, tokens, or paths into t
 public repository. Private deployment values belong in ignored local config or
 environment variables.
 
-### Rented Raspberry Pi 5
+### Raspberry Pi target (Pi 5 preferred)
 
 The Pi is the only valid source of target latency/FPS/resource evidence. Its trial
 is measurement time, not normal
@@ -324,6 +331,11 @@ benchmarks. `gx10` performance numbers must never be presented as Pi results. Th
 `gx10` host continues to orchestrate remote commands and store copied raw evidence.
 The five-day schedule and fair-comparison rules are defined in DESIGN §12 and
 PLAN §8.
+
+If the planned Pi 5 becomes unavailable, the fallback order is another Pi 5
+provider and then an RPi 4 provider, which the assignment also permits. Without
+any Raspberry Pi, Gate F fails and the work is only a partial submission: `gx10`
+results must never be relabelled as target-hardware evidence.
 
 ---
 
