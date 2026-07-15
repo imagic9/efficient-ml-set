@@ -10,9 +10,11 @@
 namespace wildlife_trigger {
 
 double LetterboxInfo::pixel_utilisation() const {
-    const double tensor_px =
-        static_cast<double>(resized_width + 2 * pad_left) *
-        static_cast<double>(resized_height + 2 * pad_top);
+    // Denominator is the real canvas, not `resized + 2 * pad`: the pads are
+    // floor-divided, so an odd difference leaves that product one pixel short and
+    // inflates the result. Mirrors data/preprocess.py.
+    const double tensor_px = static_cast<double>(target_width) *
+                             static_cast<double>(target_height);
     if (tensor_px <= 0.0) {
         return 0.0;
     }
@@ -54,6 +56,8 @@ PreprocessResult Preprocessor::from_bgr(const cv::Mat &bgr) {
     LetterboxInfo info;
     info.source_width = bgr.cols;
     info.source_height = bgr.rows;
+    info.target_width = config_.width;
+    info.target_height = config_.height;
 
     // Step 3: the largest scale that fits the frame entirely inside the target.
     // min(), never max(): max() would fill the target and crop the overflow, which

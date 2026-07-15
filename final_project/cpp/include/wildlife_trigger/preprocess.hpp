@@ -61,6 +61,12 @@ struct LetterboxInfo {
     int pad_top = 0;
     double scale = 0.0;
 
+    // The canvas actually padded into. Carried rather than re-derived from the pads:
+    // they are floor-divided, so an odd difference puts the extra pixel on the far
+    // side and `resized + 2 * pad` lands one short of the canvas.
+    int target_width = 0;
+    int target_height = 0;
+
     // Fraction of the tensor holding real pixels rather than grey bars. DESIGN §5.5
     // predicts 97.4% for 256x192 and 72.8% for 224x224 on the dominant CCT frame;
     // reporting it lets that claim be checked on real data instead of assumed.

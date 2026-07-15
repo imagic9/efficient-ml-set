@@ -52,9 +52,17 @@ void test_tensor_shape_and_letterbox_geometry() {
     assert(result.letterbox.pad_left == 0);
     assert(result.letterbox.pad_top == 2);  // (192 - 187) / 2
 
-    // DESIGN §5.5 predicts 97.4% utilisation for this frame at 256x192.
+    // DESIGN §5.5 predicts 97.4% utilisation for this frame at 256x192: 256*187
+    // real pixels in the full 256*192 canvas.
+    //
+    // Asserted exactly. The 0.96-0.99 bound this replaces was wide enough to pass a
+    // denominator that read `resized + 2 * pad` — one pixel short of the canvas here,
+    // because the 5 padding rows split 2 top and 3 bottom — and so returned 97.9%
+    // while DESIGN said 97.4%. A tolerance wider than the error hides the error.
     const double utilisation = result.letterbox.pixel_utilisation();
-    assert(utilisation > 0.96 && utilisation < 0.99);
+    const double expected = (256.0 * 187.0) / (256.0 * 192.0);
+    assert(std::fabs(utilisation - expected) < 1e-12);
+    assert(utilisation > 0.9739 && utilisation < 0.9741);
     std::printf("  PASS  1024x747 -> 256x187 + pad, utilisation %.1f%%\n",
                 utilisation * 100.0);
 }
@@ -73,7 +81,9 @@ void test_square_input_wastes_a_quarter_of_the_tensor() {
     assert(result.letterbox.resized_width == 224);
     assert(result.letterbox.resized_height == 163);  // 747 * (224/1024) = 163.4
     const double utilisation = result.letterbox.pixel_utilisation();
-    assert(utilisation > 0.71 && utilisation < 0.74);  // DESIGN says 72.8%
+    const double expected = (224.0 * 163.0) / (224.0 * 224.0);  // DESIGN says 72.8%
+    assert(std::fabs(utilisation - expected) < 1e-12);
+    assert(utilisation > 0.7276 && utilisation < 0.7278);
     std::printf("  PASS  224x224 wastes %.1f%% of the tensor on grey bars\n",
                 (1.0 - utilisation) * 100.0);
 }

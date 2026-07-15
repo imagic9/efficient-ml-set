@@ -78,14 +78,49 @@ class LetterboxInfo:
     pad_left: int
     pad_top: int
     scale: float
+    # The canvas actually padded into. Carried rather than re-derived from the pads:
+    # see pixel_utilisation.
+    target_width: int
+    target_height: int
 
     def pixel_utilisation(self) -> float:
-        tensor_px = (self.resized_width + 2 * self.pad_left) * (
-            self.resized_height + 2 * self.pad_top
-        )
+        """Fraction of the tensor holding real pixels rather than grey bars.
+
+        The denominator is the real canvas, not `resized + 2 * pad`. The pads are
+        floor-divided, so when the difference is odd the far side carries one extra
+        pixel and `resized + 2 * pad` lands one short of the canvas — which inflates
+        the result. 1024x747 at 256x192 pads 2 rows top and 3 bottom, and the old form
+        returned 97.9% against DESIGN §5.5's 97.4%.
+        """
+        tensor_px = self.target_width * self.target_height
         if tensor_px <= 0:
             return 0.0
         return (self.resized_width * self.resized_height) / tensor_px
+
+
+def letterbox_geometry(
+    source_width: int, source_height: int, config: PreprocessConfig
+) -> tuple[int, int, float]:
+    """The content size inside the letterbox, and the scale that produced it.
+
+    Split out from `letterbox_bgr` because the geometry is answerable from two integers
+    while the pixels are not: C1a's input-cost table needs the real-pixel utilization of
+    57,864 frames across candidate geometries, and decoding them all to learn something
+    already recorded in the manifests would be absurd. The alternative — a second copy of
+    this arithmetic in the reporting tool — is how the two copies drift and the reported
+    utilization stops describing the tensor the network is actually fed.
+    """
+    scale = min(config.width / source_width, config.height / source_height)
+
+    # round(), not truncate: 1024x747 into 256x192 gives 186.75 rows, and truncating
+    # loses a row of animal for no reason. Python's round() is banker's rounding, so
+    # np.rint would disagree with C++'s std::lround on exact .5 — use floor(x + 0.5).
+    #
+    # Clamped: rounding can exceed the target by one pixel at some aspect ratios, which
+    # would overflow the canvas.
+    resized_width = min(config.width, max(1, int(np.floor(source_width * scale + 0.5))))
+    resized_height = min(config.height, max(1, int(np.floor(source_height * scale + 0.5))))
+    return resized_width, resized_height, scale
 
 
 def letterbox_bgr(bgr: np.ndarray, config: PreprocessConfig) -> tuple[np.ndarray, LetterboxInfo]:
@@ -101,13 +136,9 @@ def letterbox_bgr(bgr: np.ndarray, config: PreprocessConfig) -> tuple[np.ndarray
         raise ValueError(f"preprocess: expected 8-bit 3-channel BGR, got {bgr.shape} {bgr.dtype}")
 
     source_height, source_width = bgr.shape[:2]
-    scale = min(config.width / source_width, config.height / source_height)
-
-    # round(), not truncate: 1024x747 into 256x192 gives 186.75 rows, and truncating
-    # loses a row of animal for no reason. Python's round() is banker's rounding, so
-    # np.rint would disagree with C++'s std::lround on exact .5 — use floor(x + 0.5).
-    resized_width = min(config.width, max(1, int(np.floor(source_width * scale + 0.5))))
-    resized_height = min(config.height, max(1, int(np.floor(source_height * scale + 0.5))))
+    resized_width, resized_height, scale = letterbox_geometry(
+        source_width, source_height, config
+    )
 
     resized = cv2.resize(
         bgr, (resized_width, resized_height), interpolation=cv2.INTER_LINEAR
@@ -133,6 +164,8 @@ def letterbox_bgr(bgr: np.ndarray, config: PreprocessConfig) -> tuple[np.ndarray
         pad_left=pad_left,
         pad_top=pad_top,
         scale=scale,
+        target_width=config.width,
+        target_height=config.height,
     )
     return np.ascontiguousarray(rgb), info
 
