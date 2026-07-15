@@ -1,0 +1,81 @@
+# Target-compatible ARM64 build/test environment.
+#
+# Why this exists: gx10 is Ubuntu 24.04 with glibc 2.39; Raspberry Pi OS Bookworm
+# ships 2.36. A binary built natively on gx10 requests GLIBC_2.38/2.39 symbols the
+# Pi cannot resolve and will not load at all. Building here, against the oldest
+# plausible target, produces a binary that loads on Bookworm *and* on a newer Pi
+# OS -- glibc is backward compatible, so building against the newer one is the
+# only direction that fails.
+#
+# No emulation is involved in the build: gx10 is already aarch64, so this runs
+# natively at full speed. qemu-user is installed for a different purpose -- see
+# below.
+#
+# Build with scripts/build_target_container.sh, which passes the pins from
+# configs/env/pins.env so this file and the scripts cannot drift apart.
+
+ARG TARGET_BASE_IMAGE=debian:bookworm-slim
+ARG TARGET_BASE_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818
+FROM ${TARGET_BASE_IMAGE}@${TARGET_BASE_DIGEST}
+
+ARG ORT_VERSION
+ARG ORT_SHA256
+ARG ORT_URL
+ARG ORT_PREFIX=/opt/onnxruntime
+ARG UID=1000
+ARG GID=1000
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# build-essential/cmake: the C++ toolchain, at bookworm's versions (g++ 12.2,
+#   cmake 3.25.1) rather than gx10's, so what compiles here is what the Pi can run.
+# libopencv-dev: bookworm ships 4.6.0, the same version Pi OS Bookworm's apt
+#   offers. E7 must still decide whether to bundle the .so or link statically --
+#   a Trixie Pi would carry a different soname.
+# qemu-user: NOT for building. It runs the finished aarch64 binary with the Pi's
+#   HWCAP (-cpu cortex-a76), so ORT dispatches the Pi's kernels and parity can be
+#   rehearsed before the rental. Correctness only; never timing.
+# file/binutils: objdump and friends, for the GLIBC symbol audit that gates
+#   packaging.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        pkg-config \
+        libopencv-dev \
+        qemu-user \
+        ca-certificates \
+        curl \
+        file \
+        binutils \
+        python3 \
+        python3-venv \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify the hash before trusting the archive: an unverified download is an
+# unpinned dependency wearing a version number.
+RUN curl -fsSL -o /tmp/ort.tgz "${ORT_URL}" \
+    && echo "${ORT_SHA256}  /tmp/ort.tgz" | sha256sum -c - \
+    && mkdir -p "${ORT_PREFIX}" \
+    && tar xzf /tmp/ort.tgz -C "${ORT_PREFIX}" --strip-components=1 \
+    && rm /tmp/ort.tgz \
+    && ldconfig
+
+ENV ORT_PREFIX=${ORT_PREFIX}
+ENV LD_LIBRARY_PATH=${ORT_PREFIX}/lib
+
+# Prove at build time that the pinned ORT actually loads under this glibc, rather
+# than discovering it during a rental. `ldd` reporting "not found" would fail the
+# grep and break the build here.
+RUN echo "=== ORT under glibc $(ldd --version | head -1 | grep -oE '[0-9]+\.[0-9]+$') ===" \
+    && ldd "${ORT_PREFIX}/lib/libonnxruntime.so" \
+    && ! ldd "${ORT_PREFIX}/lib/libonnxruntime.so" | grep -q "not found" \
+    && echo "ORT loads cleanly on the target glibc"
+
+# Match the host user so files created in the mounted repo are not root-owned.
+RUN groupadd -g ${GID} builder 2>/dev/null || true \
+    && useradd -m -u ${UID} -g ${GID} builder 2>/dev/null || true
+USER ${UID}:${GID}
+
+WORKDIR /work
+CMD ["/bin/bash"]
