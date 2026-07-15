@@ -132,7 +132,7 @@ def fold_conv_bn(model: nn.Module) -> int:
         )
 
     folded = 0
-    for module in model.modules():
+    for module in list(model.modules()):
         children = list(module.named_children())
         for (conv_name, conv), (bn_name, bn) in zip(children, children[1:]):
             if isinstance(conv, nn.Conv2d) and isinstance(bn, nn.BatchNorm2d):
@@ -237,11 +237,16 @@ def rewrite_convolutions(model: nn.Module) -> dict:
 
     The absorbed ReLU6 is replaced by Identity so `nn.Sequential`'s positional
     indexing survives.
+
+    `list(model.modules())` is materialised before mutating. `modules()` is a lazy
+    generator: replacing a Conv2d with a QuantConv2d that *holds* that Conv2d makes
+    the generator descend into the new wrapper and quantize its inner convolution
+    again, without end. That is not hypothetical — it recursed on the first run.
     """
     converted = 0
     absorbed = 0
 
-    for module in model.modules():
+    for module in list(model.modules()):
         children = list(module.named_children())
         for index, (name, child) in enumerate(children):
             if not isinstance(child, nn.Conv2d):
