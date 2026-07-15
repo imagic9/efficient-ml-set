@@ -208,20 +208,43 @@ def main() -> int:
     ]
 
     if matched["an_arm_stopped_early"]:
+        consumed = matched["steps_consumed"]
+        longest = max(consumed, key=consumed.get)
+        best_run = rows[0]["run"]
         lines += [
-            "### An arm stopped early",
+            "### Not every arm used its budget",
             "",
-            f"Steps actually consumed: `{matched['steps_consumed']}` "
-            f"(spread {matched['consumed_spread']:.1%} of the larger).",
+            f"Steps actually consumed: `{consumed}` "
+            f"(spread {matched['consumed_spread']:.1%} of the largest).",
             "",
             "Early stopping is part of DESIGN §7.2's recipe and was applied identically",
-            "to both arms, so this does not invalidate the comparison — an arm that",
+            "to every arm, so this does not invalidate the comparison — an arm that",
             "converged sooner has told us something about itself. But the arms did not",
             "train for equally long, so read the score together with the steps:",
             "*it stopped early* and *it is worse* are different claims, and only the",
             "second is about the data.",
             "",
         ]
+        # Which way the imbalance cuts is the part that matters. An arm that trained
+        # longest and still lost is losing despite the imbalance, not because of it —
+        # and that makes the result stronger than the matched budget alone promises.
+        if longest != best_run:
+            lines += [
+                f"Here the imbalance runs **against** the winner: `{longest}` consumed "
+                f"the most steps ({consumed[longest]:,}) and still did not take the top "
+                f"score, while `{best_run}` reached it on {consumed[best_run]:,}. The "
+                "extra training went to an arm that lost anyway, so it cannot be what "
+                "produced the ranking.",
+                "",
+            ]
+        else:
+            lines += [
+                f"Note the direction: `{best_run}` both consumed the most steps "
+                f"({consumed[longest]:,}) and took the top score. The step imbalance and "
+                "the ranking point the same way, so this comparison cannot separate them "
+                "— treat the margin as an upper bound on the effect.",
+                "",
+            ]
 
     lines += [
         "## Results",
