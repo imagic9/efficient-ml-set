@@ -1,6 +1,9 @@
 # Session handoffs — local only, not published
 Handoff/
 
+# Design/code reviews — local working notes, not published
+reviews/
+
 # Instructor-provided assignment materials
 *.docx
 # Per-homework task/materials folders — local only, never published

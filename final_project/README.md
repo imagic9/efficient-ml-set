@@ -1,71 +1,425 @@
-# Final Project — Edge AI & On-Device Optimization
+# Wildlife Trigger — Efficient ML Final Project
 
-## Task
+Status: **Core design approved; implementation not started.**
 
-Prepare, port, and deploy a neural network for on-device inference on a Raspberry
-Pi (RPi 4 or 5). Establish a baseline, then apply model- and inference-level
-optimizations to improve FPS toward real time.
+Public repository: `REPO_URL`
 
-Core requirements:
-- Runs natively on the Raspberry Pi (inference over a saved dataset is fine).
-- Measure on-device latency, FPS, and resource usage for baseline vs optimized.
-- Apply optimizations (pruning, distillation, ONNX backends, bottleneck removal).
-- The optimized inference engine is written in **C++**; Python is limited to
-  training and model conversion.
+Final release: `RELEASE_URL`
 
-Deliverables: codebase + a slide-deck presentation. Graded on the engineering
-process and depth of analysis (model/optimization strategy, C++ inference,
-benchmarking, results analysis).
+Final report: `REPORT_URL`
 
-## What we are building
+These placeholders must be replaced before submission.
 
-A Raspberry Pi device that **fires a wildlife photographer's camera only when the
-animal they actually want walks into frame**. A motion sensor wakes the device, it
-classifies the frame, and it triggers the main camera only on the target species —
-then goes back to sleep. The photographer downloads a *module* for their animal
-(`bobcat-v1`, `elephant-v1`).
+---
 
-This makes latency and energy the product itself rather than vanity metrics: every
-millisecond saved is a better photograph, every millijoule is another night in the
-field. The course project builds and measures the decision core:
+## What this project does
 
-```
-is anything in frame?  →  what is it?  →  fire the shutter if it is the target
+Wildlife Trigger is a CPU-only Edge AI application for a Raspberry Pi 5. It
+receives a wildlife-camera frame, runs a full-frame classifier in C++, and emits
+an emulated shutter signal when the target animal — a bobcat — is present.
+
+```text
+saved JPEG frame
+    -> C++ preprocessing
+    -> MobileNetV2 / ONNX Runtime
+    -> bobcat score >= calibrated threshold?
+    -> SHUTTER_TRIGGER=1 or 0
 ```
 
-Key decisions in brief — a two-model cascade (a tiny gate rejects the ~70% of
-empty triggers before the species model runs), MobileNetV2 on ONNX Runtime, a
-crop-trained teacher distilled into a full-frame student, and Caltech Camera
-Traps-20 with its cis/trans splits so we can answer *"will it still work at a
-location it has never seen?"*.
+Example final behavior:
 
-**See [`DESIGN.md`](DESIGN.md) for the full design**: product framing, scope
-boundaries, the quantified reasons behind each choice, metrics, benchmark
-protocol, risks, and the roadmap beyond the course.
+```text
+frame_000412.jpg  predicted=bobcat  score=0.94  SHUTTER_TRIGGER=1
+frame_000413.jpg  predicted=coyote  score=0.03  SHUTTER_TRIGGER=0
+frame_000414.jpg  predicted=empty   score=0.01  SHUTTER_TRIGGER=0
+```
 
-## Contents
+The course submission uses saved images and emulates the shutter signal. A future
+physical product could place the same decision between a motion sensor and a
+camera/GPIO shutter interface.
 
-- [`DESIGN.md`](DESIGN.md) — the living design note. Read this first.
-- [`PLAN.md`](PLAN.md) — the work plan: dependency graph, phase gates, and what has
-  to be true before the 5-day Pi trial is opened.
-- [`Docker_VSCode/`](Docker_VSCode/) — reference dev-container and example pipeline
-  provided with the course: PyTorch → ONNX → C++ inference (ONNX Runtime + OpenCV),
-  with an ARM64 VS Code dev-container so the C++ side can be built and tested
-  without physical Raspberry Pi hardware. We use the dev-container as our build
-  environment and ONNX Runtime as our runtime; the bundled 145-line MobileNetV2
-  demo is a toolchain smoke-test, not a starting template.
+The dataset label is **bobcat (`Lynx rufus`)**, not Eurasian lynx (`Lynx lynx`).
 
-## Reuse from the homeworks
+---
 
-| From | Used for |
+## Course objective and evidence
+
+The assignment requires a neural network to run natively on a Raspberry Pi, a
+baseline-versus-optimized comparison, on-device latency/FPS/resource metrics,
+custom model/inference optimizations, and a C++ inference implementation.
+
+This project supplies:
+
+| Rubric area | Project evidence |
 |---|---|
-| `hw3/` — `DistillLoss`, `kd_train` | Distilling a crop-trained teacher into the full-frame student. Load-bearing: this is how we get the accuracy of cropping without running a detector on-device. |
-| `hw1/` — `src/structured.py` channel pruning | Real MAC reduction (unstructured pruning would shrink the file without speeding up the runtime — kept as a measured negative result). |
-| `hw2`/`hw3` — `src/qat.py` | The QAT loop, which already supports a teacher. The quantizer itself is replaced: HW2's K-Means centroid quantization compresses storage, whereas ONNX Runtime needs affine INT8 for integer arithmetic. |
+| Model/optimization strategy | FP32 MobileNetV2 baseline, INT8 PTQ, INT8 QAT, structured pruning, pruned QAT |
+| C++ inference | Correct/fused preprocessing, ONNX Runtime, target policy, signal emulation, dataset runner, tests |
+| Benchmarking | Same Pi 5, C++ binary, images, order, and protocol for baseline and optimized models |
+| Analysis/presentation | Raw evidence, reproducible notebooks, report, slides, negative results, bottlenecks, next steps |
 
-## Status
+The mandatory course outputs are the codebase and formal slide deck. This project
+also produces a formal report, analysis notebooks, deployable models, a Raspberry
+Pi bundle, and raw evidence so the work can be reproduced and defended.
 
-Design agreed, implementation not started. Hardware is a rented Raspberry Pi 5
-(Hostpro); all training, conversion and C++ development happen off-device, with
-the on-device window reserved for final measurements.
-</content>
+---
+
+## Core scope
+
+Core is intentionally limited to one model and one target policy:
+
+- full-frame MobileNetV2, width 1.0, input 224x224;
+- 16 outputs: 15 CCT-20 animal classes plus `empty`;
+- ImageNet-pretrained transfer learning;
+- calibrated bobcat threshold;
+- one inference per frame;
+- ONNX Runtime CPU Execution Provider;
+- C++17/OpenCV/ONNX Runtime application;
+- rented Raspberry Pi 5, CPU-only final measurements.
+
+Core candidates:
+
+| ID | Model |
+|---|---|
+| M0 | FP32 baseline |
+| M1 | INT8 PTQ |
+| M2 | INT8 QAT |
+| M3 | Structured-pruned FP32 |
+| M4 | Structured-pruned + QAT |
+
+No candidate is assumed to win. The final optimized model is selected on
+validation evidence and then frozen before test evaluation.
+
+Gate/cascade, object detection, physical GPIO, power measurement, multiple target
+modules, illegal-logging detection, custom inference engines, NPU/Hailo, and
+battery-life claims are outside Core.
+
+The only optional Stretch is crop-teacher knowledge distillation, and it remains
+locked until the complete Core submission passes its Definition of Done.
+
+---
+
+## Data
+
+Primary benchmark: Caltech Camera Traps-20 (CCT-20).
+
+| Split | Images | Purpose |
+|---|---:|---|
+| train | 13,553 | Training |
+| cis-val | 3,484 | Validation at known locations |
+| cis-test | 15,827 | Final test at known locations |
+| trans-val | 1,725 | Validation at one unseen location |
+| trans-test | 23,275 | Final test at nine unseen locations |
+
+The current downloadable split files contain 57,864 images in total. Test labels
+remain sealed until model, threshold, C++ binary, runtime options, preprocessing,
+and thread configuration are frozen.
+
+The official CCT-20 train split currently contains no `empty` training frames.
+Core therefore adds a deterministic supplement of 5,000 full-CCT empty images,
+selected only from locations disjoint from all 20 CCT-20 locations. Only those
+images are downloaded; the full 105 GB CCT archive is not required.
+
+Datasets and large image archives are never committed to the public repository.
+Versioned manifests, source URLs, hashes, and audit outputs are committed.
+
+Authoritative data sources:
+
+- https://lila.science/datasets/caltech-camera-traps
+- https://beerys.github.io/CaltechCameraTraps/
+- https://openaccess.thecvf.com/content_ECCV_2018/papers/Beery_Recognition_in_Terra_ECCV_2018_paper.pdf
+
+---
+
+## Document hierarchy — start here
+
+An implementation agent must read documents in this order:
+
+1. **This README** — orientation, scope, and entry points.
+2. [`DESIGN.md`](DESIGN.md) — source of truth for technical decisions,
+   acceptance criteria, metrics, deliverables, and Definition of Done.
+3. [`PLAN.md`](PLAN.md) — atomic execution tasks, dependencies, outputs, and
+   gates.
+4. The newest `../Handoff/HANDOFF_*.md` — actual session state, artifacts,
+   failures, and next task.
+5. [`Final Project TASK.docx`](Final%20Project%20TASK.docx) — original assignment
+   and rubric.
+
+If the documents disagree, stop and fix the inconsistency. Do not infer a new
+architecture from old files or conversation history.
+
+### Source-of-truth responsibilities
+
+| Document | Responsibility |
+|---|---|
+| README | Project entry point and reproduction/navigation guide |
+| DESIGN | What must be built and why; contracts and acceptance criteria |
+| PLAN | In what order to build it; task state, dependencies, and gates |
+| Newest handoff | What has actually happened in the latest session |
+| TASK.docx | Course requirements and grading rubric |
+
+---
+
+## Execution overview
+
+The implementation follows seven gated Core phases:
+
+1. **A — Repository and toolchain:** create structure, pin environments, prove
+   FP32/PTQ/QAT -> ONNX -> ARM64 C++ before full training.
+2. **B — Data:** freeze official splits and location-disjoint empty supplement;
+   pass all leakage/count/hash audits.
+3. **C — FP32 baseline:** train M0, calibrate bobcat policy, export ONNX, prove
+   preprocessing/model/C++ parity.
+4. **D — Optimization:** build M1-M4 independently, compare on validation, freeze
+   one final optimized candidate.
+5. **E — C++ and deployment:** implement/test the application, benchmark harness,
+   system monitor, deployment bundle, and clean ARM64 dry run.
+6. **F — Raspberry Pi:** profile on validation, freeze, then run unchanged final
+   cis/trans accuracy and baseline-versus-optimized benchmarks.
+7. **G — Submission:** generate analysis, report, slides, public release, model
+   artifacts, deployment bundle, and submission manifest.
+
+No Pi rental begins before the complete ARM64 dry-run gate. No Stretch begins
+before Phase G passes.
+
+---
+
+## Target command interface
+
+The following commands describe the required final interface. They are not
+expected to work until their corresponding PLAN tasks are implemented.
+
+### Python pipeline
+
+```bash
+python -m wildlife_trigger.data.prepare --config configs/data/cct20.yaml
+python -m wildlife_trigger.data.audit --config configs/data/cct20.yaml
+python -m wildlife_trigger.train --config configs/train/m0_fp32.yaml
+python -m wildlife_trigger.optimize.ptq --config configs/optimize/m1_ptq.yaml
+python -m wildlife_trigger.optimize.qat --config configs/optimize/m2_qat.yaml
+python -m wildlife_trigger.optimize.prune --config configs/optimize/m3_prune.yaml
+python -m wildlife_trigger.export --run-id RUN_ID
+python -m wildlife_trigger.validate.parity --run-id RUN_ID
+python -m wildlife_trigger.evaluate --run-id RUN_ID --split val
+python -m wildlife_trigger.calibrate --run-id RUN_ID --target bobcat
+```
+
+### C++ application
+
+```bash
+./wildlife_trigger infer \
+  --model artifacts/models/final.onnx \
+  --policy artifacts/policies/bobcat_v1.yaml \
+  --image demo/bobcat.jpg
+
+./wildlife_trigger run-dataset \
+  --model artifacts/models/final.onnx \
+  --policy artifacts/policies/bobcat_v1.yaml \
+  --manifest data/manifests/benchmark_val_1000.jsonl \
+  --output results/predictions.jsonl
+
+./wildlife_trigger benchmark \
+  --model artifacts/models/final.onnx \
+  --manifest data/manifests/benchmark_val_1000.jsonl \
+  --threads 4 --warmup 100 --iterations 1000
+
+./wildlife_trigger self-test --fixtures tests/fixtures/
+```
+
+### Intended one-command workflows
+
+```bash
+bash scripts/run_core_pipeline.sh
+bash scripts/build_cpp.sh
+bash scripts/package_pi.sh
+bash scripts/run_pi_benchmarks.sh
+bash scripts/generate_submission.sh
+```
+
+Every stage must also remain runnable separately for debugging and evidence.
+
+---
+
+## Compute environments
+
+### Dedicated `gx10` — primary project environment
+
+`gx10` is fully allocated to this final project until completion. It is the single
+development and compute host for Phases A-E and G: repository work, data download
+and preparation, GPU training, PTQ/QAT/pruning, export, Python evaluation, C++
+development, CPU-only ONNX Runtime inference, shutter emulation, all pre-Pi tests,
+profiling, notebooks, report/slides, and deployment packaging.
+
+The known platform is NVIDIA GB10, ARM64, CUDA 13.0; the pipeline must capture
+and publish the exact observed environment rather than rely on this README. Long
+runs must be checkpointed, logged, and safely resumable. GPU acceleration is for
+training; the final C++ inference path is still ONNX Runtime CPU EP.
+
+Pi compatibility is tested on `gx10` in a clean target-compatible ARM64 container.
+ARM64 alone does not guarantee matching Raspberry Pi OS/glibc dependencies. If a
+portable binary cannot be proven, the bundle includes pinned source/build scripts
+and compiles the C++ executable while provisioning the Pi.
+
+Do not hard-code private hostnames, usernames, SSH keys, tokens, or paths into the
+public repository. Private deployment values belong in ignored local config or
+environment variables.
+
+### Rented Raspberry Pi 5
+
+The Pi is the only second execution environment and the only valid source of
+target latency/FPS/resource evidence. Its trial is measurement time, not normal
+development time. It receives a frozen deployment archive only after the clean
+`gx10` ARM64 dry run; then target smoke/parity tests are repeated before final
+benchmarks. `gx10` performance numbers must never be presented as Pi results. The
+`gx10` host continues to orchestrate remote commands and store copied raw evidence.
+The five-day schedule and fair-comparison rules are defined in DESIGN §12 and
+PLAN §8.
+
+---
+
+## Correctness gates
+
+No model reaches the Pi until all applicable gates pass:
+
+1. Python vs C++ preprocessing golden tensors.
+2. PyTorch vs ORT FP32 logits and decisions.
+3. Quantized graph/operator validation and framework-vs-ORT drift report.
+4. ORT Python vs ORT C++ scores and decisions.
+5. Python vs C++ validation dataset predictions/confusion matrix.
+
+This is especially important because OpenCV decodes BGR, while the pretrained
+model expects RGB/ImageNet normalization.
+
+---
+
+## Final evaluation
+
+Accuracy is target-centric and reported separately for cis-test and trans-test:
+
+- bobcat recall — primary;
+- bobcat precision and F2;
+- false-fire rate and fire rate;
+- macro F1 and per-class recall;
+- confusion matrix;
+- sequence-bootstrap 95% confidence intervals;
+- per-location bobcat recall on trans-test.
+
+System results compare the same C++ application and protocol:
+
+- model load time;
+- decode/preprocess/inference/policy/end-to-end p50/p95/p99;
+- inference FPS and end-to-end FPS;
+- model/file size and MACs;
+- peak RSS and CPU utilization;
+- exposed frequency, temperature, and throttling status;
+- three process-level repetitions.
+
+Latency is not presented as measured energy. There is no physical power meter.
+
+---
+
+## Required submission package
+
+The final public release contains:
+
+1. Public GitHub repository, clean tagged commit, license, citation file.
+2. Python training/conversion/evaluation and C++ inference source.
+3. Exact configs, lockfiles, tests, automation, and reproduction instructions.
+4. FP32 baseline and final optimized ONNX models, policies, model cards, hashes.
+5. Raspberry Pi deployment archive with installer, executable/runtime, models,
+   policy, class map, sample data, demo command, and checksums.
+6. Raw training/evaluation/parity/Pi evidence and generated figures/tables.
+7. `notebooks/01_data_audit.ipynb` and `02_results_analysis.ipynb`, cleanly
+   executable from frozen artifacts.
+8. `report/final_report.md` and visually verified `final_report.pdf`.
+9. `slides/final_presentation.pptx` and visually verified PDF.
+10. `SUBMISSION.md` containing canonical repository/release/report links, final
+    commit, model hashes, headline metrics, and reproduction commands.
+
+The public repository URL must appear in README, report, first slide, final slide,
+and `SUBMISSION.md`. Large images/checkpoints are published through documented
+external data sources, GitHub Releases, or Git LFS rather than ordinary Git.
+
+Notebooks support inspection and analysis; they are not the only executable form
+of the project. Training, export, evaluation, C++ build, and benchmarks must be
+scriptable from a clean environment.
+
+---
+
+## Expected repository layout
+
+The final structure is specified in DESIGN §14. The major directories are:
+
+```text
+configs/       resolved data/train/optimization/runtime contracts
+src/           Python package
+cpp/           C++17 ONNX Runtime application and tests
+scripts/       setup, pipeline, build, package, Pi, submission automation
+tests/         Python tests and golden fixtures
+notebooks/     data audit and results analysis
+data/          small committed manifests/docs, never the image archives
+artifacts/     policies, model cards, hashes, release links
+deploy/        Raspberry Pi bundle sources
+results/       raw evidence, comparisons, Pi logs, generated figures
+report/        final report source/PDF
+slides/        final presentation PPTX/PDF
+demo/          sample command/output and optional short recording
+```
+
+---
+
+## Reuse and legacy assets
+
+| Existing asset | Core use |
+|---|---|
+| `Docker_VSCode/` | ARM64/C++/ONNX toolchain reference only |
+| `hw1/src/structured.py` | Starting point for dependency-aware structured pruning; must be adapted and tested |
+| `hw2`/`hw3` QAT code | Training-loop ideas only; Core requires a new deployable affine INT8 path proven in E0 |
+| `hw3/src/distill.py` | Post-Core crop-teacher KD Stretch only |
+
+Do not copy legacy preprocessing, input sizes, class counts, quantizers, or metrics
+without adapting them to DESIGN and proving parity.
+
+---
+
+## Current result placeholders
+
+No measurements exist yet. Do not replace `TBD` with estimates.
+
+| Result | FP32 baseline | Final optimized |
+|---|---:|---:|
+| cis-test bobcat recall | TBD | TBD |
+| trans-test bobcat recall | TBD | TBD |
+| p95 inference latency on Pi 5 | TBD | TBD |
+| end-to-end FPS on Pi 5 | TBD | TBD |
+| peak RSS | TBD | TBD |
+| model size | TBD | TBD |
+
+Every final value must link back to a machine-readable result file and frozen
+run/commit ID.
+
+---
+
+## Core completion and Stretch
+
+Core completion is defined by the checklist in DESIGN §19 and Gate G in PLAN.
+
+Only after it passes may the project run the optional crop-teacher KD experiment:
+
+- crop teacher on the 15 animal classes;
+- crop-augmentation control;
+- cross-view KD under the same student budget;
+- KD counts as successful only if it beats the crop-augmentation control.
+
+The frozen Core result remains the primary submission even if Stretch is added.
+
+---
+
+## References
+
+- Original assignment: [`Final Project TASK.docx`](Final%20Project%20TASK.docx)
+- Design/source of truth: [`DESIGN.md`](DESIGN.md)
+- Execution plan: [`PLAN.md`](PLAN.md)
+- MobileNetV2: https://arxiv.org/abs/1801.04381
+- CCT-20 paper: https://openaccess.thecvf.com/content_ECCV_2018/papers/Beery_Recognition_in_Terra_ECCV_2018_paper.pdf
+- CCT/LILA: https://lila.science/datasets/caltech-camera-traps
+- ONNX Runtime quantization: https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html

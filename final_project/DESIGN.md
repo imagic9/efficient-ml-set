@@ -1,764 +1,1151 @@
-# Final Project — Design
+# Final Project — Executable Design Specification
 
-Living design note for the Edge AI final project.
-Status: **design agreed, implementation not started.**
-Execution order, dependencies and phase gates live in [PLAN.md](PLAN.md).
+Status: **Core approved; implementation not started.**
 
-Numbers in this document are marked either as **measured/published** (with a
-source) or as **estimate** (to be replaced by our own measurements). Nothing here
-is a claim until it is measured on the Pi.
+This document is the source of truth for the Efficient ML final project. It is
+written as an execution contract for an AI coding agent: implement the phases in
+order, satisfy every gate, preserve the raw evidence, and prepare the complete
+submission package. Do not add features or change the experimental question
+without updating this document first.
+
+The old two-model cascade is no longer part of Core. It depended on an empty-frame
+prevalence that does not hold in CCT-20 and added a second model without being
+required by the assignment. The only permitted Stretch is crop-teacher knowledge
+distillation, and it may start only after the Core Definition of Done passes.
 
 ---
 
-## 1. The product
+## 1. Project in one sentence
 
-**One line:**
+> A CPU-only C++ application on a Raspberry Pi 5 analyzes a wildlife-camera frame
+> and emits an emulated shutter signal when the target animal, a bobcat, is present.
 
-> A Raspberry Pi device that fires a wildlife photographer's camera only when the
-> animal they actually want walks into frame.
+The course project implements and measures the decision core. A future physical
+product could connect the same decision to a PIR sensor, camera, and GPIO shutter
+interface, but no live camera or GPIO is required for this submission.
 
-**Who it is for.** Wildlife photographers running unattended camera traps in
-remote locations for weeks or months. They come back to thousands of frames of
-wind-blown grass, and the wrong animals. The shots they wanted are buried, the
-card is full, and the battery died three weeks in.
+### Demonstration behavior
 
-**How it works:**
-
-```
-PIR/motion trigger
-   → wakes our device
-   → device captures a preview frame and analyses it
-   → target species present?  → fire the main camera (shutter signal)
-   → back to sleep
+```text
+frame_000412.jpg  predicted=bobcat  score=0.94  -> SHUTTER_TRIGGER=1
+frame_000413.jpg  predicted=coyote  score=0.03  -> SHUTTER_TRIGGER=0
+frame_000414.jpg  predicted=empty   score=0.01  -> SHUTTER_TRIGGER=0
 ```
 
-**Product form.** A small Raspberry Pi-based box that sits between a motion sensor
-and the photographer's camera and controls the shutter. The photographer
-downloads a **module** for the animal they want to shoot (`bobcat-v1`,
-`elephant-v1`) from our site.
+The target in CCT-20 is **bobcat (`Lynx rufus`)**, sometimes called the red lynx.
+It is not the Eurasian lynx (`Lynx lynx`). All code, metrics, report text, and
+slides must use the unambiguous label `bobcat`.
 
-**Why this must run on the device.** The decision has to happen in the field, in
-milliseconds, offline, on battery. There is no link to a cloud, and there would be
-no time to use one even if there were. This is Edge AI in its purest form: the
-latency *is* the product.
+---
 
-**Honest scenario boundary — "lingering animals".** The device adds inference to
-the critical path between motion and shutter. A Pi cannot decide in the ~50–200 ms
-that professional PIR triggers (Camtraptions, Cognisys) achieve, and it certainly
-cannot boot from sleep in that time. So we scope to subjects that **stay in
-frame**: waterholes, feeding sites, carcasses, salt licks, dens, trail
-bottlenecks. A leopard at full sprint is out of scope, and we say so. This is not
-a small niche — it is a large share of how real camera-trap photography is set up.
+## 2. The falsifiable engineering question
 
-## 2. What the course project demonstrates
+> How much latency, throughput, memory, and model-size improvement can we obtain
+> on a Raspberry Pi 5 by applying structured pruning and affine INT8
+> quantization to a full-frame wildlife classifier, while preserving bobcat
+> recall at the selected operating point?
 
-The project answers one falsifiable engineering question:
+This question maps directly to the assignment:
 
-> **Can a Raspberry Pi 5 decide fast enough, and cheaply enough, to be the core of
-> this device?**
-
-Concretely: `is there anything in frame?` → `what is it?` → `fire the shutter if
-it is the target`. Every millisecond we save is a better photograph, and every
-millijoule is another night in the field. Unlike a generic "make it faster"
-exercise, here latency and energy have a physical meaning, which is what makes
-this a good fit for the course brief ("improve FPS, ideally to real-time").
-
-**In scope:** the decision core — model, compression, C++ application, on-device
-benchmarks, on a saved dataset (the brief explicitly permits this).
-
-**Out of scope, and why:**
-
-| Excluded | Reason |
+| Rubric area | Evidence produced by this project |
 |---|---|
-| Camera, PIR, GPIO shutter signal | The rented Pi is a datacenter instance — no physical access. The shutter decision is printed, not wired. |
-| Power measurement | Same. Energy is **proxied by latency**; stated as a limitation, not hidden. |
-| Our own from-scratch inference engine | Decided against: ONNX Runtime is a proven, optimized runtime. Our C++ is the application (§8). |
-| A detector on-device | Quantified trade-off, §4. |
-| Hailo / AI HAT+ | The rubric wants our C++ on the CPU, not a vendor compiler. Phase 1. |
-| Audio (chainsaw/gunshot) | Second modality. Phase 1. |
+| Model training and optimization, 15 pts | MobileNetV2 justification; FP32 baseline; PTQ; QAT; structured pruning; accuracy/compute trade-offs |
+| C++ inference, 15 pts | Correct preprocessing, ONNX Runtime inference, target policy, signal emulation, dataset runner, benchmark harness, tests |
+| Benchmarking and metrics, 10 pts | Baseline and optimized models measured on the same Pi 5 with latency, FPS, resource use, and accuracy |
+| Analysis and presentation, 10 pts | Reproducible tables and plots; what worked; what failed; bottlenecks; concrete next steps |
 
-## 3. On-device pipeline
+The project is successful even if an optimization fails to improve speed or
+accuracy, provided the failure is measured correctly and explained.
 
-A **true cascade of two separate models** — cheap one first.
+---
 
-```
-frame (PIR already fired)
-   │
-   ├─ [GATE]  tiny CNN, binary: empty / non-empty        ~5 ms   (estimate)
-   │     │
-   │     ├─ empty  (~70% of triggers) → sleep.  Species model never ran.
-   │     │
-   │     └─ non-empty (~30%)
-   │           │
-   │           └─ [SPECIES]  MobileNetV2, full frame     ~25 ms  (estimate)
-   │                 │
-   │                 └─ target class ≥ threshold → SHUTTER FIRE
-```
+## 3. Scope
 
-**Why two separate models, not two heads on a shared backbone.** A shared backbone
-would be paid on every frame — the cascade saving would be nil. The saving comes
-from the gate being a *genuinely different, much smaller network* that lets ~70%
-of frames exit early. (An earlier revision of this document conflated the two;
-that was wrong.)
+### 3.1 Core — required for submission
 
-**Gate:** MobileNetV2 `width_mult=0.35` @128² (or a small custom CNN) — roughly
-25× cheaper than the species model. Binary, calibrated for **high recall on
-non-empty**: the gate must never be the reason we miss a shot.
+1. Prepare a leakage-safe wildlife dataset with CCT-20 cis/trans splits.
+2. Train one FP32 full-frame MobileNetV2 classifier.
+3. Calibrate a bobcat shutter threshold using validation data only.
+4. Produce and evaluate:
+   - FP32 baseline;
+   - INT8 PTQ;
+   - INT8 QAT;
+   - structured-pruned FP32;
+   - structured-pruned + QAT candidate.
+5. Export deployable ONNX models and prove numerical/decision parity.
+6. Implement the inference application in C++.
+7. Run baseline and optimized benchmarks on a rented Raspberry Pi 5.
+8. Produce the public repository, reproducibility assets, report, and slides.
 
-**Species:** MobileNetV2 @224², multi-class over the CCT-20 classes. One forward
-pass yields probabilities for **all** classes.
+### 3.2 Stretch — locked until Core is complete
 
-### Modules
+The only Stretch is **crop-teacher knowledge distillation**:
 
-A **module** is not a model. It is a **policy**: a target class, a calibrated
-threshold, and the honest expectation that goes with them.
+- teacher: a stronger classifier trained on ground-truth animal crops;
+- student: the same full-frame MobileNetV2 used by Core;
+- control: crop augmentation without KD;
+- success criterion: KD must beat crop augmentation, not merely the naive FP32
+  baseline.
 
-```yaml
-module_id: bobcat-v1
-target_class: bobcat
-threshold: 0.62          # calibrated on val for 94% recall
-expected:
-  recall_cis:  0.94      # at a location like the ones it was trained on
-  recall_trans: 0.81     # at a brand-new location
-  false_fire_rate: 0.04
-```
+Stretch must not modify, replace, or delay the frozen Core result. It is reported
+as an additional experiment.
 
-The separation matters: **the model is the capability, the module is the intent.**
-What is in frame is a fact the model computes; whether it is worth a photograph is
-a human choice that cannot be inferred from data.
+### 3.3 Explicitly out of scope
 
-**Modules are what make the species model worth its energy.** Fire on *all* 15
-classes and the behaviour becomes identical to firing whenever the gate says
-`non-empty` — the species model would contribute nothing while costing ~25 ms.
-That is a motion trigger with extra steps: exactly the thing the photographer
-already owns and dislikes. The species model only earns its energy when the device
-fires on a **subset**. Selectivity is the product.
+- physical camera, PIR, GPIO, or power meter;
+- on-device object detector;
+- gate/cascade model;
+- person/vehicle/illegal-logging detector;
+- elephant or regional model packs;
+- multiple target modules;
+- custom inference engine;
+- Hailo/AI HAT/NPU;
+- battery-life claims;
+- training on any test split;
+- XNNPACK as a requirement. Core uses ONNX Runtime CPU Execution Provider; any
+  other backend may be mentioned only as future work.
 
-So the number of enabled modules is a dial:
+---
 
-| Enabled | Effect |
-|---|---|
-| 0 | Never fires. Useless. |
-| 1 | Maximum selectivity, best battery. The sweet spot. |
-| ~all 15 | Species model is dead weight; the gate alone is equivalent and 25 ms cheaper. |
+## 4. System architecture
 
-There is therefore a **measurable break-even**: beyond how many enabled classes
-does the species model stop paying for itself? Computable offline from the
-confusion matrix — see §9.
-
-**Multiple modules are free in compute.** Because the model is multi-class, three
-enabled modules mean checking three outputs of the *same* forward pass: one
-inference, same latency, same energy.
-
-**This is the argument that settles multi-class vs per-species binary models.**
-Per-species binary models would be more accurate individually, but three enabled
-modules would then mean **three inferences** — 3× latency and energy. Multi-module
-support and per-species binary models are incompatible. We keep multi-class.
-
-**What multiple modules do cost: the false-fire budget adds up.** With softmax and
-thresholds above 0.5, at most one class can exceed its threshold, so the per-class
-false-fire rates are roughly **additive**: three modules at ~5% each ≈ ~15%
-combined. More modules → more shots → shorter battery and a fuller card. This is a
-real trade-off the photographer must see, not discover in the field (§9, §13).
-
-**Known limitation — softmax couples the classes.** If a coyote and a bobcat are in
-frame together, softmax forces a single winner; multi-label sigmoid would handle
-both. CCT-20 labels one class per image, so the dataset does not even represent
-this case — there is nothing to train or measure it on. Softmax is correct for the
-MVP; sigmoid is a Phase-1 upgrade once real multi-animal data exists.
-
-**Falls out for free:** a *negative* module ("shoot everything except raccoons") is
-the same mechanism inverted.
-
-**Why the abstraction survives Phase 1.** Within one region a module is config on a
-shared model. **Across regions it must be a different model** — our CCT-20 model
-knows 15 North American species and has never seen an elephant; a photographer in
-Tanzania needs different weights entirely. One model cannot cover the world's
-species. The module is the primitive that hides that difference from the user, and
-that is the real reason it exists (§13).
-
-**The cascade's honest trade-off.** It optimizes **energy**, not shutter lag. On a
-real detection we pay gate + species (~30 ms) — 5 ms *worse* than species alone.
-What we buy is that 70% of wake-ups cost 5 ms instead of 25 ms:
-
-| | Average per trigger (70% empty) |
-|---|---|
-| Single model, no gate | ~25 ms |
-| Cascade | 0.7 × 5 + 0.3 × 30 = **~12.5 ms** |
-
-≈ **2× less energy per trigger, for +5 ms of shutter lag on real detections.** This
-is our own optimization, and it is measurable — it becomes an ablation, not a
-claim.
-
-## 4. Why not a detector on-device — the trade-off, quantified
-
-The literature is clear that cropping to the animal helps a lot: on CCT-20,
-classifying **bounding-box crops instead of full frames roughly halves the error**
-(19.06% → 8.14% on cis, 41.04% → 19.56% on trans; Beery et al. 2018, Table 1,
-**published**). So an obvious design is: MegaDetector-compact → crop → classify.
-
-We rejected it, on numbers.
-
-**The trap: parameters lie, MACs do not.** MegaDetector V6-compact (~2.3M params)
-looks *smaller* than MobileNetV2 (~3.4M params). But cost is architecture ×
-**input resolution**, and detectors need high resolution precisely to see the small
-animals they are hired to find:
-
-| Model | Params | Input | ~Compute |
-|---|---|---|---|
-| MobileNetV2 | 3.4M | 224² | **~0.3 GMAC** |
-| MegaDetector `MDV6-yolov10-c` (YOLOv10-N class) | 2.3M | 640² | **~3.4 GMAC** |
-
-The "smaller" detector costs roughly **10× more** than the "bigger" classifier.
-
-**And that row is the detector's best case** — `MDV6-yolov10-c` is the cheapest
-variant in the family, quoted deliberately to give option B the strongest possible
-showing. It loses anyway. These are **published specifications, not a measurement of
-ours**: we never run MegaDetector (§5), because B's accuracy has a free upper bound
-below.
-
-**A vs B** (estimates, 70% empty):
-
-| | **A — gate → MNv2 full frame** | **B — MD-compact → crop → MNv2** |
-|---|---|---|
-| Gate step | ~5 ms | ~200–400 ms @640² (~60–100 @320²) |
-| Species step | ~25 ms | ~25 ms (on crop) |
-| **Average per trigger** | **~12.5 ms** | **~250+ ms** |
-| **Shutter lag on a detection** | **~30 ms** | **~275 ms** |
-| **Energy** | **1×** | **~20× worse** |
-| Accuracy | baseline | ~2× lower error |
-
-B pays its most expensive step on **100% of frames — including the 70% where it
-finds nothing**. It burns the costliest computation exactly where it is useless,
-and it breaks both of the product's promises (months of autonomy, fast shutter) to
-buy accuracy.
-
-**And the accuracy gain is overstated for us:** the ~2× figure is for the
-**15-class** problem. Our operating question is much closer to binary
-("bobcat / not bobcat"), which is easier — so the real crop benefit will be
-**smaller than 2×**. We would be paying ~20× the energy for a fraction of a
-doubling.
-
-**B is not discarded — it becomes a measured ceiling, and the measurement is free.**
-
-We do not run MegaDetector to get it. **Our crop-teacher already is option B with a
-free, perfect detector**: it classifies ground-truth-box crops, and no real detector
-can find boxes better than the ground truth. So
-
-> accuracy(option B) ≤ accuracy(our crop-teacher)
-
-and the crop-teacher is built anyway — it is the KD teacher (§5) and ladder row 0.
-The number costs us nothing.
-
-**The bound is the stronger form of the argument, not a weaker substitute.** A
-single measured detector could always be waved away ("you picked the wrong
-detector", "a better one would win"). An upper bound cannot:
-
-> "Even granting option B a perfect detector for free, cropping buys X pp. It does
-> not get one for free — it pays ~20× the energy and ~9× the shutter lag, which
-> kills both of the product's promises. Here is the price, and here is what it
-> would have bought."
-
-That is the critical evaluation the rubric asks for, with numbers instead of
-opinions — accuracy from a bound we already have, cost from MACs.
-
-## 5. Crop-teacher + distillation — the crop, without paying for it
-
-The key realisation: **crops are needed for *training*, not for *inference*.**
-
-CCT-20 ships **ground-truth bounding boxes** (~66k over CCT; MTurk, 3–10
-annotators, PascalVOC IoU ≥ 0.5). So:
-
-```
-OFFLINE (gx10, compute is free):
-    teacher trains on GT-box CROPS  →  high accuracy
-          │  knowledge distillation
-          ▼
-ON-DEVICE (Pi, every millijoule counts):
-    student runs on the FULL FRAME, but inherits the teacher's knowledge
+```text
+saved JPEG frame
+      |
+      v
+C++ decode + deterministic full-frame preprocessing
+      |
+      v
+MobileNetV2, 16 logits: 15 animal classes + empty
+      |
+      v
+softmax -> bobcat score
+      |
+      +-- score >= calibrated threshold --> SHUTTER_TRIGGER=1
+      |
+      `-- otherwise ----------------------> SHUTTER_TRIGGER=0
 ```
 
-The student gets the benefit of the teacher's clear view **without ever running a
-detector** — the crop is a *training-time privilege*, not an inference-time cost.
-This is a known pattern (learning under privileged information; the camera-trap
-literature calls it crop-based distillation), and it makes distillation
-**load-bearing** here rather than cosmetic.
+There is exactly one neural-network inference per frame. The same C++ application
+loads every baseline/optimized ONNX model so model comparisons are not confounded
+by different application code.
 
-But it is worth being precise about what crosses the gap, because the usual phrasing
-oversells it.
+### Runtime policy
 
-### What actually transfers — and the control that keeps us honest
+The Raspberry Pi is assumed to be powered and the inference process resident.
+The project measures model loading separately but does not claim boot-from-off or
+suspend-to-inference latency. The emulated shutter signal is a console/JSON event,
+not a physical GPIO transition.
 
-The camera-trap literature describes this as *"teacher box → student learns
-attention"*, and an earlier revision of this section repeated that phrasing. **We
-should not claim it.** The teacher's logits say **what** is in the frame, not
-**where**. No spatial information crosses the gap: the student receives a
-distribution over classes, and must locate the animal itself. Genuine spatial
-attention transfer (Zagoruyko & Komodakis) requires **aligned feature maps**, and
-ours cannot align — teacher and student see different inputs at different scales.
+### Execution environments
 
-The honest mechanism is narrower and still worth having:
+`gx10` is the dedicated primary development and compute host for the complete
+project until submission. It is an NVIDIA GB10 ARM64 system with CUDA; A0 must
+capture the exact current hardware, OS, CUDA, compiler, and package versions
+rather than trusting this description. Use `gx10` for:
 
-> The teacher saw the animal clearly, so its soft label is **better-informed than
-> the ground-truth hard label** — most of all on the frames the student finds
-> hardest, where the animal is small, blurred or half out of frame. KD hands the
-> student a cleaner training signal, not a map.
+- source development and repository automation;
+- all data downloads, preparation, audits, and artifact storage;
+- GPU model training, PTQ, QAT, pruning, export, and Python evaluation;
+- CPU-only C++ compilation and inference with ONNX Runtime CPU EP;
+- shutter-signal emulation, unit/integration/parity tests, profiling, notebooks,
+  report/slide generation, and packaging;
+- the complete pre-Pi ARM64 dry run.
 
-**This also means we owe ourselves a cheaper control.** If a better view of the
-animal is what helps, then simply **feeding the student the crops as extra training
-data** — no teacher, no KD, one dataloader change — might capture much of the same
-gain. If it does, the teacher does not earn its complexity, and we should say so.
+No separate local development machine or local ARM64 environment is part of the
+execution plan. Use isolated, pinned environments on `gx10`, and keep long jobs
+restartable with checkpoints and persistent logs.
 
-So the ablation is a three-way, not a two-way:
+ARM64 instruction-set compatibility alone does not prove Raspberry Pi OS binary
+compatibility. The pre-Pi C++ build and bundle-install test must therefore run on
+`gx10` inside a clean target-compatible ARM64 container matching the rented Pi's
+planned OS, glibc, compiler, OpenCV, and ONNX Runtime constraints as closely as
+possible. If a portable binary cannot be proven, the deployment bundle must
+include pinned source/build automation and compile on the Pi during provisioning.
 
-| | Student sees | Extra signal |
-|---|---|---|
-| **Row 1** — baseline | full frames | none |
-| **Row 2b** — crop augmentation **(the control)** | full frames + crops | none — crops are just more data |
-| **Row 2** — crop-teacher KD | full frames | teacher's soft labels from the crop |
+The rented Raspberry Pi 5 is the only second execution environment. It is used
+only for Phase F provisioning, target-hardware smoke/parity checks, and the final
+CPU performance/resource/accuracy measurements. Results from `gx10` may be used
+for correctness and candidate screening, but never reported as Pi latency, FPS,
+memory, temperature, or throttling evidence. During Phase F, `gx10` remains the
+control and evidence host: it drives remote commands where practical and receives
+an immediate copy of every raw Pi result.
 
-**Row 2 must beat row 2b, or KD is not the story.** Beating only row 1 would prove
-nothing except that crops contain information — which we already know. This is the
-same rule we hold ourselves to elsewhere: the fancy method has to beat the cheap one
-that shares its advantage, not just the naive one.
+---
 
-A clean win here would still be a stronger result than HW3's modest +0.1–0.2 pp, and
-a null result is a genuine finding: *"privileged-view distillation did not beat
-simply training on the privileged view."*
+## 5. Data contract
 
-**The teacher is our own crop-teacher — ResNet50 / EfficientNet-B0 trained on the
-GT-box crops.** FP32, trained on gx10, never leaves gx10. It reuses the HW3
-pipeline, and it is ladder row 0 (the accuracy ceiling). That is the whole teacher
-story; §5's ablation runs entirely on it.
+### 5.1 Primary benchmark: CCT-20
 
-**Why not MegaDetector as the teacher — settled.** An earlier revision proposed a
-"stage-2 upgrade": MegaDetector as a second, externally-pretrained teacher. That
-was incoherent, and the reason is simply what MegaDetector *is*:
+Use the official Caltech Camera Traps-20 benchmark metadata and downsized images.
+The downloadable split files contain **57,864 images** in total:
 
-> **MegaDetector detects `animal` / `person` / `vehicle`. It does not classify
-> species.** Its documentation is explicit — *"It is an animal detector, not a
-> species classifier"* — it boxes objects and hands them to a downstream classifier
-> for species identification (**published**, microsoft/MegaDetector).
-
-A teacher must produce a soft distribution over *our* classes for the student to
-learn from. MegaDetector has no opinion about bobcat vs coyote, so it cannot be
-one. And its real competence — finding the box — buys little **on CCT-20
-specifically**, because the dataset already ships ground-truth boxes and our
-crop-teacher trains on those. A better box-finder, where the boxes are already
-known, is not worth much. No off-the-shelf species classifier matches CCT-20's 15
-classes either. **Our crop-teacher is not a fallback — it is the right teacher.**
-
-**So we do not run MegaDetector at all** (closed 2026-07-15). Its last remaining job
-— measuring option B's accuracy ceiling — evaporated once we noticed that the
-crop-teacher **is** option B with a free perfect detector, and therefore an upper
-bound on it (§4). We would have downloaded weights, stood up detector inference, and
-run 39k test images to obtain a *weaker* number than the one the critical path hands
-us for nothing.
-
-MegaDetector survives in this document as **two citations and one option**:
-
-- **§4 quotes its specifications** (2.3M params, ~3.4 GMAC @640²) for the
-  "parameters lie, MACs do not" argument. That is a citation, not a use — no weights
-  are downloaded and no license question arises.
-- **The Serengeti stretch** (§6) would genuinely need it — no ground-truth boxes
-  exist there, so a box source becomes useful. If we ever get there, revisit;
-  `MDV6-mit-yolov9-c` (9.7M, MIT) would be the variant, since the stretch is the
-  only scenario where weights actually get run.
-
-**Licensing — a footnote, as it should have been.** MegaDetector V6 ships nine
-variants under mixed MIT / Apache-2.0 / AGPL-3.0 terms depending on the backbone.
-This never constrained us: copyleft triggers on **distribution**, not on use. An
-earlier revision of this section inflated the question into a design driver and
-swapped model variants because of it; that was a mistake, and removing the run
-removed the question entirely.
-
-## 6. Data — CCT-20
-
-**Caltech Camera Traps-20** (Beery et al., ECCV 2018), the official benchmark
-subset of CCT. **57,868 images, 20 camera locations, 15 classes + empty.**
-CDLA-permissive. ~6 GB (downsampled to max 1024 px/side).
-
-**Class frequency, most → least** (Fig. 4 legend): raccoon, rabbit, coyote,
-**bobcat**, cat, empty, squirrel, dog, **car**, bird, skunk, rodent, deer, badger,
-fox.
-
-**Target species: bobcat** — the 4th most common class, so there is enough data to
-chase high recall, and a photographer staking out a bobcat is a real user. (Note:
-CCT-20 does contain a `car` class, though rare — the illegal-logging branch is not
-as far away as it looked.)
-
-**Splits — cis and trans, and this is a gift.** From the 20 locations: 9 random →
-trans-test, 1 → trans-val; the remaining 10 are cis. Within cis: odd days →
-cis-test; 5% of even days → cis-val; the rest → train, with train and val never
-sharing a sequence.
-
-| Split | Images | Meaning |
+| Split | Images | Use |
 |---|---:|---|
-| train | **13,553** | 10 locations |
-| cis-val | 3,484 | same locations as train |
-| cis-test | 15,827 | **same locations** as train |
-| trans-val | 1,725 | 1 unseen location |
-| trans-test | 23,275 | **9 unseen locations** |
+| train | 13,553 | Model training only |
+| cis-val | 3,484 | Validation at known camera locations |
+| cis-test | 15,827 | Final test at known camera locations |
+| trans-val | 1,725 | Validation at one unseen camera location |
+| trans-test | 23,275 | Final test at nine unseen camera locations |
 
-This gives us two test sets that answer two different product questions:
+The ECCV paper states 57,868 images, while the current downloadable split JSONs
+sum to 57,864. The pipeline must record the exact downloaded file hashes and use
+the JSON contents, not a number copied from the paper, as executable truth.
 
-- **cis** = "does it work at the spot I trained it on?"
-- **trans** = **"will it still work when I move my trap somewhere new?"** — the
-  question every photographer actually has. We can answer it with a number.
+CCT-20 contains 15 animal categories plus `empty` (16 total). The category order
+in the model is defined once in `configs/data/classes.yaml` and must never be
+inferred from dictionary iteration order.
 
-**Never a random split.** Camera traps have fixed backgrounds; a random split lets
-train and test share the background, so the model learns the camera, not the
-animal. This is the domain-specific form of our no-leakage rule, and CCT-20 has it
-built in.
+### 5.2 Required empty-frame supplement
 
-**Published baselines to compare against** (Inception-v3 @299², full image,
-**published**): **20.83% top-1 error on cis vs 41.08% on trans** — the error
-roughly **doubles** on unseen locations (+97%). Our domain-shift concern is not a
-hypothesis; it is a measured property of this data.
+The current official CCT-20 `train_annotations.json` contains no empty-labelled
+training images, although validation and test do. A production-valid classifier
+therefore needs a small empty training supplement.
 
-**Data character to design for:** sequences are 1–5 frames at ~1 fps; false
-triggers come from **wind and heat rising off the ground**; empty frames also
-occur when the animal leaves the frame mid-sequence. Night frames are IR
-grayscale. Animals are often small, blurred, occluded, or partially out of frame.
+Build `cct_empty_train_v1` from full CCT metadata using these rules:
 
-**Label quality — why CCT and not Snapshot Serengeti.** Serengeti is tempting
-(7.1M images, 61 species including elephant and lion, 225 camera sites). But LILA
-states its annotations *"are only reliable at the sequence level"*: volunteers
-labelled a 3-frame burst as "elephant" when the elephant may be in only one frame.
-Our device classifies **one frame**, so both our training labels and — fatally —
-our **test** labels would be noisy, making our headline metric unmeasurable. CCT's
-labels are **per-frame** (biologists tracked motion across the sequence to label
-each frame). Rigor wins. Also: elephant and lion are Serengeti's long tail
-(wildebeest/zebra/gazelle dominate), and seasons are 25–636 GB.
+1. Collect the set of all 20 CCT-20 location IDs.
+2. Candidate image label must be exactly `empty`.
+3. Candidate location must be disjoint from all 20 CCT-20 locations.
+4. Select **5,000 images**, stratified across locations and sequences, with fixed
+   seed `42`. Avoid letting one camera dominate the sample.
+5. Download only selected images through the LILA per-image cloud paths; do not
+   download the full 105 GB archive.
+6. Save a manifest containing image ID, location, sequence ID, source URL,
+   relative path, label, and checksum.
+7. Use this supplement for training only. Do not create a new test set from it.
 
-**Stretch — the elephant module.** Train `elephant-v1` on a Serengeti sample and
-run it through the same application to **demonstrate the module mechanism** (same
-device, swap the module, now it shoots elephants). Headline metrics stay on
-CCT-20, with the sequence-label caveat stated on the slide. We get the
-demonstration without paying for it in credibility.
+This changes the training recipe relative to the paper, so the report must say so.
+All project models use the same augmented training dataset, preserving a fair
+baseline-versus-optimized comparison.
 
-## 7. Model & compression
+### 5.3 Dataset assertions — hard data gate
 
-### The full model roster — three models, two ship
+Before training, automated tests must prove:
 
-Everything in this document reduces to these. Nothing else is trained or run.
+- split image counts match the table above;
+- category set is exactly the configured 16 classes;
+- every image ID is unique within a split;
+- no image occurs in more than one split;
+- no sequence spans train and either validation split;
+- train locations are disjoint from trans-val and trans-test locations;
+- supplemental-empty locations are disjoint from every CCT-20 location;
+- every manifest path exists and every checksum matches;
+- class and location distributions are written to `results/data_audit/`.
 
-| Model | Job | Runs on | Compressed? |
+If any assertion fails, stop. Do not train around a split problem.
+
+### 5.4 Test-set discipline
+
+`cis-test` and `trans-test` are sealed until models, thresholds, code, runtime
+configuration, and thread count are frozen. All development decisions use only
+train, cis-val, trans-val, and an unlabeled validation benchmark manifest.
+
+Final test labels may be used only by the final evaluation job. Rerunning an
+unchanged frozen artifact for reproducibility is allowed; changing anything after
+viewing test results is not.
+
+### 5.5 Preprocessing
+
+The network must see the complete frame; do not use a center crop that can remove
+a small animal.
+
+Canonical preprocessing:
+
+1. Decode JPEG as 8-bit BGR with OpenCV.
+2. Convert BGR to RGB.
+3. Resize while preserving aspect ratio so the longer side is 224 pixels.
+4. Center-pad the shorter side to 224 using RGB value `(114, 114, 114)`.
+5. Convert to float32 and divide by 255.
+6. Normalize with ImageNet mean `(0.485, 0.456, 0.406)` and standard deviation
+   `(0.229, 0.224, 0.225)`.
+7. Convert HWC RGB to contiguous NCHW tensor `[1, 3, 224, 224]`.
+
+The Python and C++ implementations must share golden fixtures and match within a
+documented tolerance.
+
+Training-only augmentation, applied before normalization:
+
+- horizontal flip, probability 0.5;
+- mild brightness/contrast/saturation jitter;
+- random grayscale, probability 0.15, to simulate IR appearance;
+- mild Gaussian blur, probability 0.10;
+- no crop that can exclude the labelled animal.
+
+Record every transform and parameter in configuration. Validation/test are fully
+deterministic.
+
+---
+
+## 6. Learning task and operating point
+
+### 6.1 Model output
+
+The model performs 16-way classification. The application action is binary:
+
+```text
+fire(frame) = softmax(logits)[bobcat] >= threshold
+```
+
+Do not equate top-1 accuracy with product quality. A bobcat may correctly trigger
+even when another logit is slightly larger, provided the policy is explicitly
+defined and evaluated consistently.
+
+### 6.2 Loss and class imbalance
+
+Use weighted cross-entropy. Compute class weights from the frozen training
+manifest using the effective-number-of-samples method, cap extreme weights, and
+store the final numeric vector in the run metadata. The weighting scheme is part
+of the baseline training recipe and remains identical across compression runs.
+
+Do not use test frequencies for weighting or sampling.
+
+### 6.3 Threshold calibration
+
+Calibrate the bobcat threshold on `cis-val + trans-val` only. Treat the two
+validation domains separately so the larger bobcat count in trans-val does not
+hide a cis-val failure.
+
+Primary rule:
+
+1. Search all unique bobcat scores.
+2. Choose the largest threshold for which bobcat recall is at least 90% on both
+   cis-val and trans-val.
+3. If no non-trivial threshold meets both constraints, choose the threshold
+   maximizing the mean of cis-val and trans-val F2 and record which recall
+   constraint was not met.
+4. Save the threshold, calibration metrics, score distribution, and dataset hash
+   to `artifacts/policies/bobcat_v1.yaml`.
+
+The threshold is calibrated separately for each candidate model because
+quantization changes score distributions. For the final baseline-versus-optimized
+comparison, report both:
+
+- each model at its own calibrated operating point;
+- every model at the FP32 baseline threshold, to expose calibration drift.
+
+### 6.4 Primary accuracy metrics
+
+Report separately for cis-test and trans-test:
+
+- bobcat recall — primary product metric;
+- bobcat precision;
+- bobcat F2;
+- false-fire rate = false triggers / non-bobcat frames;
+- fire rate = all triggers / all frames;
+- macro F1 and per-class recall — secondary model-quality metrics;
+- confusion matrix;
+- 95% confidence intervals by bootstrap over `seq_id`, not individual frames.
+
+Also report per-location bobcat recall on trans-test. Do not claim a universally
+calibrated probability from softmax scores.
+
+---
+
+## 7. Baseline model
+
+### 7.1 Architecture
+
+**MobileNetV2, width multiplier 1.0, input 224x224, ImageNet-pretrained.** Replace
+the classifier with a 16-output linear layer.
+
+Reasons:
+
+- designed for resource-constrained inference;
+- mature pretrained weights;
+- stable ONNX export and CPU operator support;
+- depthwise-separable convolutions provide a meaningful structured-pruning case;
+- small enough for repeated Pi benchmarks;
+- the course container already proves the MobileNetV2/ONNX/C++ toolchain.
+
+Core does not perform neural architecture search. Architecture search would add a
+new experimental axis without earning a separate rubric category.
+
+### 7.2 Training recipe
+
+Default recipe; all deviations must be recorded in the run config:
+
+- seeds: primary `42`; confirmation seeds `17` and `73` for baseline and final;
+- phase A: train classifier head for 5 epochs, backbone frozen;
+- phase B: fine-tune the full network for at most 30 epochs;
+- optimizer: AdamW;
+- learning rate: `1e-3` for head, `3e-4` for full fine-tuning;
+- weight decay: `1e-4`;
+- cosine learning-rate decay;
+- mixed precision allowed on gx10, never on Pi inference;
+- early stopping patience: 6 epochs;
+- checkpoint selection score: mean of cis-val and trans-val bobcat F2, with
+  bobcat recall used as the first tie-break and macro F1 as the second;
+- save last and best checkpoints plus full optimizer/scheduler state.
+
+Do not tune on overall accuracy alone.
+
+### 7.3 Baseline artifacts
+
+The baseline is not complete until all exist:
+
+- PyTorch checkpoint;
+- FP32 ONNX export;
+- training history JSON/CSV;
+- validation predictions and logits;
+- calibrated policy YAML;
+- model card;
+- parity report;
+- Pi benchmark row.
+
+---
+
+## 8. Optimization ladder
+
+Every row uses the same input contract, labels, metric code, C++ application, and
+benchmark images. Each transformation starts from the artifact named below; do
+not create a misleading sequential chain.
+
+| ID | Candidate | Starts from | Question |
 |---|---|---|---|
-| **Gate** — MobileNetV2 `w=0.35` @128² | empty / non-empty; rejects ~70% of frames | **The Pi** | Stays small by construction |
-| **Species** — MobileNetV2 @224², ImageNet-pretrained | 15 classes + empty; one forward serves every module | **The Pi** | **Yes — this is the model the whole ladder compresses** |
-| **Crop-teacher** — ResNet50 / EffNet-B0 on GT crops | Teaches Species via KD (§5). Ladder row 0. Doubles as option B's accuracy upper bound (§4) | gx10 only, training | No — never deployed, so its cost is irrelevant |
+| M0 | FP32 baseline | ImageNet MobileNetV2 | Reference accuracy and Pi performance |
+| M1 | INT8 PTQ | M0 FP32 ONNX | Is calibration-only quantization sufficient? |
+| M2 | INT8 QAT | M0 FP32 checkpoint | Does QAT recover PTQ accuracy while retaining INT8 speed/size? |
+| M3 | Structured-pruned FP32 | M0 FP32 checkpoint | Does real channel/MAC removal improve Pi latency? |
+| M4 | Structured-pruned + QAT | selected M3 checkpoint | Is the combined candidate Pareto-superior? |
 
-**Three models, and we train all three.** MegaDetector is *cited* in §4 for its
-published MACs but never downloaded or run — the crop-teacher already bounds what a
-detector cascade could achieve (§4, §5).
+No candidate is assumed to win. The final model is chosen from M1-M4 on the
+validation Pareto frontier, then measured on test and Pi.
 
-The compression ladder in this section is **one model, Species**. The gate is small
-by design; the teacher never leaves gx10, so its latency does not matter and it is
-never quantized, pruned, or exported.
+### 8.1 PTQ — M1
 
-### The student
+Use ONNX Runtime static quantization for the CNN.
 
-**Student: MobileNetV2, pretrained on ImageNet, transfer-learned.**
+- calibration data: 1,024 training images, stratified by class and source,
+  including supplemental empty images;
+- test MinMax, Entropy, and Percentile calibration on validation only;
+- prefer per-channel signed INT8 weights and supported activation format;
+- export QDQ and, if CPU EP support warrants it, QOperator as an explicitly named
+  alternative;
+- run ORT quantization debugging if accuracy drops materially;
+- record which nodes remain FP32 and why.
 
-This reverses the earlier TinyCNN decision, and the reason matters: TinyCNN existed
-*only* because depthwise-separable convolution is hard to make fast in a
-hand-written engine. With that engine gone, the constraint is gone — and
-ORT/XNNPACK has excellent depthwise kernels, so MobileNetV2 is precisely what the
-runtime is fast at. Decisive on top of that: **the training set is only 13,553
-images.** Training from scratch on that is hopeless; ImageNet-pretrained transfer
-learning is not optional here. Augmentation matters (brightness/contrast,
-grayscale/IR simulation, blur, random crop).
+Choose the PTQ configuration by validation bobcat F2 subject to measured model
+size and operator coverage. Do not select it using Pi test labels.
 
-**Rejected:** MobileNetV3 — hard-swish breaks post-training quantization (use only
-with QAT, if at all).
+### 8.2 QAT — M2
 
-**Compression ladder** — this is the core ablation; every row gets the §9 metric
-set on **both** cis and trans:
+QAT initializes from the FP32 M0 checkpoint, not from the PTQ model.
 
-| # | Model | Purpose |
-|---|---|---|
-| 0 | FP32 crop-teacher | Accuracy ceiling |
-| 1 | FP32 student, full frame, no KD | Uncompressed baseline |
-| 2b | FP32 student, **crops as extra training data**, no KD | **The control.** The cheap way to exploit crops (§5) |
-| 2 | FP32 student **+ crop-teacher KD** | Does KD beat **2b**? If it only beats 1, it proved nothing (§5) |
-| 3 | INT8 PTQ | Cheap quantization |
-| 4 | INT8 QAT | QAT > PTQ |
-| 5 | Structured-pruned + QAT | Real MAC reduction |
-| 6 | **KD + pruned + QAT** | The full stack — expected best |
-| — | Cascade **off** (single model) | Cascade ablation (§3) |
-| — | Detector cascade (B), offline | The declined ceiling (§4) |
-| — | Unstructured-pruned | **Honest negative result** |
+- fake-quantize weights per channel and activations per tensor according to the
+  deployable ORT INT8 representation;
+- fine-tune 5-10 epochs with low learning rate (`1e-5` to `5e-5` search on val);
+- freeze BatchNorm statistics after the initial stabilization epoch unless
+  validation proves otherwise;
+- export a real INT8 ONNX graph, not a float graph carrying rounded weights;
+- verify operator coverage and actual integer kernels in the ORT profile.
 
-Notes:
+Quantization APIs change over time. Phase E0 must prove one end-to-end QAT -> ONNX
+-> ORT C++ path and pin the exact compatible PyTorch/torchao/ONNX/ORT versions in
+the lockfile before long training begins. Do not silently fall back to a different
+quantization meaning.
 
-- **Structured channel pruning**, not unstructured — unstructured shrinks the file
-  but does not speed up ORT's dense kernels. We keep it in the table to *show*
-  that; a measured negative result beats silence. Caveat: pruning
-  depthwise-separable nets with residuals is fiddlier than pruning VGG, and the
-  gain on an already-efficient MobileNetV2 may be modest. We report what we find.
-- **QAT over PTQ**, with a calibration set that covers **night/IR and small
-  animals** — a PTQ scale fitted on daylight frames will not cover IR.
-- Compression is judged on **recall at the operating point**, never on top-1.
+### 8.3 Structured pruning — M3
 
-**What transfers from HW1–HW4:**
+Use dependency-aware structured channel pruning. The existing homework
+`hw1/src/structured.py` is a starting point, not drop-in code: update the input
+shape, ignored layers, objective metric, residual/depthwise dependency handling,
+and output classifier.
 
-| Asset | Status |
+Procedure:
+
+1. Profile the unpruned model's MACs and parameter count.
+2. Run sensitivity analysis using validation bobcat F2/recall, not generic
+   accuracy.
+3. Create candidates targeting approximately 15%, 30%, and 45% MAC reduction.
+4. Physically remove channels; zero masks alone do not qualify as structured
+   pruning.
+5. Fine-tune each candidate with the same data and loss contract.
+6. Export each candidate and confirm that ONNX MACs and tensor shapes changed.
+7. Select one M3 candidate on the validation Pareto frontier for QAT.
+
+The report must distinguish parameter reduction, MAC reduction, file size, and
+measured latency; they are not interchangeable.
+
+### 8.4 Pruned + QAT — M4
+
+Apply the validated QAT procedure to the selected pruned FP32 model. If M4 is
+slower or less accurate than M2, M2 remains the final model. A more complicated
+stack does not win by default.
+
+### 8.5 Final-model selection
+
+Before opening test labels, choose the final deploy candidate using validation:
+
+1. Reject candidates that fail export/parity/correctness gates.
+2. Prefer candidates satisfying the 90% validation bobcat-recall operating rule.
+3. Among them, choose the Pareto-best trade-off between validation bobcat F2,
+   ARM64 ORT microbenchmark latency from the E0-compatible harness, and model
+   size.
+4. If multiple remain, choose the simpler transformation.
+
+Write the decision and rejected alternatives to
+`results/model_selection/decision.md` before final test evaluation.
+
+---
+
+## 9. Software and reproducibility contract
+
+### 9.1 Proposed command-line interfaces
+
+Python stages must be runnable as modules, not only notebook cells:
+
+```bash
+python -m wildlife_trigger.data.prepare --config configs/data/cct20.yaml
+python -m wildlife_trigger.data.audit --config configs/data/cct20.yaml
+python -m wildlife_trigger.train --config configs/train/m0_fp32.yaml
+python -m wildlife_trigger.optimize.ptq --config configs/optimize/m1_ptq.yaml
+python -m wildlife_trigger.optimize.qat --config configs/optimize/m2_qat.yaml
+python -m wildlife_trigger.optimize.prune --config configs/optimize/m3_prune.yaml
+python -m wildlife_trigger.export --run-id RUN_ID
+python -m wildlife_trigger.validate.parity --run-id RUN_ID
+python -m wildlife_trigger.evaluate --run-id RUN_ID --split val
+python -m wildlife_trigger.calibrate --run-id RUN_ID --target bobcat
+```
+
+The C++ application must expose:
+
+```bash
+./wildlife_trigger infer --model model.onnx --policy bobcat_v1.yaml --image x.jpg
+./wildlife_trigger run-dataset --model model.onnx --policy bobcat_v1.yaml --manifest val.jsonl --output predictions.jsonl
+./wildlife_trigger benchmark --model model.onnx --manifest benchmark.jsonl --threads 1 --warmup 100 --iterations 1000
+./wildlife_trigger self-test --fixtures tests/fixtures/
+```
+
+Exact flag names may evolve, but equivalent non-interactive commands and `--help`
+are required.
+
+### 9.2 Configuration and provenance
+
+Every run receives an immutable run ID and writes:
+
+- resolved YAML configuration;
+- git commit and dirty/clean status;
+- command line;
+- UTC timestamp;
+- hostname and platform;
+- Python/package versions;
+- CUDA/GPU details for `gx10` training, or an explicit CPU-only marker for C++
+  and ORT correctness runs;
+- random seeds;
+- dataset manifest hashes;
+- checkpoint/model hashes;
+- metrics and raw predictions;
+- elapsed training time.
+
+No slide number may be reconstructed from memory. Slides and report tables are
+generated from versioned result files.
+
+### 9.3 Notebooks
+
+Notebooks are deliverables for inspection and analysis, not the execution engine.
+
+- `notebooks/01_data_audit.ipynb`: class/location/split distributions and data
+  examples, reading frozen manifests.
+- `notebooks/02_results_analysis.ipynb`: tables, plots, confidence intervals, and
+  failure examples, reading raw results.
+
+Training, conversion, evaluation, and benchmarking must remain scriptable from a
+clean environment without manually executing notebook cells.
+
+---
+
+## 10. ONNX export and parity gates
+
+Export is part of correctness, not packaging.
+
+### E0 — toolchain spike
+
+Before full training:
+
+1. Export an ImageNet-pretrained MobileNetV2 FP32 model.
+2. Produce a small PTQ model.
+3. Produce a one-epoch QAT model.
+4. On `gx10`, load all three with the exact planned ONNX Runtime C++ build in
+   the target-compatible ARM64 environment.
+5. Run one image and capture an ORT profile.
+6. Pin compatible versions only after this succeeds.
+
+### E1 — preprocessing parity
+
+For at least 20 fixtures covering landscape, portrait, grayscale-looking IR, and
+odd dimensions:
+
+- save the canonical Python input tensor;
+- compare it with reference C++ preprocessing;
+- compare it with fused C++ preprocessing;
+- require matching shapes and documented maximum/mean absolute error.
+
+This catches BGR/RGB, interpolation, padding, layout, and normalization bugs.
+
+### E2 — FP32 model parity
+
+PyTorch and ORT FP32 must match on a fixed validation fixture set:
+
+- logits within numeric tolerance;
+- identical top-1 class;
+- identical bobcat fire/no-fire decisions except samples explicitly identified as
+  lying within the numeric tolerance of the threshold.
+
+### E3 — quantized-model validation
+
+For PTQ/QAT, compare the correct framework reference with ORT and report numeric
+drift. Exact FP32 equality is not expected, but the model must satisfy:
+
+- valid quantized graph with intended operator coverage;
+- validation metrics equal to the recorded quantized candidate;
+- ORT Python and ORT C++ predictions/decisions identical on fixtures;
+- no silent fallback to an unintended model or preprocessing path.
+
+### E4 — C++ dataset parity
+
+On a validation manifest, Python evaluation and the C++ dataset runner must emit
+the same ordered image IDs, labels, target scores within tolerance, trigger
+decisions, and confusion matrix.
+
+No model reaching a failed gate may be deployed to the Pi.
+
+---
+
+## 11. C++ application design
+
+Use C++17, CMake, OpenCV, and ONNX Runtime CPU Execution Provider. Pin the ORT
+version; do not retain the course container's obsolete hard-coded 1.14.1 package.
+
+### Required components
+
+1. `ModelSession`
+   - validates model input/output names, shapes, and types;
+   - owns ORT environment/session through RAII;
+   - supports configured intra-op thread count;
+   - exposes model metadata and timing.
+2. `Preprocessor`
+   - correct reference implementation;
+   - fused single-pass implementation;
+   - reusable preallocated input buffer;
+   - exact contract from section 5.5.
+3. `Policy`
+   - loads target class and threshold from YAML/JSON;
+   - validates class mapping and model hash;
+   - emits the shutter decision.
+4. `DatasetRunner`
+   - consumes a manifest in deterministic order;
+   - writes JSONL predictions and stage timings;
+   - continues or fails according to explicit corrupt-image policy.
+5. `BenchmarkRunner`
+   - warm-up and measured phases;
+   - p50/p95/p99 and FPS;
+   - decode/preprocess/inference/policy/end-to-end timing;
+   - machine-readable output.
+6. `SystemMonitor`
+   - peak RSS and CPU utilization;
+   - temperature/frequency/throttling where exposed;
+   - records unavailable sensors rather than inventing values.
+7. CLI and logging
+   - non-interactive operation;
+   - concise human output plus complete JSON/JSONL evidence;
+   - non-zero exit codes on invalid input/config/model.
+
+### Required tests
+
+- unit tests for class mapping, threshold boundary, percentile calculation, and
+  manifest parsing;
+- preprocessing golden-fixture tests;
+- corrupt/missing image behavior;
+- wrong model shape and wrong class-map rejection;
+- deterministic dataset order;
+- integration test: fixture image -> known score/decision;
+- repeated benchmark output schema validation.
+
+### C++ optimization experiment
+
+Measure reference versus fused preprocessing while holding the model constant.
+The fused path is retained only after parity passes. Report its isolated latency
+effect; do not attribute total model speedup to preprocessing.
+
+---
+
+## 12. Raspberry Pi 5 benchmark protocol
+
+### 12.1 Hardware scope
+
+- rented Raspberry Pi 5, BCM2712, CPU-only;
+- no physical camera/GPIO/power meter;
+- batch size 1;
+- exact OS, kernel, compiler, OpenCV, ORT, CPU governor, cooling exposure, and
+  available sensors recorded in `results/pi/environment.json`.
+
+### 12.2 Benchmark datasets
+
+Prepare before renting the Pi:
+
+- `benchmark_val_1000.jsonl`: fixed stratified validation subset for performance
+  tuning and dry runs;
+- full cis-test and trans-test manifests for final accuracy evaluation;
+- all images copied or downloadable before the trial begins.
+
+The same ordered benchmark manifest is used for every model.
+
+### 12.3 Timing protocol
+
+For each candidate and thread count `1, 2, 4`:
+
+1. Load model and report load time separately.
+2. Warm up 100 inferences.
+3. Measure at least 1,000 frames, batch 1.
+4. Repeat three times in separate processes.
+5. Report p50/p95/p99 for:
+   - decode;
+   - preprocessing;
+   - ORT inference;
+   - policy;
+   - end-to-end.
+6. Report:
+   - inference FPS = `N / summed inference time`;
+   - end-to-end FPS = `N / wall-clock dataset time`.
+7. Log temperature/frequency/throttling before, during, and after each run.
+8. Record peak RSS, average CPU utilization, and actual thread configuration.
+
+Do not mix cold-start/model-load latency with resident per-frame latency. Report
+both separately.
+
+### 12.4 Fair comparison rules
+
+- same C++ binary and compiler flags;
+- same images and order;
+- same preprocessing mode;
+- same ORT graph optimization level;
+- same thread count when comparing models;
+- no other heavy workload;
+- retain raw per-frame timings;
+- report all repetitions, not only the fastest.
+
+Latency is not called energy. Without a power meter, the report may say that
+lower active compute time is relevant to energy, but it may not claim measured
+joules or battery life.
+
+### 12.5 Five-day trial schedule
+
+| Day | Allowed work |
 |---|---|
-| `hw3/src/distill.py` — `DistillLoss`, `kd_train` | **Loss reused as-is** and now load-bearing (§5). **The data pipeline is not:** HW3 fed teacher and student the *same* input; here the teacher sees the crop and the student the full frame, so the dataset must yield `(full_frame, crop, label)` per image. Cross-input KD, not vanilla. |
-| `hw1/src/structured.py` — sensitivity-guided channel pruning (torch-pruning) | **Reuse**; example input 32×32 → 224² |
-| `hw2`/`hw3` `src/qat.py` — QAT loop, already accepts `teacher`/`distill` | **Loop reused**; quantizer replaced |
-| `hw1/src/prune.py` — `FineGrainedPruner` (unstructured) | The negative-result row |
-| `hw2/src/kmeans_quant.py` — K-Means centroid quantization | **Does not transfer.** It is weight-sharing: compresses *storage*, not arithmetic. ORT needs affine INT8. |
-| HW4 NAS supernet | Not used. |
+| 1 | Provision, record environment, install pinned artifacts, smoke test only |
+| 2 | Validation benchmark, thread sweep, profiling, final safe runtime fixes |
+| 3 | Re-run validation, freeze git commit/models/policies/configuration |
+| 4 | Final cis-test/trans-test accuracy and full baseline/optimized benchmark |
+| 5 | Exact unchanged repeat, artifact backup, no tuning from test results |
 
-**Genuinely new work:** affine INT8 (`torch.ao` QAT → ONNX QDQ export → ORT), the
-crop-teacher/KD setup, and the C++ application.
+If Core is not dry-run complete before Day 1, do not start the trial.
 
-## 8. The C++ application — our deliverable
+---
 
-We are **not** writing an inference engine. ONNX Runtime is a proven, heavily
-optimized runtime (MLAS/XNNPACK, hand-tuned NEON), and a student engine would lose
-to it on speed while costing weeks. The brief explicitly lists ONNX as a
-legitimate inference-level optimization.
+## 13. Execution phases and gates
 
-What we write is **the device's control application** — and this is where the C++
-points are earned. The course container (`Docker_VSCode/`) is a **145-line
-smoke-test**: one inference, one image, one thread hard-coded, **no timing code at
-all**. It is a toolchain proof, not a starting template.
+The implementing agent follows this order.
 
-Our C++ application:
+### Phase A — repository and environment
 
-1. **The cascade and decision logic** — gate → threshold → species → threshold →
-   shutter decision → sleep. This is our design, in code.
-2. **Fused preprocessing.** The container does `convertTo` → `cv::subtract` →
-   `cv::divide` → `cv::split` — **four separate passes over memory**, plus copies.
-   We fuse to a single pass and remove copies. The literature notes preprocessing
-   is often a large share of end-to-end latency; this is our low-level code with a
-   measurable win.
-3. **Benchmark harness** — p50/p95/p99, thread sweep, thermal logging. None of
-   this exists in the container.
-4. **Profiler-driven bottleneck removal** — ORT profiler → slowest ops → fix
-   (fusion, layout, threading, selective quantization).
-5. **Dataset runner** — iterate the saved test set, emit decisions + latencies +
-   the confusion matrix.
+- create package/application structure from section 14;
+- establish Python and C++ test runners;
+- create pinned `gx10` training and target-compatible ARM64/C++ environments;
+- create lockfiles and environment capture;
+- run E0 toolchain spike.
 
-Honest position: this is a weaker claim on the 15 C++ points than a from-scratch
-engine would be, and we compensate with the four items above. Optional upside kept
-in the back pocket: hand-write the *gate* engine only (it is tiny, and runs on
-100% of frames) while ORT serves the species model.
+**Gate A:** FP32, PTQ, and minimal QAT models load in ARM64 C++ ORT.
 
-**Demo:**
+### Phase B — data
 
+- download metadata and required images;
+- build frozen manifests and empty supplement;
+- implement audit assertions;
+- create data-audit notebook and report.
+
+**Gate B:** all D1 assertions pass; manifests and hashes are committed.
+
+### Phase C — FP32 baseline
+
+- implement dataset/transforms/model/training/evaluation;
+- train seed 42 baseline;
+- calibrate threshold;
+- export and pass E1-E4;
+- run confirmation seeds 17 and 73.
+
+**Gate C:** reproducible M0 metrics, policy, ONNX, parity, and model card exist.
+
+### Phase D — Core optimizations
+
+- M1 PTQ;
+- M2 QAT;
+- M3 structured pruning candidates;
+- M4 selected pruning + QAT;
+- update a single machine-readable comparison table after each candidate.
+
+**Gate D:** final model decision written before test labels are opened.
+
+### Phase E — C++ application
+
+- complete application components and tests;
+- reference/fused preprocessing experiment;
+- validation dataset parity;
+- on `gx10`, run the target-compatible ARM64 build, clean bundle-install test,
+  shutter emulation, and dry run of the exact planned Pi commands.
+
+**Gate E:** one command runs the full benchmark unattended and produces schema-
+validated results.
+
+### Phase F — Pi trial
+
+- follow the five-day schedule;
+- measure M0 plus all deployable Core candidates;
+- back up raw data and environment details.
+
+**Gate F:** baseline-vs-optimized Pi evidence contains latency, FPS, resource use,
+accuracy, and three repetitions.
+
+### Phase G — analysis and submission
+
+- generate figures/tables from raw results;
+- complete report and slides;
+- publish code and model artifacts;
+- run the submission checklist.
+
+**Gate G:** Core Definition of Done passes.
+
+### Phase S — optional Stretch KD
+
+May begin only after Gate G. It must be a separate experiment/config/result block
+and must not rewrite the Core headline result.
+
+---
+
+## 14. Repository and deliverable layout
+
+The public repository should converge on this structure:
+
+```text
+final_project/
+  DESIGN.md                         # this execution specification
+  README.md                         # quick start, results summary, public links
+  SUBMISSION.md                     # final checklist and canonical URLs
+  LICENSE
+  CITATION.cff
+  pyproject.toml
+  requirements.lock                # or uv.lock/conda lock, exact versions
+  configs/
+    data/cct20.yaml
+    train/m0_fp32.yaml
+    optimize/m1_ptq.yaml
+    optimize/m2_qat.yaml
+    optimize/m3_prune.yaml
+    optimize/m4_pruned_qat.yaml
+    runtime/pi.yaml
+  src/wildlife_trigger/
+    data/
+    models/
+    train.py
+    evaluate.py
+    calibrate.py
+    export.py
+    optimize/
+    validate/
+    reporting/
+  cpp/
+    CMakeLists.txt
+    include/
+    src/
+    tests/
+  scripts/
+    setup_gx10.sh
+    download_data.sh
+    run_core_pipeline.sh
+    build_cpp.sh
+    package_pi.sh
+    run_pi_benchmarks.sh
+    generate_submission.sh
+  tests/
+    python/
+    fixtures/
+  notebooks/
+    01_data_audit.ipynb
+    02_results_analysis.ipynb
+  data/
+    manifests/                      # committed small metadata, no image archive
+    README.md
+  artifacts/
+    policies/
+    manifests/
+    model_cards/
+    checksums.sha256
+    README.md                       # model download/GitHub Release links
+  deploy/
+    pi/
+      install.sh
+      run_demo.sh
+      manifest.json
+      README.md
+  results/
+    data_audit/
+    training/
+    evaluation/
+    parity/
+    model_selection/
+    pi/
+    figures/
+  report/
+    final_report.md
+    final_report.pdf
+  slides/
+    final_presentation.pptx
+    final_presentation.pdf
+  demo/
+    README.md
+    sample_output.txt
 ```
-$ ./trigger --module bobcat-v1 --data cct20/trans-test/
-frame_00412.jpg  gate=non-empty(0.98)  species=bobcat(0.94)   → SHUTTER FIRE  e2e=31ms
-frame_00413.jpg  gate=empty(0.02)      → sleep                                e2e=6ms
-...
-summary: fired 412/438 target frames (recall 94.1%), 17 false fires
-         p50 6ms / p95 33ms   |  71% of frames exited at the gate
-```
 
-## 9. Metrics
+Large datasets are never committed. ONNX/checkpoint files should be published via
+GitHub Releases or Git LFS, with hashes and stable download links in
+`artifacts/README.md`.
 
-Accuracy is a trap: ~70% of frames are empty, so "always say empty" scores 70%.
+### 14.1 Mandatory submission deliverables
 
-**The error costs are asymmetric, and they set the metric:**
+The assignment explicitly requires a codebase and formal slide deck. The project
+will submit the following complete package:
 
-- **Missing a bobcat = a missed shot = the product failed at its one job.** This
-  is what the photographer paid to prevent. Expensive.
-- **A false fire = one wasted frame + a little battery.** Cheap.
+1. **Public GitHub repository**
+   - clean tagged release, e.g. `v1.0-final`;
+   - reproducible setup and commands;
+   - repository URL included in README, report, first slide, and final slide;
+   - exact commit hash recorded in all benchmark environment files.
+2. **Source code**
+   - Python training/conversion/evaluation;
+   - C++ inference application and tests;
+   - configs and automation scripts.
+3. **Models and policies**
+   - FP32 baseline ONNX;
+   - final optimized ONNX;
+   - optional intermediate deployable models;
+   - bobcat policy YAML;
+   - checksums and model cards.
+4. **Raspberry Pi deployment bundle**
+   - release archive containing the C++ executable, required shared libraries or
+     reproducible installer, final ONNX model, class map, policy, sample manifest,
+     `run_demo.sh`, and checksums;
+   - bundle must install and run on a clean compatible ARM64 environment without
+     accessing the training machine.
+5. **Raw evidence**
+   - training histories;
+   - validation/test predictions;
+   - parity reports;
+   - raw Pi timings and system logs;
+   - generated tables and figures.
+6. **Formal slide deck**
+   - editable `.pptx`;
+   - exported `.pdf`;
+   - repository link and QR code.
+7. **Final report**
+   - Markdown source and PDF;
+   - methods, reproducibility, results, critical analysis, limitations, references;
+   - public repository and release links.
+8. **Two notebooks**
+   - data audit;
+   - results analysis;
+   - both execute from frozen artifacts without hidden state.
+9. **Submission manifest**
+   - `SUBMISSION.md` lists every link/file, the final commit, release, model hashes,
+     headline metrics, and reproduction commands.
 
-So this is a **recall-first** product with a **precision budget** (fire on every
-raccoon all night and the battery dies and the card fills — which destroys the
-value a different way).
+### 14.2 Recommended optional deliverable
 
-| Metric | Why |
+A 30-60 second terminal demo recording is useful for the presentation but is not
+required. It must show the rented Pi hostname/platform, C++ executable, several
+frames, trigger decisions, and summary timings. Do not let video production delay
+mandatory artifacts.
+
+---
+
+## 15. Report specification
+
+Target length: approximately 8-12 pages excluding appendices. Generate tables and
+plots from raw result files.
+
+Required sections:
+
+1. Problem and product narrative.
+2. Course objective and engineering question.
+3. Dataset, splits, empty supplement, and leakage controls.
+4. MobileNetV2 baseline and training recipe.
+5. PTQ, QAT, structured pruning, and theoretical expectations.
+6. C++ application and correctness/parity tests.
+7. Raspberry Pi benchmark protocol.
+8. Accuracy and system-performance results.
+9. Ablation and Pareto analysis.
+10. What worked well.
+11. What did not work as expected.
+12. Hardware/software bottlenecks.
+13. Limitations: remote Pi, no camera/GPIO/power measurement, CCT domain.
+14. Concrete next steps, including physical device integration and optional KD.
+15. Reproducibility statement, public repository link, release tag, and commit.
+16. References.
+
+The report must separate measured, published, and estimated values. Estimates do
+not appear in the headline results table.
+
+---
+
+## 16. Slide-deck specification
+
+Suggested 10-12 slide narrative:
+
+1. Title, one-line product, author, public repository/QR.
+2. Why Edge AI: offline target-species shutter decision.
+3. Assignment mapping and engineering question.
+4. CCT-20, bobcat target, cis/trans, leakage controls.
+5. Baseline model and C++ deployment pipeline.
+6. Optimization ladder: PTQ, QAT, structured pruning.
+7. Correctness and reproducibility gates.
+8. Accuracy results at the bobcat operating point.
+9. Pi baseline-vs-optimized latency/FPS/resource results.
+10. Pareto chart and bottleneck/profile evidence.
+11. What worked, what failed, limitations.
+12. Final demo/result, next steps, repository/QR.
+
+The presenter must be able to explain every C++ preprocessing step, quantization
+choice, pruning result, threshold, and benchmark number.
+
+---
+
+## 17. Required result tables and figures
+
+At minimum generate:
+
+1. Dataset split/class/location audit table.
+2. Training curves for M0 and final optimized model.
+3. Validation model-selection table.
+4. Cis/trans target metrics with sequence-bootstrap confidence intervals.
+5. Per-class confusion matrices for M0 and final.
+6. Accuracy vs model size/MACs table.
+7. Pi table: model, precision, file size, threads, p50/p95/p99 inference,
+   end-to-end FPS, peak RSS, CPU utilization, temperature/throttling.
+8. Pareto plot: trans bobcat recall or F2 vs Pi p95 latency.
+9. Reference vs fused C++ preprocessing latency.
+10. At least six representative failure cases with scores and explanations.
+
+All plots include units, sample counts, split, model ID, and commit/run ID.
+
+---
+
+## 18. Risk register and decision rules
+
+| Risk | Decision rule |
 |---|---|
-| **Recall on the target class (primary)** | The product's one job |
-| Precision on the target class | The battery/card budget |
-| Recall @ the chosen operating point, **cis vs trans** | "Does it survive a new location?" |
-| Gate recall on non-empty | The gate must never cause a miss |
-| % of frames exiting at the gate | The cascade's energy win |
-| Per-class recall, macro F1 | Long-tailed classes |
-| Day vs night-IR recall, separately | Different failure mode |
-| **p50 / p95 / p99 shutter lag** | p95 is the product spec, not the mean |
-| Average latency per trigger | Energy proxy → battery life |
-| Model size (FP32 vs INT8) | Compression |
-| **Fire rate & battery life vs number of enabled modules** | The multi-module trade-off (§3) |
-| **Species-model break-even point** | Beyond how many enabled classes is the gate alone equivalent? (§3) |
+| Empty supplement introduces bias | Keep it location-disjoint, deterministic, documented, and identical across all models |
+| Trans bobcat recall is poor | Report honestly; do not train on trans-test. Stretch KD is allowed only after Core completion |
+| PTQ loses accuracy | Use QAT; use quantization debugging; keep PTQ as a negative result |
+| QAT export/runtime path is unstable | E0 before training; pin compatible versions; fail early rather than improvise during Pi trial |
+| Structured pruning does not speed MobileNetV2 | Show real MAC reduction and measured lack of speedup; final model may be unpruned QAT |
+| C++ preprocessing silently differs | E1 golden tensor fixtures block deployment |
+| ORT C++ differs from Python | E3/E4 block deployment |
+| Remote Pi hides sensors/governor | Record unavailable values; use exposed `/proc`/`sysfs`; do not fabricate resource/energy claims |
+| Five-day trial is spent debugging | Exact ARM64 dry run and one-command benchmark are prerequisites |
+| Scope creep | Only Core until Gate G; only crop-teacher KD afterward |
+| Public repo cannot store large models | GitHub Release/LFS plus hashes and download script |
 
-**Two results that cost us nothing.** Both fall out of the same confusion matrix,
-offline, with no extra training and no extra measurement:
+---
 
-1. **The multi-module curve** — false-fire rate, shots/night and estimated battery
-   life as a function of how many modules are enabled. Example shape:
+## 19. Core Definition of Done
 
-   > 1 module: 94% recall, 4% false fires, ~200 shots/night.
-   > 3 modules: ~92% mean recall, ~13% false fires, ~600 shots/night, ≈½ the
-   > autonomy.
+Core is complete only when every item is true:
 
-2. **The break-even** — the number of enabled classes at which firing on the
-   species model's subset stops beating firing on the gate alone. Past that point
-   the species model is 25 ms of dead weight, and we can say so with a number.
+### Data and ML
 
-**The headline slide** is not "we hit N FPS". It is:
+- [ ] Data manifests, hashes, distributions, and leakage assertions pass.
+- [ ] Empty supplement is location-disjoint and reproducible.
+- [ ] M0, M1, M2, M3, and M4 results exist or a technically justified failed
+      candidate is preserved and documented.
+- [ ] Thresholds use validation only.
+- [ ] Final model decision predates test evaluation.
+- [ ] Cis/trans metrics and confidence intervals exist.
 
-> "At 94% bobcat recall on **unseen locations**, the device fires in 31 ms (p95
-> 33 ms) and averages 12.5 ms per PIR trigger — ≈2× less energy per wake-up than
-> a single-model design, at +5 ms of shutter lag."
+### Deployment and C++
 
-## 10. Benchmark protocol
+- [ ] Baseline and final ONNX models pass preprocessing/model/C++ parity.
+- [ ] C++ CLI, dataset runner, benchmark harness, and self-tests pass.
+- [ ] ARM64 dry run succeeds from a clean environment.
+- [ ] Pi baseline and optimized runs use the same application and protocol.
+- [ ] Latency, FPS, RSS, CPU utilization, model size, and available thermal data
+      are recorded with raw evidence.
 
-On the rented Raspberry Pi 5 (Hostpro), CPU-only (BCM2712, 4× Cortex-A76 @
-2.4 GHz).
+### Submission
 
-1. Report the CPU governor; use `performance` if permitted.
-2. Warm-up 50–100 inferences; measure ≥1000; batch size 1.
-3. Report **p50/p95/p99**, not the mean.
-4. Time **separately**: JPEG decode → resize → normalize / gate / species /
-   end-to-end. Preprocessing is easy to hide and often dominates.
-5. Thread sweep: 1 / 2 / 4.
-6. Thermals throughout: `vcgencmd measure_temp`, `vcgencmd get_throttled`. The Pi
-   5 throttles from ~80 °C — the first 30 s are not representative.
-7. Identical images for every configuration.
-8. Separate runs: cis-test / trans-test / day / night-IR.
+- [ ] Public repository is clean, tagged, and accessible.
+- [ ] Model release links and checksums work.
+- [ ] Raspberry Pi deployment bundle installs and runs from its documented entry
+      point.
+- [ ] README reproduces setup, training, export, C++ build, demo, and benchmarks.
+- [ ] Data-audit and results notebooks execute cleanly.
+- [ ] Final report Markdown/PDF includes the public repository URL.
+- [ ] Final slides PPTX/PDF include the repository URL/QR.
+- [ ] `SUBMISSION.md` points to every canonical artifact.
+- [ ] Placeholder `REPO_URL` values are replaced by the public repository and
+      tagged-release URLs.
+- [ ] All headline numbers trace back to machine-readable raw results.
+- [ ] Slides explicitly answer what worked, what failed, bottlenecks, and next
+      steps.
 
-**Stated limitation:** the Pi is a datacenter instance. No physical access →
-**no inline power meter**, no camera, no GPIO. Energy per inference is **proxied
-by latency**, not measured. This goes on the limitations slide.
+Only after all boxes are checked may Stretch KD begin.
 
-## 11. Risks & open questions
+---
 
-| # | Item | Mitigation / decision rule |
+## 20. Stretch specification — crop-teacher KD only
+
+This section is dormant until Core completion.
+
+### Experiment
+
+| Row | Student input | Extra signal |
 |---|---|---|
-| 1 | **13,553 training images is small** | ImageNet-pretrained transfer learning + aggressive augmentation. Fallback if trans recall collapses: **location-disjoint CCT extension** — see the box below. |
-| 2 | Trans-location recall may be poor (published error doubles) | This is the honest finding if it happens — report it. The crop-teacher KD (§5) is our main lever against it. |
-| 3 | Structured pruning on MobileNetV2 may give little | Report what we find; the ladder is designed to show it either way |
-| 4 | ~~MegaDetector weight license~~ | **Closed 2026-07-15:** not a constraint. Copyleft triggers on distribution; we run it offline on gx10 and never redistribute weights. `MDV6-yolov10-c` chosen on coherence with §4's cost row. License stated in the report — §5. |
-| 5 | Does the Hostpro Pi allow `vcgencmd` / governor control? | Verify on day 1 of the trial; if not, report what is available |
-| 6 | 15 C++ points are weaker without an own engine | §8 items 1–5; gate-engine option in reserve |
-| 7 | Latency estimates in this doc are estimates | Every one is replaced by a measurement before it enters the report |
-| 8 | ~~The stage-2 teacher~~ | **Closed 2026-07-15:** dropped. MegaDetector detects, it does not classify species, so it was never a possible teacher; no off-the-shelf classifier matches CCT-20's classes. **Our crop-teacher is the teacher** — §5. |
+| S0 | Full frame | Core FP32 baseline |
+| S1 | Full frames plus GT crops as training augmentation | No teacher |
+| S2 | Full frame | Soft animal-class distribution from crop teacher |
 
-### Risk 1, resolved: the data-extension trap (closed 2026-07-15)
+The crop teacher trains only on the 15 animal classes because empty frames have no
+box. If the Core student retains 16 outputs, KD is applied only on non-empty
+samples and compares the teacher distribution with the student's animal logits
+after excluding and renormalizing the `empty` dimension.
 
-An earlier revision of this document proposed, if trans recall collapses, "training
-on the larger CCT split (106,428 / 65 locations)". **Both halves of that sentence
-were wrong, and the second one is a trap.**
+Required controls:
 
-**The numbers were unverified.** The real full CCT is **243,187 images from 140
-camera locations**, 21 categories, ~66k boxes, **105 GB** (LILA / the CCT dataset
-page — **published**). The 106,428 / 65 figure does not correspond to anything we
-can source; it is struck.
+- same train split, optimizer budget, augmentations, seed, and student
+  initialization for S0/S1/S2;
+- explicit rule for multiple boxes: default to a padded union box; record and test
+  alternatives only if needed;
+- CE remains active alongside KD;
+- tune KD temperature and weight on validation only;
+- S2 must beat S1 to justify the teacher.
 
-**The trap: full CCT is a *superset* of CCT-20** — the dataset page states CCT is
-"a superset of the data used in our ECCV18 paper". So CCT-20's 20 locations sit
-**inside** the 140. Training naively on full CCT would pull the **9 trans-test
-locations into the training set**, and "trans" would silently stop meaning *unseen
-location*. Our headline number — "will it work when I move my trap somewhere
-new?" — would become a lie, and a lie that *improves* the metric, which is the kind
-that survives review. This is location leakage: the domain-specific form of the
-no-leakage rule already stated in §6.
+If S2 fails to beat S1, report the null result and keep the Core final model.
 
-**The rule, if we ever take this route:** train only on **CCT locations disjoint
-from all 20 CCT-20 locations** (~120 locations), verified by asserting an empty
-intersection of location IDs — an automated check in the data pipeline, not a
-promise. Costs: a 105 GB download (bandwidth and disk, plan ahead), the class map
-must be reconciled (21 categories vs 15 + empty), and comparability with the
-published CCT-20 baseline is lost — so the extension is reported as an **additional
-row**, never as a replacement for the headline number.
+---
 
-**Status: contingency, not plan.** We take it only if trans recall collapses and
-crop-teacher KD (§5) fails to lift it.
+## 21. References and authoritative sources
 
-## 12. Schedule — driven by the 5-day free trial
+- Course assignment: `Final Project TASK.docx` in this directory.
+- Beery, Van Horn, Perona, *Recognition in Terra Incognita*, ECCV 2018:
+  https://openaccess.thecvf.com/content_ECCV_2018/papers/Beery_Recognition_in_Terra_ECCV_2018_paper.pdf
+- CCT and CCT-20 downloads, metadata, and license:
+  https://lila.science/datasets/caltech-camera-traps
+- CCT dataset description:
+  https://beerys.github.io/CaltechCameraTraps/
+- MobileNetV2:
+  https://arxiv.org/abs/1801.04381
+- ONNX Runtime quantization:
+  https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html
+- ONNX Runtime C/C++ API:
+  https://onnxruntime.ai/docs/get-started/with-c.html
 
-Hostpro's Pi 5 offers a 5-day free trial. Everything that can happen off-device
-**must** happen before the window opens.
-
-| Phase | Where | Work |
-|---|---|---|
-| 1. Data | gx10 | CCT-20 (6 GB), cis/trans splits, day/night + small-animal subsets, crop extraction from GT boxes |
-| 2. Models | gx10 | Crop-teacher, MNv2 student, KD, gate model, structured pruning, INT8 QAT, ONNX QDQ export |
-| 3. Application | local ARM64 devcontainer | C++ cascade app, fused preprocessing, benchmark harness |
-| 4. Dry run | local ARM64 devcontainer | Full protocol end-to-end, so nothing is authored during the trial |
-| **5. Trial** | **rented Pi 5** | **Final measurements only**, with slack for a repeat |
-| 6. Write-up | — | Slides, analysis, limitations |
-
-The container's ARM64 devcontainer is what makes this schedule safe: the C++ is
-built and debugged without any Pi.
-
-## 13. Roadmap beyond the course
-
-Phase 0 proves the decision core. The device grows outward from there, and the
-same cascade is the reusable brick for every mission.
-
-```
-Trigger (PIR / radar / audio)
-  → [OUR GATE: is anything there?]
-  → [OUR CLASSIFIER: what is it?]
-  → decision: shutter / alert / discard
-```
-
-| Phase | Content |
-|---|---|
-| **Phase 0 — this course** | Pi 5 CPU-only decision core, ORT, cascade, compression stack, measured on CCT-20 |
-| **Phase 1 — MVP device** | Pi 5 + AI HAT+ (Hailo-8L) + NoIR camera + PIR + real shutter GPIO + LTE; **region model packs** (Africa/Europe/N. America — one model cannot cover the world's species); multi-label sigmoid for multi-animal frames; **fire budget** (photographer sets "max N shots/night", the device solves thresholds jointly across enabled modules); audio (chainsaw/gunshot); collect real data |
-| **Phase 2 — field prototype** | CM5 + Hailo-8L + STM32 supervisor (sleep/wake, power gating), eMMC, IP67, solar; OTA modules |
-| **Phase 3 — low-power product** | STM32N6 / Himax WE2 + Syntiant always-on audio, LTE-M / LoRa, months of autonomy, low BOM |
-
-**Where the market goes.** The photographer's device and the conservation sensor
-are the *same box with different modules*:
-
-| Module | Mission | Buyer |
-|---|---|---|
-| `bobcat-v1`, `elephant-v1` | Target-species photography | Wildlife photographers |
-| `wildlife-filter-v1` | Empty-frame filtering, monitoring | Ecologists, researchers |
-| `antipoaching-v1` (`person`) | Intrusion alert | Reserves, NGOs, rangers |
-| `forestguard-v1` (`car` + chainsaw audio) | Illegal logging, timber trucks | Forest services |
-
-CCT-20 already contains a `car` class, so the logging branch is closer than it
-looks. The commercial reference point is Nightjar/TrailGuard (Movidius Myriad X,
-PIR, IR camera, IP67, alerts <30 s, 18-month battery, from $799).
-
-**Local relevance:** illegal logging in the Carpathians and human-wildlife
-conflict (bear/wolf/boar near farms) are real, documented Ukrainian problems — a
-concrete addressee rather than an abstract Serengeti.
-
-## 14. References
-
-**Method & data**
-
-- Beery, Van Horn, Perona, *Recognition in Terra Incognita*, ECCV 2018 —
-  https://arxiv.org/abs/1807.04975 — CCT-20, cis/trans splits, the cis→trans error
-  doubling, crop-vs-full-frame Table 1
-- Caltech Camera Traps (LILA) — https://lila.science/datasets/caltech-camera-traps/
-- CCT dataset page / splits — https://beerys.github.io/CaltechCameraTraps/
-- Snapshot Serengeti (LILA) — https://lila.science/datasets/snapshot-serengeti/ —
-  incl. the sequence-level label caveat
-- Cunha et al., *Filtering Empty Camera Trap Images in Embedded Systems*, CVPRW
-  2021 — https://arxiv.org/abs/2104.08859
-- Vélez et al., *Choosing an Appropriate Platform and Workflow for Processing
-  Camera Trap Data using AI* — https://arxiv.org/abs/2202.02283
-
-**Models**
-
-- MegaDetector — https://github.com/microsoft/megadetector ·
-  Model Zoo — https://github.com/microsoft/MegaDetector/blob/main/docs/model_zoo.md
-- PyTorch-Wildlife — https://microsoft.github.io/Pytorch-Wildlife/model_zoo/
-- Sandler et al., *MobileNetV2*, CVPR 2018 — https://arxiv.org/abs/1801.04381
-
-**Hardware & benchmarking**
-
-- Raspberry Pi 5 — https://www.raspberrypi.com/products/raspberry-pi-5/
-- Pi 5 heating and cooling — https://www.raspberrypi.com/news/heating-and-cooling-raspberry-pi-5/
-- *Impact of Thermal Throttling on Long-Term Visual Inference* —
-  https://arxiv.org/abs/2010.06291
-
-**Product reference**
-
-- Nightjar — https://www.nightjar.tech/
-- Dertien et al., BioScience 2023 (TrailGuard deployment) —
-  https://academic.oup.com/bioscience/article/73/10/748/7261057
-</content>
+Any implementation-time documentation lookup must prefer primary/official
+sources and record the versions actually used.

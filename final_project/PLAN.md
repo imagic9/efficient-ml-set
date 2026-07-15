@@ -1,233 +1,631 @@
-# Final Project — Work Plan
+# Final Project — Autonomous Core Execution Plan
 
-Execution plan for the design in [DESIGN.md](DESIGN.md). Read that first: this
-document says **what we build, in what order, and what has to be true before the
-next thing starts**. It contains no new decisions — where it looks like a decision,
-DESIGN.md is the source of truth.
+Status: **Core approved; implementation not started.**
 
-Status: **not started.** Nothing below is done.
+This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
+tracker for an implementation agent; `DESIGN.md` remains authoritative for every
+technical decision, metric, acceptance threshold, and deliverable contract.
+
+If PLAN and DESIGN ever disagree, stop and resolve the documents. Do not choose
+one silently.
 
 ---
 
-## 1. The one constraint that shapes everything
+## 1. Document hierarchy and agent protocol
 
-The Pi is rented on a **5-day free trial** (Hostpro). The trial is not development
-time — it is **measurement time**. Anything authored, debugged, or discovered
-during the trial is a day burned from a 5-day budget that cannot be extended.
+Read in this order:
 
-> **The rule: nothing runs on the Pi for the first time during the trial.**
-> Every artifact and every script arrives already exercised end-to-end on the
-> ARM64 devcontainer. The trial re-runs a known-good procedure on real silicon.
+1. [`README.md`](README.md) — project orientation, scope, and entry points.
+2. [`DESIGN.md`](DESIGN.md) — complete technical and submission specification.
+3. This file — task order, dependencies, outputs, and gates.
+4. The newest `Handoff/HANDOFF_*.md` — current session state and deviations.
 
-This is what makes the devcontainer (§8 of DESIGN.md) load-bearing rather than
-convenient, and it dictates the phase order below: **the trial is opened last, and
-only once the dry run has passed.**
+The executing agent must follow these rules:
 
-Second constraint, from the rubric: *"measure and document on-device latency, FPS
-and resource utilization for your **baseline** model"*. The FP32 baseline is not
-just a training artifact — it is a **measured deliverable on the Pi**. It ships to
-the trial alongside the optimized models. Forgetting this costs 10 points and
-cannot be fixed after the trial closes.
+- use the dedicated `gx10` host for Phases A-E and G, including all data work,
+  training, C++ work, shutter emulation, tests, dry runs, and deliverable builds;
+- use the rented Raspberry Pi 5 only for Phase F target-hardware verification
+  and final measurements; never present `gx10` timings as Pi results;
+- work only on Core until Gate G passes;
+- the only permitted post-Core Stretch is crop-teacher KD;
+- mark a task complete only when its listed artifact exists and its checks pass;
+- preserve commands, configs, logs, raw predictions, and raw timings;
+- never reconstruct slide/report numbers manually;
+- never inspect cis-test/trans-test labels before the freeze task;
+- use validation data for model/runtime/thread decisions;
+- stop at a failed gate and fix the cause before continuing;
+- keep all paths and commands non-interactive and rerunnable;
+- update this plan and the newest handoff at the end of each work session.
 
-## 2. Dependency graph
+### Completion states
 
-**Three models exist in this project** (DESIGN.md §7 roster): **Gate** and
-**Species** ship to the Pi; the **crop-teacher** never leaves gx10. MegaDetector is
-cited, never run. The ladder M5–M8 compresses **Species only**.
+- `[ ]` not started;
+- `[~]` in progress;
+- `[x]` completed and verified;
+- `[!]` blocked, with the reason and evidence recorded in the newest handoff.
 
+Do not use `[x]` for a partial implementation.
+
+---
+
+## 2. Fixed scope and critical path
+
+Core is one full-frame MobileNetV2 with 16 outputs and a calibrated bobcat
+shutter policy, exported to ONNX and executed by a C++ ONNX Runtime application
+on a Raspberry Pi 5.
+
+Optimization candidates:
+
+- M0 — FP32 baseline;
+- M1 — INT8 PTQ;
+- M2 — INT8 QAT;
+- M3 — structured-pruned FP32;
+- M4 — structured-pruned + QAT.
+
+Critical path:
+
+```text
+A0 -> A1 -> A2 -> A3
+                |
+                v
+B0 -> B1 -> B2 -> B3 -> B4
+                         |
+                         v
+C0 -> C1 -> C2 -> C3 -> C4 -> C5
+                         |
+                         v
+D1/D2/D3 -> D4 -> D5 -> D6
+                         |
+                         v
+E1 -> E2 -> E3 -> E4 -> E5 -> E6 -> E7 -> E8
+                                         |
+                                         v
+F1 -> F2 -> F3 -> F4 -> F5
+                         |
+                         v
+G1 -> G2 -> G3 -> G4 -> G5 -> Gate G
 ```
-  D1 data ─┬─ D2 splits ─┬─ D3 crops ──┬─ M1 crop-teacher ─┐
-           │             │             │                   ├─ M3 student+KD ─┐
-           │             │             └─ M2b crop-aug ────┤   (judged vs M2b)│
-           │             ├─ M2 student FP32 (baseline) ─────┘                │
-           │             │                                                   │
-           │             └─ D4 gate labels ── M4 gate model ─────────────────┤
-           │                                                                 │
-           └─ D5 eval subsets ───────────────────────────────────────────┐   │
-                                                                         │   │
-   M3 ─── M5 PTQ ── M6 QAT ── M7 prune+QAT ── M8 full stack ─────────────┼───┤
-                                                                         │   │
-                                          M9 ONNX export + parity gate ──┴───┘
-                                                       │
-                                     C1 cascade app ───┤
-                                     C2 fused preproc ─┤
-                                     C3 bench harness ─┼── DRY RUN (devcontainer)
-                                     C4 dataset runner ┘         │
-                                                                 ▼
-                                                        ===  TRIAL OPENS  ===
-                                                          T1 measure · T2 repeat
-                                                                 │
-                                                                 ▼
-                                                            W write-up
 
-   Off the critical path, any time after D3:
-     X3 unstructured pruning (the negative-result row)
-```
+Some C++ work may proceed against the M0 smoke-test export while optimization is
+running, but no final deployment bundle is built before D6 freezes the selected
+model.
 
-**Critical path:** `D1 → D2 → D3 → M1 → M3 → M6 → M8 → M9 → C1 → dry run → trial`.
-Everything else has slack. If something must be cut, cut from X1–X3 and from the
-stretch elephant module — never from the path.
+---
 
-## 3. Phase D — Data (gx10)
+## 3. Phase A — repository and toolchain
 
-The whole project's credibility rests here. A split bug is not a bug — it is a
-retraction.
+### A0 — Record starting state
 
-| # | Task | Done when |
-|---|---|---|
-| **D1** | Download CCT-20 (~6 GB images + metadata) to gx10; verify checksums; record dataset version | Image count reconciles to **57,868**; classes reconcile to **15 + empty** |
-| **D2** | Build the official cis/trans splits from the metadata — *not* our own splits | Counts match DESIGN.md §6 **exactly**: train 13,553 · cis-val 3,484 · cis-test 15,827 · trans-val 1,725 · trans-test 23,275 |
-| **D3** | Extract GT bounding-box crops for the teacher | Crop count reconciles to the box annotations; crops spot-checked visually |
-| **D4** | Derive gate labels (empty / non-empty) from the class labels | Empty share ≈ the ~70% the design assumes — **if it is not ~70%, the cascade's energy maths in §3 changes and must be recomputed before it is quoted** |
-| **D5** | Build eval subsets: day vs night-IR, small-animal | Subsets are stable, versioned, and reproducible from a seed |
+- [ ] Confirm access to the dedicated `gx10` working copy and capture
+      `git status`, current branch/commit, disk space, CPU/GPU, ARM64 architecture,
+      OS, CUDA, compiler, and available persistent-job mechanism.
+- [ ] Preserve unrelated user changes.
+- [ ] Create a dated run/session log.
 
-**D2 is a gate, not a step.** Three assertions run in CI-style before any training:
+**Output:** `results/provenance/project_start.json` and newest handoff update.
 
-1. **No sequence spans train and val** (the paper's split rule).
-2. **Location disjointness:** `locations(train) ∩ locations(trans-test) = ∅`, and
-   likewise for trans-val. This assertion is what keeps "trans" meaning
-   *unseen location*, and it is the same assertion that guards the contingency in
-   DESIGN.md §11 if we ever extend the training data.
-3. **Split counts equal the published numbers.** If they do not, we have
-   misunderstood the metadata, and every number we produce afterwards is
-   incomparable to the published baseline.
+### A1 — Create repository skeleton
 
-**Test-set discipline (course rule, memory):** `cis-test` and `trans-test` are
-**touched once**, at the end, for the final table. All intermediate decisions —
-thresholds, early stopping, model selection, the compression ladder's internal
-comparisons — use **cis-val / trans-val only**. There is no "quick check on test".
+Depends on: A0.
 
-## 4. Phase M — Models (gx10)
+- [ ] Create the package, configs, C++ directories, scripts, tests, notebooks,
+      data-manifest directories, artifact directories, results, report, slides,
+      demo, and deployment directories specified by DESIGN §14.
+- [ ] Add `.gitignore` rules for datasets, caches, credentials, build outputs,
+      large checkpoints, and temporary benchmark files.
+- [ ] Add placeholder `SUBMISSION.md`, `CITATION.cff`, license, and artifact/data
+      READMEs.
+- [ ] Establish Python and C++ test commands.
 
-Each row lands the §9 metric set on **both** cis and trans, at the operating point,
-recorded to one results file as it is produced. We do not reconstruct a results
-table from memory at slide-writing time.
+**Done when:** a clean checkout has an understandable structure and empty test
+suites execute successfully.
 
-| # | Task | Depends | Done when |
-|---|---|---|---|
-| **M1** | FP32 crop-teacher (ResNet50 / EffNet-B0 on GT crops) | D3 | Beats the student on cis; is the accuracy ceiling (ladder row 0) |
-| **M2** | FP32 student — MNv2 ImageNet-pretrained, full frame, **no KD** | D2 | **The baseline** (row 1). Sanity anchor: cis error in the neighbourhood of the published ~20.8%; trans roughly double it |
-| **M2b** | Student, **crops as extra training data**, no KD | D3, M2 | Row 2b — **the control**. Cheap: one dataloader change, no teacher |
-| **M3** | Student **+ crop-teacher KD** | M1, M2, **M2b** | Row 2. Judged against **M2b, not M2** — beating the naive baseline proves only that crops carry information. **The §5 ablation resolves either way**; a null result is a reportable finding, not a failure |
-| **M4** | Gate model (MNv2 `width_mult=0.35` @128²) | D4 | High recall on non-empty; measured share of frames exiting at the gate |
-| **M5** | INT8 PTQ | M3 | Row 3 |
-| **M6** | INT8 QAT (`torch.ao`) | M5 | Row 4; QAT ≥ PTQ or we explain why |
-| **M7** | Structured channel pruning + QAT | M6 | Row 5; **real MAC reduction**, not just a smaller file |
-| **M8** | KD + pruned + QAT | M7 | Row 6 — the full stack |
-| **M9** | ONNX QDQ export + **parity gate** | M8 | See below |
-| **M10** | Threshold calibration → module YAML (`bobcat-v1`) | M8 | Calibrated on **val**; the YAML in DESIGN.md §3 gets real numbers |
+### A2 — Reproducible environments
 
-**Reuse (DESIGN.md §7):** `hw3/src/distill.py` drives M3 directly; `hw1/src/structured.py`
-drives M7 (example input 32² → 224²); the `hw2`/`hw3` QAT loop drives M6 with the
-quantizer swapped to affine INT8. `hw2/src/kmeans_quant.py` does not transfer.
+Depends on: A1.
 
-**M9 is the second gate.** ONNX export is where silent corruption enters — a QDQ
-graph that loads fine and is quietly wrong. Before any C++ work consumes a model:
+- [ ] Define the isolated `gx10` Python/GPU training environment.
+- [ ] Define the `gx10` CPU-only C++/ONNX Runtime development environment.
+- [ ] Define a clean target-compatible ARM64 container on `gx10` for Pi build,
+      bundle-install, and full dry-run checks.
+- [ ] Pin compiler, CMake, OpenCV, ONNX, ONNX Runtime, and Python dependencies.
+- [ ] Add environment-capture tooling and resolved run-config serialization.
+- [ ] Add checkpoint/resume and persistent logging for every long-running job.
+- [ ] Verify no secret, SSH key, token, or dataset credential is committed.
 
-> **Parity check:** ORT and PyTorch must agree on the **same fixed image set** —
-> logits within tolerance, and an **identical confusion matrix and identical
-> fired/not-fired decisions**. A model that fails parity does not reach the Pi.
+**Outputs:** lockfile(s), environment setup scripts, and environment JSON schema.
 
-Without this, a C++ bug and an export bug are indistinguishable on the Pi, during
-a 5-day window. This check costs an hour now and can save the trial.
+### A3 — E0 toolchain spike
 
-**Off-path (start once D3 lands, drop without regret if time runs short):**
+Depends on: A2.
 
-- ~~**X1** — stage-2 externally-pretrained teacher~~ — **dropped 2026-07-15**
-  (DESIGN.md open question 8). MegaDetector does not classify species, so it was
-  never a possible teacher. Our crop-teacher (M1) is the teacher, and always was.
-- ~~**X2** — run MegaDetector for the option-B ceiling~~ — **dropped 2026-07-15**.
-  **M1 already is that ceiling**: the crop-teacher classifies GT-box crops, i.e.
-  option B handed a free perfect detector, so it upper-bounds B (DESIGN.md §4). The
-  bound is the stronger argument *and* free. **MegaDetector is not run at all** —
-  §4 cites its published MACs, which needs no weights.
-- **X3** — unstructured pruning: the honest negative-result row.
+- [ ] Export ImageNet-pretrained MobileNetV2 FP32 to ONNX.
+- [ ] Create a small static PTQ ONNX model.
+- [ ] Run one epoch/minimal step of the planned QAT path and export deployable
+      INT8 ONNX.
+- [ ] On `gx10`, load all three models with the exact planned C++ ORT build
+      inside the target-compatible ARM64 environment.
+- [ ] Run a fixture and save ORT profiles/operator coverage.
+- [ ] Pin versions only after FP32/PTQ/QAT all work end to end.
 
-## 5. Phase C — The C++ application (ARM64 devcontainer)
+**Gate A:** all three model forms load and execute in ARM64 C++; the QAT artifact
+is genuinely quantized and no unsupported toolchain assumption remains.
 
-Depends on **M9 passing**, not on the ladder being finished: C1–C4 can be built
-against the M2 baseline export and later re-pointed at the final models. This is
-deliberate — it takes the C++ off the critical path's tail, where schedule risk
-concentrates.
+---
 
-| # | Task | Earns |
-|---|---|---|
-| **C1** | Cascade + decision logic: gate → threshold → species → threshold → shutter → sleep | The design, in code (15 pts, item 1) |
-| **C2** | **Fused preprocessing** — replace the container's 4 passes over memory (`convertTo`→`subtract`→`divide`→`split`) with one, copies removed | The measurable low-level win |
-| **C3** | Benchmark harness — p50/p95/p99, thread sweep, thermal logging, stage timing | 10 pts; **none of this exists in the container** |
-| **C4** | Dataset runner — iterate the test set, emit decisions + latencies + confusion matrix | Makes the trial a batch job, not an interactive session |
+## 4. Phase B — data
 
-**Correctness gate for C1–C4:** the dataset runner's confusion matrix must equal
-the Python one from M9, on the same images. Same rationale as the parity gate — we
-establish that the C++ is *right* in the devcontainer, so the trial only has to
-establish how *fast* it is.
+### B0 — Acquire and fingerprint sources
 
-**In reserve (DESIGN.md §8):** hand-write the gate's engine only, if the C++ points
-need reinforcing and the schedule allows.
+Depends on: Gate A.
 
-## 6. Phase DRY — Dry run (devcontainer). The gate to the trial.
+- [ ] Download official CCT-20 split metadata.
+- [ ] Download the downsized CCT-20 images.
+- [ ] Download full-CCT image-level metadata for empty-supplement selection.
+- [ ] Record URLs, timestamps, file sizes, and SHA-256 hashes.
+- [ ] Verify licensing/citation text for README/report/model card.
 
-The full benchmark protocol (DESIGN.md §10), executed end-to-end on ARM64, exactly
-as it will be run on the Pi — same scripts, same flags, same outputs.
+**Outputs:** `data/README.md`, source manifest, and checksums.
 
-**Exit criteria — all must hold before the trial is provisioned:**
+### B1 — Build official split manifests
 
-- [ ] Every model in the ladder is exported, parity-checked, and **on disk**
-- [ ] The **FP32 baseline is in the measurement set** (the rubric's baseline-vs-optimized comparison)
-- [ ] One command runs the whole protocol unattended and writes machine-readable results
-- [ ] The results file is the direct input to the slides — no manual transcription
-- [ ] A dated run log exists, so a trial anomaly can be diffed against a known-good run
+Depends on: B0.
 
-Anything not on this list at trial time does not go to the Pi.
+- [ ] Parse train, cis-val, cis-test, trans-val, and trans-test JSON.
+- [ ] Freeze the exact 16-class order in `configs/data/classes.yaml`.
+- [ ] Emit deterministic JSONL manifests with image, label, location, sequence,
+      dimensions, and source metadata.
+- [ ] Reconcile counts to 13,553 / 3,484 / 15,827 / 1,725 / 23,275.
 
-## 7. Phase T — Trial (5 days, rented Pi 5). Measurement only.
+**Outputs:** five versioned manifests plus category/location summaries.
 
-| Day | Work |
-|---|---|
-| **1** | Provision, SSH, deps. **Answer open question §11.5 immediately:** does the instance expose `vcgencmd` and governor control? Report what is available either way. Smoke-test the app. |
-| **2** | Full protocol: baseline + ladder, cis/trans, day/night, thread sweep. Thermals logged throughout. |
-| **3** | Read results. Profile bottlenecks (DESIGN.md §8 item 4). Fix only what is cheap and safe. |
-| **4** | **Re-run.** This day exists so that day 2 is allowed to go wrong. |
-| **5** | Buffer. Pull every artifact off the instance **before** the trial expires. |
+### B2 — Build `cct_empty_train_v1`
 
-**Replace every estimate with a measurement** (open question §11.7). The `~5 ms` /
-`~25 ms` / `~12.5 ms` figures throughout DESIGN.md are estimates and are marked as
-such; each one is either measured or removed from the report. None of them enters
-a slide as a claim.
+Depends on: B1.
 
-## 8. Phase W — Write-up
+- [ ] Extract all 20 CCT-20 location IDs.
+- [ ] Select exactly 5,000 full-CCT `empty` images from locations disjoint from
+      all 20, stratified across locations/sequences with seed 42.
+- [ ] Download selected images only.
+- [ ] Compute image checksums and emit the supplement manifest.
+- [ ] Confirm no selected image/location/sequence leaks into CCT-20.
 
-The rubric's Results Analysis (10 pts) asks four questions explicitly, so the deck
-answers them **by name**: what worked · what didn't · what the hardware/software
-bottlenecks were · concrete next steps.
+**Output:** frozen `cct_empty_train_v1.jsonl` and checksums.
 
-We are unusually well positioned here, because the design already commits to
-reporting things that did not work: the unstructured-pruning row (X3), the
-possibility that KD's attention transfer is null (M3), the possibility that
-structured pruning barely helps MobileNetV2 (§11.3), and trans recall if it
-collapses (§11.2). **Planned negative results are worth more than a clean sweep** —
-they are what "critical evaluation" means, and they cannot be manufactured in the
-last week if the ladder was not designed to expose them.
+### B3 — Implement data and preprocessing code
 
-Slides carry the limitations honestly: energy is **proxied by latency**, not
-measured (no power meter on a datacenter Pi); no camera, PIR or GPIO; the elephant
-module, if it appears, carries the Serengeti sequence-label caveat on its own slide.
+Depends on: B1, B2.
 
-## 9. Rubric coverage
+- [ ] Implement dataset readers and manifest validation.
+- [ ] Implement canonical aspect-preserving resize/pad/RGB/NCHW/ImageNet
+      normalization from DESIGN §5.5.
+- [ ] Implement training-only photometric augmentation without animal-removing
+      crops.
+- [ ] Make validation/test preprocessing deterministic.
+- [ ] Add unit tests for manifests, labels, missing/corrupt files, and transforms.
 
-| Criterion | Pts | Where earned |
-|---|---:|---|
-| Model training & optimization strategy | 15 | M1–M8 ladder + DESIGN.md §4–§7 (the *justification* is the doc; the ladder is the evidence) |
-| C++ inference implementation | 15 | C1–C4; gate-engine in reserve |
-| Benchmarking & metrics | 10 | C3 + Phase T, protocol §10, baseline **and** optimized on-device |
-| Results analysis & presentation | 10 | Phase W; the planned negative results are the asset |
+**Output:** tested Python data package and resolved data config.
 
-## 10. What would sink this, in order of likelihood
+### B4 — Data audit gate
 
-1. **A split bug** — silently inflates every number. Guarded by the D2 assertions.
-2. **Trial time spent debugging** — guarded by the dry-run exit criteria.
-3. **An export/parity bug found on the Pi** — guarded by the M9 gate.
-4. **The baseline not measured on-device** — costs 10 points; it is on the dry-run
-   checklist for exactly this reason.
-5. **Scope creep from the stretch items** — X1–X3 and the elephant module are
-   droppable by construction, and dropping them is the plan, not a failure.
+Depends on: B3.
+
+- [ ] Implement every assertion in DESIGN §5.3.
+- [ ] Produce class, location, sequence, split, and supplement statistics.
+- [ ] Render/inspect representative RGB, IR-like, empty, bobcat, small, portrait,
+      and landscape samples.
+- [ ] Complete and execute `notebooks/01_data_audit.ipynb` from a clean kernel.
+- [ ] Store machine-readable audit output and figures.
+
+**Gate B:** all counts, category mappings, IDs, sequence/location disjointness,
+paths, and hashes pass. No model training begins before Gate B.
+
+---
+
+## 5. Phase C — FP32 baseline M0
+
+### C0 — Golden preprocessing fixtures
+
+Depends on: Gate B.
+
+- [ ] Select at least 20 validation fixtures covering edge cases.
+- [ ] Save canonical Python tensors and preprocessing metadata.
+- [ ] Freeze fixture hashes for later C++ parity.
+
+**Output:** `tests/fixtures/preprocessing/` golden set.
+
+### C1 — Model and training engine
+
+Depends on: Gate B.
+
+- [ ] Implement ImageNet-pretrained MobileNetV2 width 1.0, input 224, 16 outputs.
+- [ ] Implement effective-number weighted cross-entropy and persist its numeric
+      class-weight vector.
+- [ ] Implement two-phase head/full fine-tuning, checkpointing, early stopping,
+      history logging, and run provenance.
+- [ ] Implement cis-val/trans-val target metrics and selection score.
+- [ ] Add unit and smoke tests.
+
+**Output:** tested training/evaluation engine and M0 config.
+
+### C2 — Train primary baseline
+
+Depends on: C1.
+
+- [ ] Train seed 42 on gx10.
+- [ ] Save best/last checkpoints and optimizer/scheduler state.
+- [ ] Save full history, resolved config, environment, dataset/model hashes, and
+      validation logits/predictions.
+- [ ] Verify the selected checkpoint follows the configured rule.
+
+**Output:** complete M0 seed-42 run directory.
+
+### C3 — Calibrate and evaluate validation operating point
+
+Depends on: C2.
+
+- [ ] Search thresholds using cis-val and trans-val only.
+- [ ] Apply the two-domain 90% recall rule from DESIGN §6.3.
+- [ ] Save `artifacts/policies/bobcat_v1.yaml` bound to class map/model hash.
+- [ ] Produce validation precision/recall/F2/false-fire/fire-rate results and score
+      distributions.
+
+**Output:** versioned M0 policy and validation report.
+
+### C4 — Export and parity
+
+Depends on: C3, C0.
+
+- [ ] Export FP32 ONNX with fixed input/output contract and metadata.
+- [ ] Pass E1 preprocessing parity against the reference C++ preprocessor.
+- [ ] Pass E2 PyTorch-vs-ORT FP32 parity.
+- [ ] Pass initial ORT Python-vs-C++ fixture parity.
+- [ ] Save parity tolerances, raw comparisons, hashes, and failures if any.
+
+**Output:** deployable M0 ONNX and parity report.
+
+### C5 — Reproducibility confirmation and model card
+
+Depends on: C4.
+
+- [ ] Train confirmation seeds 17 and 73.
+- [ ] Report validation mean/std for baseline training variability.
+- [ ] Complete M0 model card: data, intended use, limitations, preprocessing,
+      metrics, policy, license, and hashes.
+- [ ] Add the M0 row to the machine-readable comparison table.
+
+**Gate C:** M0 is reproducible, exported, parity-checked, calibrated, documented,
+and ready for the same Pi application as optimized candidates.
+
+---
+
+## 6. Phase D — optimization ladder
+
+### D1 — M1 INT8 PTQ
+
+Depends on: Gate C.
+
+- [ ] Build the fixed 1,024-image calibration manifest from training data only.
+- [ ] Generate MinMax, Entropy, and Percentile static INT8 candidates.
+- [ ] Inspect QDQ/QOperator coverage and remaining FP32 nodes.
+- [ ] Run quantization debugging for material accuracy drops.
+- [ ] Calibrate candidate-specific bobcat policies on validation.
+- [ ] Pass E3/E4 quantized ORT/C++ validation for the selected M1 candidate.
+
+**Output:** selected M1 model, policy, profile, metrics, and comparison row.
+
+### D2 — M2 INT8 QAT
+
+Depends on: Gate C, A3.
+
+- [ ] Initialize from M0 FP32, never from M1 PTQ.
+- [ ] Run the validated affine INT8 fake-quant/QAT recipe.
+- [ ] Search only the documented low learning-rate range on validation.
+- [ ] Export a genuinely quantized ONNX graph.
+- [ ] Inspect integer operator coverage/profile.
+- [ ] Calibrate policy and pass E3/E4.
+
+**Output:** selected M2 model, policy, profile, metrics, and comparison row.
+
+### D3 — Pruning sensitivity
+
+Depends on: Gate C.
+
+- [ ] Adapt `hw1/src/structured.py` to 224x224 MobileNetV2, residual/depthwise
+      dependency groups, 16 outputs, and bobcat validation metrics.
+- [ ] Profile M0 parameters/MACs.
+- [ ] Produce sensitivity evidence for dependency groups.
+- [ ] Add pruning correctness tests.
+
+**Output:** sensitivity report and reproducible pruning config.
+
+### D4 — M3 structured-pruned FP32
+
+Depends on: D3.
+
+- [ ] Create approximately 15%, 30%, and 45% MAC-reduction candidates.
+- [ ] Physically remove channels and verify changed shapes/MACs.
+- [ ] Fine-tune each under the fixed data/loss contract.
+- [ ] Export and parity-check deployable candidates.
+- [ ] Calibrate policies and add all validation rows.
+- [ ] Select one M3 point for M4 using the validation Pareto frontier.
+
+**Output:** M3 candidate set, selected checkpoint, models, policies, and evidence.
+
+### D5 — M4 structured-pruned + QAT
+
+Depends on: D4, D2.
+
+- [ ] Apply the validated QAT recipe to the selected M3 FP32 checkpoint.
+- [ ] Export, profile, calibrate, and pass E3/E4.
+- [ ] Add M4 to the comparison table without assuming it is the winner.
+
+**Output:** M4 model, policy, profile, metrics, and comparison row.
+
+### D6 — Freeze final optimized model
+
+Depends on: D1, D2, D4, D5.
+
+- [ ] Reject any candidate failing correctness/export/parity gates.
+- [ ] Apply DESIGN §8.5 validation selection rules.
+- [ ] Use the E0-compatible ARM64 microbenchmark for pre-Pi latency evidence.
+- [ ] Write `results/model_selection/decision.md`, including rejected candidates.
+- [ ] Freeze selected model, policy, preprocessing, ORT config, class map, thread
+      candidates, and hashes before test labels are opened.
+
+**Gate D:** one final optimized candidate is frozen by validation evidence. The
+most complicated candidate does not win automatically.
+
+---
+
+## 7. Phase E — C++ application and deployment bundle
+
+### E1 — C++ project foundation
+
+Depends on: A3; may start before Gate D using M0.
+
+- [ ] Replace the 145-line course smoke test with a C++17 application/library
+      structure, tests, configuration, and CLI.
+- [ ] Implement RAII/error/logging conventions and deterministic JSON schemas.
+- [ ] Pin the ORT CPU EP build and compiler flags.
+
+### E2 — Preprocessing
+
+Depends on: E1, C0.
+
+- [ ] Implement correct reference preprocessing.
+- [ ] Implement fused/preallocated preprocessing.
+- [ ] Pass golden tensor fixtures for both paths.
+- [ ] Reject the old BGR-as-RGB behavior.
+
+### E3 — Model session and policy
+
+Depends on: E1, C4.
+
+- [ ] Implement model contract validation and ORT session/thread configuration.
+- [ ] Implement class-map/model-hash-bound bobcat policy loading.
+- [ ] Implement `SHUTTER_TRIGGER=0/1` output and structured inference result.
+- [ ] Add wrong-model/class-map/threshold tests.
+
+### E4 — Dataset runner
+
+Depends on: E2, E3.
+
+- [ ] Consume manifests deterministically.
+- [ ] Emit ordered JSONL scores, classes, decisions, errors, and stage timings.
+- [ ] Define corrupt/missing-image behavior.
+- [ ] Match Python validation outputs and confusion matrix.
+
+### E5 — Benchmark and system monitor
+
+Depends on: E4.
+
+- [ ] Implement warm-up, repetitions, p50/p95/p99, inference/end-to-end FPS, and
+      per-stage timings.
+- [ ] Implement peak RSS and CPU-utilization capture.
+- [ ] Capture available frequency/temperature/throttling signals and explicit
+      `unavailable` values.
+- [ ] Validate output schemas and percentile calculations.
+
+### E6 — Correctness and C++ optimization experiment
+
+Depends on: E5, Gate D.
+
+- [ ] Pass E1-E4 for M0 and the frozen optimized model.
+- [ ] Measure reference-vs-fused preprocessing with model/config held constant.
+- [ ] Run Python-vs-C++ validation dataset parity.
+- [ ] On `gx10`, run all unit/integration/self-tests under both a clean native
+      CPU-only build and the target-compatible ARM64 build.
+
+**Gate E6:** the C++ application is correct before performance claims are made.
+
+### E7 — Raspberry Pi deployment bundle
+
+Depends on: E6.
+
+- [ ] Package C++ executable, required runtime/install instructions, M0 and final
+      ONNX models, policies, class map, validation benchmark manifest, sample
+      images, `install.sh`, `run_demo.sh`, and checksums.
+- [ ] Generate bundle manifest with commit/model/policy hashes.
+- [ ] Test installation in a clean target-compatible container on `gx10` without
+      access to the host training environment or unbundled artifacts.
+- [ ] If binary compatibility cannot be proven, include pinned source/build
+      automation and make Pi-side compilation part of `install.sh`.
+
+**Output:** versioned ARM64 deployment archive.
+
+### E8 — Full ARM64 dry run
+
+Depends on: E7.
+
+- [ ] On `gx10`, run the exact future Pi provision/install/demo/benchmark
+      commands inside the target-compatible ARM64 environment.
+- [ ] Verify unattended execution and machine-readable outputs.
+- [ ] Verify baseline is included in the measurement matrix.
+- [ ] Copy and parse results using the reporting code.
+- [ ] Record a known-good dry-run log for later diffing.
+
+**Gate E:** the deployment bundle and one-command benchmark work end to end. Do
+not rent the Pi before this gate.
+
+`gx10` dry-run latency is diagnostic only. Phase F remains mandatory because
+only measurements produced on the rented Pi 5 count as target-hardware evidence.
+
+---
+
+## 8. Phase F — five-day rented Raspberry Pi 5 trial
+
+### F1 — Day 1: provision and smoke test
+
+- [ ] Use `gx10` as the control/evidence host and verify the remote Pi connection.
+- [ ] Record hardware/OS/kernel/governor/compiler/ORT/OpenCV/environment.
+- [ ] Record exposed frequency, temperature, and throttling interfaces.
+- [ ] Install the frozen bundle.
+- [ ] Run self-test and a short validation smoke test.
+- [ ] Do not tune models or inspect test labels.
+
+### F2 — Day 2: validation performance profiling
+
+Depends on: F1.
+
+- [ ] Run validation benchmark for M0 and all deployable Core candidates.
+- [ ] Sweep threads 1/2/4.
+- [ ] Run ORT/C++ profiles and identify bottlenecks.
+- [ ] Make only safe runtime fixes validated against parity tests.
+
+### F3 — Day 3: repeat validation and freeze
+
+Depends on: F2.
+
+- [ ] Repeat validation after any safe fix.
+- [ ] Freeze git commit, binary, models, policies, preprocessing mode, ORT options,
+      and thread count.
+- [ ] Archive freeze manifest before test evaluation.
+
+**Freeze gate:** no artifact or configuration changes after this point.
+
+### F4 — Day 4: final test and benchmark
+
+Depends on: F3.
+
+- [ ] Run final cis-test and trans-test C++ evaluation.
+- [ ] Run full M0-vs-optimized Pi benchmark, at least 1,000 frames, three separate
+      processes/repetitions as specified.
+- [ ] Capture raw per-frame predictions/timings/system logs.
+- [ ] Copy artifacts off the Pi immediately.
+
+### F5 — Day 5: unchanged reproducibility repeat
+
+Depends on: F4.
+
+- [ ] Repeat the frozen benchmark/evaluation without changes.
+- [ ] Compare runs and investigate only measurement anomalies, without tuning.
+- [ ] Back up every result, log, environment file, binary, and model.
+- [ ] Copy and checksum all raw Pi evidence back to `gx10`.
+- [ ] Verify result schemas and hashes before the trial expires.
+
+**Gate F:** baseline and optimized Pi evidence contains latency, FPS, RSS, CPU
+utilization, model size, available thermal/frequency data, accuracy, and raw
+repetitions under a frozen protocol.
+
+---
+
+## 9. Phase G — analysis, public release, and submission
+
+### G1 — Freeze analysis dataset
+
+Depends on: Gate F.
+
+- [ ] Validate and index all raw training/evaluation/parity/Pi result files.
+- [ ] Create a machine-readable canonical results table.
+- [ ] Record missing/unavailable fields explicitly.
+
+### G2 — Results notebook and figures
+
+Depends on: G1.
+
+- [ ] Complete and clean-run `notebooks/02_results_analysis.ipynb`.
+- [ ] Generate every table/figure required by DESIGN §17.
+- [ ] Compute sequence-bootstrap confidence intervals and per-location trans
+      recall.
+- [ ] Select representative failure cases without hiding negative results.
+
+### G3 — Final report
+
+Depends on: G2.
+
+- [ ] Write all sections specified by DESIGN §15.
+- [ ] Include public repository/release placeholders and later replace them.
+- [ ] Separate measured, published, and estimated values.
+- [ ] Include what worked, what failed, bottlenecks, limitations, and next steps.
+- [ ] Export and visually inspect `final_report.pdf`.
+
+### G4 — Slide deck
+
+Depends on: G2, G3.
+
+- [ ] Create the 10-12 slide narrative from DESIGN §16.
+- [ ] Include repository URL and QR on first/final slides.
+- [ ] Include result units, sample counts, run/commit identity, and limitations.
+- [ ] Export PDF and visually inspect every slide.
+- [ ] Rehearse explanations for C++, pruning, quantization, thresholds, and every
+      headline number.
+
+### G5 — Public repository and submission manifest
+
+Depends on: G3, G4.
+
+- [ ] Clean README quick start and reproduction commands.
+- [ ] Publish code without secrets/data archives.
+- [ ] Publish models/deployment bundle through GitHub Release or LFS.
+- [ ] Verify checksums/download links from a clean environment.
+- [ ] Tag `v1.0-final` and record the commit hash.
+- [ ] Replace every `REPO_URL`/`RELEASE_URL` placeholder.
+- [ ] Complete `SUBMISSION.md` with canonical links and commands.
+- [ ] Run every Definition of Done item in DESIGN §19.
+
+**Gate G:** the complete Core submission is public, reproducible, visually
+checked, and every headline number traces to raw machine-readable evidence.
+
+---
+
+## 10. Optional Phase S — crop-teacher KD
+
+This phase is locked until Gate G. It must not alter the frozen Core release.
+
+### S1 — crop data and teacher
+
+- [ ] Build GT-crop manifests using train boxes only.
+- [ ] Define and test multi-box/padding behavior.
+- [ ] Train a 15-animal-class crop teacher.
+
+### S2 — fair control and KD
+
+- [ ] S0: reproduce Core FP32 student budget.
+- [ ] S1: crop augmentation without teacher.
+- [ ] S2: cross-view KD with identical student initialization/budget.
+- [ ] Apply KD only to non-empty samples and align 15 animal logits correctly.
+
+### S3 — decision
+
+- [ ] Report KD as successful only if S2 beats S1.
+- [ ] Preserve a null result if it does not.
+- [ ] Publish Stretch as a separate config/result/release addition.
+
+---
+
+## 11. Session handoff template
+
+At the end of each implementation session, create a new dated handoff containing:
+
+- tasks completed and gates passed;
+- exact runs/models/artifacts created;
+- commands and environment used;
+- failures and diagnostic evidence;
+- current git status and whether changes are committed/pushed;
+- next unblocked task ID from this plan;
+- decisions that changed DESIGN/PLAN and why;
+- external state required next, such as gx10 or Pi credentials.
+
+The next session starts from the newest handoff and verifies the filesystem before
+trusting prose.
