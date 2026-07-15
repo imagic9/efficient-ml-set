@@ -163,6 +163,19 @@ class WildlifeDataset(Dataset):
             i for i, r in enumerate(self.records) if r["primary_label"] is not None
         ]
 
+        # Labels this head does not model. DESIGN §5.2's no-empty arm is a 15-output
+        # model, and validation is full of `empty` frames — for that model an empty
+        # frame is simply "no animal present", which is exactly the negative the
+        # false-fire rate is measured on. So unmodelled labels are tolerated rather
+        # than fatal.
+        #
+        # Recorded rather than swallowed: a typo'd class name would otherwise vanish
+        # into the same code path and quietly drop real positives. A run summary that
+        # says `unmodelled_labels: ['empty']` is intended; anything else is a bug.
+        self.unmodelled_labels = sorted(
+            {label for r in self.records for label in r["labels"]} - set(class_names)
+        )
+
     def __len__(self) -> int:
         return len(self.records)
 
@@ -187,17 +200,20 @@ class WildlifeDataset(Dataset):
 
         tensor = torch.from_numpy(normalise(image, self.config))
 
-        # -1 for a multi-class frame: CrossEntropyLoss(ignore_index=-1) skips it, and no
-        # caller can mistake it for class 0.
-        target = (
-            self.index_of[record["primary_label"]]
-            if record["primary_label"] is not None
-            else -1
-        )
+        # -1 for a multi-class frame, and for a frame whose class this head does not
+        # model: CrossEntropyLoss(ignore_index=-1) skips both, and no caller can mistake
+        # -1 for class 0.
+        target = self.index_of.get(record["primary_label"], -1)
 
+        # A label the head does not model contributes no presence — which is the correct
+        # semantics, not a workaround: for the 15-output arm an `empty` frame genuinely
+        # has no animal present, so it is a negative for every target and the false-fire
+        # rate counts it.
         present = torch.zeros(len(self.class_names), dtype=torch.float32)
         for label in record["labels"]:
-            present[self.index_of[label]] = 1.0
+            index = self.index_of.get(label)
+            if index is not None:
+                present[index] = 1.0
 
         return {
             "image": tensor,

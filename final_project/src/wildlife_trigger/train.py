@@ -213,6 +213,25 @@ def run(config: TrainConfig) -> dict:
     train_records = [r for part in data["train_parts"] for r in part.records]
     weights = class_weights(train_records, class_names).to(device)
 
+    # Surfaced, not buried: the no-empty arm legitimately sees `empty` in validation and
+    # models it as "no animal present". Anything else appearing here is a bug.
+    unmodelled = {
+        name: dataset.unmodelled_labels
+        for name, dataset in data["validation"].items()
+        if dataset.unmodelled_labels
+    }
+    if unmodelled:
+        print(f"labels present in data but not modelled by this head: {unmodelled}")
+        unexpected = {
+            name: [l for l in labels if l != "empty"] for name, labels in unmodelled.items()
+        }
+        unexpected = {k: v for k, v in unexpected.items() if v}
+        if unexpected:
+            raise RuntimeError(
+                f"unmodelled labels other than 'empty': {unexpected}. Only DESIGN "
+                "§5.2's 15-output no-empty arm may drop a class, and only `empty`."
+            )
+
     loaders = {
         "train": DataLoader(
             data["train"],
