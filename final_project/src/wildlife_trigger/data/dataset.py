@@ -211,9 +211,14 @@ class WildlifeDataset(Dataset):
         # rate counts it.
         present = torch.zeros(len(self.class_names), dtype=torch.float32)
         for label in record["labels"]:
-            index = self.index_of.get(label)
-            if index is not None:
-                present[index] = 1.0
+            # `class_index`, not `index`: rebinding `index` here shadows the dataset
+            # index this method was called with, and the returned "index" then becomes
+            # the last label's class index. Evaluation uses it to look up seq_id, so
+            # sequence-balanced recall would have been computed against the wrong
+            # sequences — silently, for every frame.
+            class_index = self.index_of.get(label)
+            if class_index is not None:
+                present[class_index] = 1.0
 
         return {
             "image": tensor,
