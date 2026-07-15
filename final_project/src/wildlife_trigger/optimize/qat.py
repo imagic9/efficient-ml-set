@@ -70,8 +70,9 @@ from torch.ao.quantization.observer import (
 from torch.nn.utils.fusion import fuse_conv_bn_eval
 from torchvision.models.mobilenetv2 import InvertedResidual
 
-from wildlife_trigger.models.export import P0_OPSET, export_onnx
+from wildlife_trigger.models.export import P0_OPSET, describe, export_onnx
 from wildlife_trigger.models.mobilenet import build_mobilenet_v2, example_input
+from wildlife_trigger.optimize.qdq_scalar import scalarize_per_tensor_qdq
 
 # INT8 signed range. Not a free parameter: it is the S8 half of the S8S8 scheme
 # DESIGN §8.1 fixed, and torch's ONNX symbolic only lowers (-128,127) or (0,255)
@@ -491,12 +492,22 @@ def main() -> int:
 
     set_export_mode(model, True)
     try:
-        description = export_onnx(
-            model, args.output, example_input(), opset=args.opset, dynamo=False
+        raw_export = args.output.with_suffix(".raw.onnx")
+        export_onnx(
+            model, raw_export, example_input(), opset=args.opset, dynamo=False
         )
     finally:
         set_export_mode(model, False)
 
+    # torch emits per-tensor QDQ scales as shape-[1] tensors; ORT requires rank 0
+    # and refuses to load the graph otherwise. The raw export is kept beside the
+    # repaired one so the difference stays inspectable rather than becoming folklore.
+    scalar_fix = scalarize_per_tensor_qdq(raw_export, args.output)
+    print(f"QDQ scalar fix: {scalar_fix}")
+
+    description = describe(args.output)
+    description["exporter"] = "torchscript"
+    description["qdq_scalar_fix"] = scalar_fix
     description["qat"] = {
         "candidate": "1 — direct QDQ fake-quant + torch.onnx.export (DESIGN §8.2)",
         "placement": "output-side QDQ at every tensor boundary; ReLU6 absorbed",

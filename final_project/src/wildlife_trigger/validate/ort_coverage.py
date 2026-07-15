@@ -245,6 +245,16 @@ def analyse(
 
 
 def main() -> int:
+    """Exit 0 = integer execution, 2 = ran but not integer, 1 = could not run.
+
+    Three codes rather than two, because "the model does not execute as integer"
+    and "the analysis crashed" are different findings and shell `$?` cannot tell
+    them apart otherwise. This is not theoretical: an ORT load failure exited 1
+    during A3, the report file was left holding the *previous* run's verdict, and
+    the stale numbers looked like a plausible result.
+
+    A model ORT refuses to load is evidence, so the report is written either way.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True, type=Path)
     parser.add_argument("--label", required=True)
@@ -252,14 +262,32 @@ def main() -> int:
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
 
-    report = analyse(args.model, args.workdir, args.label)
-    print(json.dumps(report, indent=2))
-    if args.report:
-        args.report.parent.mkdir(parents=True, exist_ok=True)
-        args.report.write_text(json.dumps(report, indent=2) + "\n")
-        print(f"wrote {args.report}")
+    def emit(report: dict) -> None:
+        print(json.dumps(report, indent=2))
+        if args.report:
+            args.report.parent.mkdir(parents=True, exist_ok=True)
+            args.report.write_text(json.dumps(report, indent=2) + "\n")
+            print(f"wrote {args.report}")
 
-    return 0 if report["verdict"]["integer_execution"] else 1
+    try:
+        report = analyse(args.model, args.workdir, args.label)
+    except Exception as exc:
+        emit(
+            {
+                "label": args.label,
+                "model": str(args.model),
+                "onnxruntime_version": ort.__version__,
+                "error": f"{type(exc).__name__}: {exc}",
+                "verdict": {
+                    "integer_execution": False,
+                    "explanation": "ONNX Runtime could not load or run this model.",
+                },
+            }
+        )
+        return 1
+
+    emit(report)
+    return 0 if report["verdict"]["integer_execution"] else 2
 
 
 if __name__ == "__main__":
