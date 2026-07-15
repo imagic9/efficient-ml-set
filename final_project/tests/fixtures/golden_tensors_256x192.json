@@ -1,0 +1,1021 @@
+{
+  "task": "C1a",
+  "input": "256x192",
+  "selected_by": "C1a \u2014 see results/ablations/data_input_decision.md. 256x192 over 224x224: the arms are statistically tied on bobcat F2, and 256x192 carries +31.1% real pixels at -2.0% MACs.",
+  "preprocess_fingerprint": {
+    "width": 256,
+    "height": 192,
+    "pad_value": 114,
+    "interpolation": "INTER_LINEAR",
+    "steps_cached": "1-4 (decode, BGR->RGB, aspect-preserving resize, pad)"
+  },
+  "count": 20,
+  "generated_by": "wildlife_trigger.validate.golden_tensors",
+  "exactness": {
+    "geometry": "EXACT. Integer arithmetic on the source dimensions. A C++ parity check must match these exactly.",
+    "letterbox_uint8.sha256": "EXACT for a given OpenCV build. Steps 1-4, the same bytes the cache stores.",
+    "tensor_float32.sha256": "PYTHON-SIDE TRIPWIRE ONLY. Float arithmetic and INTER_LINEAR are not bit-identical across OpenCV builds, SIMD paths or architectures. Cross-language parity must compare within a tolerance and take exactness from the geometry; a bit-equality assertion across the boundary would fail for running on a different machine, which teaches readers to ignore it."
+  },
+  "fixtures": [
+    {
+      "image_id": "5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "bobcat"
+      ],
+      "raw_sha256": "05082d05d7a8d3b017596bbaea015b4cf8293930634025a24c9adf6727a5d300",
+      "reason": "observed geometry 1024x747 (4843 frames in the corpus)",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "732ccd9fbcfa5a530d902adcbb9740b77cd824913f16e49e7c98e1ff030f0475"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "82fa97099aac054e508682e7d01760f617c29b38b3bde412bc01bb5cc31e9049",
+        "mean_per_channel": [
+          -0.181148,
+          0.09333,
+          -0.113141
+        ],
+        "std_per_channel": [
+          0.667208,
+          0.738011,
+          0.756438
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "5858bfc0-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "empty"
+      ],
+      "raw_sha256": "1dd2171b32292b730de826675b5197068bdfb809c39b26999232ffda25b46d74",
+      "reason": "empty frame: the dominant real-world input",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "1e4f3ee688ba12a2d21266a0fddef4c5d050cd2f9b5c60b6fa6693d6426c5992"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "a14bb561577b226c2221b7f3443fe9c090f83ea158d7e6c7a31a7c9415e871b3",
+        "mean_per_channel": [
+          -0.27505,
+          0.389457,
+          0.488708
+        ],
+        "std_per_channel": [
+          0.855442,
+          0.940967,
+          0.996153
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "585c02ec-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "585c02ec-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "car"
+      ],
+      "raw_sha256": "7c967c86299bf7f9042e897968f9502a24abceac54cbde11707f4dbf1af8deeb",
+      "reason": "observed geometry 1024x768 (96 frames in the corpus)",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 768,
+        "resized_width": 256,
+        "resized_height": 192,
+        "pad_left": 0,
+        "pad_top": 0,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 1.0
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "9612e626b909a1ba2a5207af686b5d7f4b6d79c017c881ee38e86b9b7e51b521"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "573a8ba21df782199f77014024cf5fc4013f2102de3738d6152e17e808bbab76",
+        "mean_per_channel": [
+          -0.307776,
+          -0.294222,
+          -0.085204
+        ],
+        "std_per_channel": [
+          1.134234,
+          1.116624,
+          1.216712
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "586e2db9-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "586e2db9-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "bird"
+      ],
+      "raw_sha256": "15b7cdf24a198a9bccd851813d6ecdeac6c978d93c5818e29de0e2b16fae05cb",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "8a61344a83c89dc68543daa6c39e899c54be3a52d9c29ce08d8cba65e326beb3"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "8a2023cbb5524af4602d506f6c688a13172f3dd71bdca7476f967df2918cc438",
+        "mean_per_channel": [
+          0.098076,
+          0.241972,
+          0.28554
+        ],
+        "std_per_channel": [
+          0.721955,
+          0.727217,
+          0.702647
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "5883ea9d-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "5883ea9d-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "cat"
+      ],
+      "raw_sha256": "d9400463c30c9e571b8a8251fbe424ebc3f757840d9d52a8f170ddb77bc46c62",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "c4bf851c2ee6b904f660026ddba927ceeb896d7b305c32e967b5a0f356632d5c"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "8a301b5bd794930318aca5c6312030a1ca7d67cc88aee9d63eea07b72c5d0a1a",
+        "mean_per_channel": [
+          0.160853,
+          0.349598,
+          0.12931
+        ],
+        "std_per_channel": [
+          0.905819,
+          0.933418,
+          0.951217
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "58995b28-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58995b28-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "bobcat"
+      ],
+      "raw_sha256": "8df0956b246abf6cf41120c4c751ef0186476d23924ed84e97f8cbe3f138da84",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "3adb4c099078efe03b13d8eb0b1417ae11b72aaf36b27c734318ebdaca3ef7e7"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "58a4ec8fedbf4b282655feb8e5ef2aef16880d05b1a00b126082698d8cfccfb7",
+        "mean_per_channel": [
+          0.252915,
+          0.715916,
+          0.86911
+        ],
+        "std_per_channel": [
+          0.609395,
+          0.697026,
+          0.752168
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "58adc360-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58adc360-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "opossum"
+      ],
+      "raw_sha256": "850b074de0423cd754b345b27a2b3401f97c54581beb84426f1691d37f5bb9f4",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "f25c2e49b88549069dc98aac1b2f1e1fc435cfad3742fbb9c74053374212c4ed"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "39a3a0d9deab327cde679a7cedb875385f2844f6fef4c070ccabc5f3d82fab21",
+        "mean_per_channel": [
+          -1.449252,
+          -1.3513,
+          -1.123907
+        ],
+        "std_per_channel": [
+          0.343455,
+          0.352018,
+          0.349572
+        ],
+        "min": -2.117904,
+        "max": 2.570283
+      }
+    },
+    {
+      "image_id": "58c34c6f-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58c34c6f-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "coyote"
+      ],
+      "raw_sha256": "b0f60dbfc282f2f84a33bbdf5da9da8bdc9af9f35c2a5737463033418c5d6112",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "365e87135b7f9e1cb007059658715827c9b6c580821daf3ab08c0ae17d4e8450"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "40bca68557360fad1b6b9831e6ae76f280ea04578e198e8a6c2f5807a1dc1e2d",
+        "mean_per_channel": [
+          -0.039993,
+          0.076709,
+          0.001906
+        ],
+        "std_per_channel": [
+          0.613676,
+          0.625665,
+          0.613628
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "58d7a1e4-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58d7a1e4-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "bobcat"
+      ],
+      "raw_sha256": "2db280ca7943a0918c75dddf3370be09667254db96cf919b154dab587bd1bce8",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "653ea2a2bdafda75d77b1c11907fe20592c11caa5b4ab6e868983df19ffbc0d6"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "cd176994750fb70d6e83edd9ea363ed1536e4a98b54e6baafa9045c82698dbf6",
+        "mean_per_channel": [
+          0.279158,
+          0.448319,
+          0.279743
+        ],
+        "std_per_channel": [
+          1.102282,
+          1.104574,
+          1.226901
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "58e93a4e-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58e93a4e-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "opossum"
+      ],
+      "raw_sha256": "29a2c41db34942a59836e09ecf9e85f9921226cbb9e240c575fd5d3e0dbc64c8",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "198d9807cf275933278e4ed410ec2c2ea4d7ef7c5bb310733e0042d4c5a0c977"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "c2304fc24ba091155a5d1780bb2c561155622b256bd57c258584e7aadaba6aee",
+        "mean_per_channel": [
+          -1.6213,
+          -1.5272,
+          -1.299012
+        ],
+        "std_per_channel": [
+          0.357885,
+          0.367143,
+          0.364254
+        ],
+        "min": -2.117904,
+        "max": 2.570283
+      }
+    },
+    {
+      "image_id": "58fbec95-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "58fbec95-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "squirrel"
+      ],
+      "raw_sha256": "1b055971bb5b41eeefb54305edf9a8cf9c1c6dcd5b2867bf541c1866ba069b42",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "01ad5032544ed638cc30e6db7ca32b179c4912c834da6e49c5c824478f69661a"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "e3d2c9cd5a7826a99b88826baf4d27c49f0dca2e2682fd2a17f728237a0e6dd5",
+        "mean_per_channel": [
+          0.555616,
+          0.67985,
+          0.293333
+        ],
+        "std_per_channel": [
+          0.911594,
+          0.923134,
+          0.881889
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "590ebc4c-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "590ebc4c-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "cat"
+      ],
+      "raw_sha256": "4de6fc13fc80ad811f735c95c8b05eed446b7a4d343b560f76beccef70e22d94",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "1f7303d80986cf64d7c41c4ab1ce15b7f2968164591cc33ff5082e138eb71b41"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "a87e7445f48c77ed3fcb5578548d784507ac48ee21f2b7ab57c3f1753372e1de",
+        "mean_per_channel": [
+          -1.235867,
+          -1.133116,
+          -0.906708
+        ],
+        "std_per_channel": [
+          0.431333,
+          0.441338,
+          0.438985
+        ],
+        "min": -2.117904,
+        "max": 2.622571
+      }
+    },
+    {
+      "image_id": "592165ff-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "592165ff-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "trans_val",
+      "labels": [
+        "opossum"
+      ],
+      "raw_sha256": "637a2bfe9b33e4d1f177a6c145681fe3cb59a1c31bb04f8741ad66aaee7ae59d",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "29193180ec709a8ad684b477015483a6de5d2cbe81b0adfea9e2a98b4cd7eb6f"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "d97fe5fbca37e5501a510dcb09daaaeaf9776366fa8c10f61a1ae2133a372c5a",
+        "mean_per_channel": [
+          -0.334027,
+          -0.21113,
+          0.011147
+        ],
+        "std_per_channel": [
+          0.648933,
+          0.662684,
+          0.660453
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "59341c19-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59341c19-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "empty"
+      ],
+      "raw_sha256": "519e0d029c08363489e68ea796bd0f1eaae2f590589860516c79a31c32240b98",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 768,
+        "resized_width": 256,
+        "resized_height": 192,
+        "pad_left": 0,
+        "pad_top": 0,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 1.0
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "93423357c3d525c0f648f3a95e69c7e8dd2815e3772201440f34c3609e5a9a3e"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "1cae89df03c724c47f354b65e84885eb19a3fddeb1b76550f5e5b04b642d92d2",
+        "mean_per_channel": [
+          -1.075352,
+          -0.969891,
+          -0.743358
+        ],
+        "std_per_channel": [
+          0.972777,
+          0.994491,
+          0.990071
+        ],
+        "min": -2.083654,
+        "max": 2.239129
+      }
+    },
+    {
+      "image_id": "59641f42-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59641f42-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "rabbit"
+      ],
+      "raw_sha256": "93e1a56f7a84f0483fc15a9f218d30289bae39bf4090fbe7dded4c2ead58a6f2",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "edc3d39861772540d9e7dedb3aa6884f1f39105bbb59b47aac7aa60694c2a76a"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "a1ac2a6701cbbf16477ffa10e606bb6898ed88dbd0ac298b938ab52eada215df",
+        "mean_per_channel": [
+          0.070374,
+          0.209869,
+          -0.076906
+        ],
+        "std_per_channel": [
+          0.76382,
+          0.763579,
+          0.768005
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "597cd605-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "597cd605-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "rabbit"
+      ],
+      "raw_sha256": "c48c90e8e1ae1bf97089b75478a21221c555b2c3e6272a81600ada99511e8aee",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "c0f7391c2061a53c95e74fb2508921e673e4e1f8da944d1a852d5db16ed82435"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "02e6afc779f794eddee733852cdfe5ff2026e3f7ef973b7e8ad447c70036ae83",
+        "mean_per_channel": [
+          0.117725,
+          0.250703,
+          0.470933
+        ],
+        "std_per_channel": [
+          0.560186,
+          0.571293,
+          0.570124
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "599420af-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "599420af-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "opossum"
+      ],
+      "raw_sha256": "ad9db5125b5e61284933cc284d78b3568842417671b95307867c33613ec166fc",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "5a4749c62bdc6133b225063b60b67ef6f73d631cb9e19d7e668d3f7b7122a68b"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "10a73e3dd8269de78830a106bcbb1a53927097aeaa0244b0661c0b7281ea96a0",
+        "mean_per_channel": [
+          -1.509153,
+          -1.41254,
+          -1.184868
+        ],
+        "std_per_channel": [
+          0.386996,
+          0.396584,
+          0.393871
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "59ac6c21-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59ac6c21-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "empty"
+      ],
+      "raw_sha256": "5ae980fcc9163d895cc962b1affae22bdb76de5ae7819541fb2f00435d0a63e0",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "bfda86b6b3206fde6b28b314e5ae087183952e982b58db00ffba0e9c1d6db72f"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "2e93cdee951364d22957097d7b21ebf68583a8a550e27c3de7e4362dcc719e39",
+        "mean_per_channel": [
+          -0.838017,
+          -0.726401,
+          -0.501793
+        ],
+        "std_per_channel": [
+          0.480618,
+          0.490915,
+          0.489141
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "59c669db-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59c669db-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "opossum"
+      ],
+      "raw_sha256": "53eded90f3a74ad00d036e62e8b1029363fcf864fcc27d1e0618037ac59ba1b6",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "7e368025f46c1fb74ccb17bac30849883e86bd75e584e2f60372656a25f942aa"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "ad859ea699884db3c68c9b48ed596b2aec4bab265bd336cd39ca082bc4da5192",
+        "mean_per_channel": [
+          0.269569,
+          0.405939,
+          0.625479
+        ],
+        "std_per_channel": [
+          0.648154,
+          0.66117,
+          0.659657
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    },
+    {
+      "image_id": "59ddc268-23d2-11e8-a6a3-ec086b02610b",
+      "file_name": "59ddc268-23d2-11e8-a6a3-ec086b02610b.jpg",
+      "split": "cis_val_clean",
+      "labels": [
+        "rabbit"
+      ],
+      "raw_sha256": "073102e9e0d081723cda72b4d3144bebce8b1b4799727edf72f13993547b7460",
+      "reason": "spread across the corpus to reach the fixture floor",
+      "geometry": {
+        "source_width": 1024,
+        "source_height": 747,
+        "resized_width": 256,
+        "resized_height": 187,
+        "pad_left": 0,
+        "pad_top": 2,
+        "target_width": 256,
+        "target_height": 192,
+        "scale": 0.25,
+        "pixel_utilisation": 0.973958
+      },
+      "letterbox_uint8": {
+        "shape": [
+          192,
+          256,
+          3
+        ],
+        "sha256": "5356003d836ef4a316c869acd441b26cb4214fc320534a80d00a1def781c04d3"
+      },
+      "tensor_float32": {
+        "shape": [
+          3,
+          192,
+          256
+        ],
+        "sha256": "ea0571d227157e6ad93654518b61c5aa54376cb4ab7630bf3072463f820ffdf0",
+        "mean_per_channel": [
+          -0.092379,
+          0.378374,
+          0.282255
+        ],
+        "std_per_channel": [
+          1.364481,
+          1.319951,
+          1.379896
+        ],
+        "min": -2.117904,
+        "max": 2.64
+      }
+    }
+  ]
+}
