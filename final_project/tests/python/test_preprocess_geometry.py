@@ -76,14 +76,36 @@ def test_utilisation_is_one_when_the_frame_fits_exactly():
 
 
 def test_the_whole_frame_survives_the_letterbox():
-    """`min` scale, never `max`: DESIGN §5.5 forbids a crop that can drop the animal."""
+    """`min` scale, never `max`: DESIGN §5.5 forbids a crop that can drop the animal.
+
+    The claim is checked against `source * scale`, not against the source aspect ratio.
+    Those differ once a side gets short: a 3000x100 frame scales to 256x8.53, and 8.53
+    rows can only be stored as 9 — a 5% aspect error that no implementation can avoid
+    and that says nothing about cropping. Asserting the ratio directly would demand the
+    code beat integer arithmetic.
+    """
     config = PreprocessConfig(width=256, height=192)
-    for source in [(1024, 747), (1024, 768), (640, 480), (100, 3000), (3000, 100)]:
-        resized_width, resized_height, _ = letterbox_geometry(*source, config)
+    for source_width, source_height in [
+        (1024, 747),  # the dominant CCT frame
+        (1024, 768),  # the other observed geometry
+        (640, 480),
+        (100, 3000),  # extreme portrait
+        (3000, 100),  # extreme landscape
+    ]:
+        resized_width, resized_height, scale = letterbox_geometry(
+            source_width, source_height, config
+        )
+
+        # Fits: nothing is cropped away.
         assert resized_width <= config.width
         assert resized_height <= config.height
-        # Aspect ratio preserved to within the rounding of a single pixel.
-        assert abs(resized_width / resized_height - source[0] / source[1]) < 0.05
+
+        # Both sides took the same scale, to within the one pixel rounding costs.
+        assert abs(resized_width - source_width * scale) <= 1
+        assert abs(resized_height - source_height * scale) <= 1
+
+        # And the scale is the largest that fits, not merely some scale that does.
+        assert scale == min(config.width / source_width, config.height / source_height)
 
 
 def test_extreme_aspect_ratios_keep_at_least_one_pixel():

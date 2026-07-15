@@ -111,7 +111,12 @@ def main() -> int:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_mobilenet_v2(num_classes=len(class_names), pretrained=False).to(device)
 
-    checkpoint = torch.load(args.run / args.checkpoint, map_location=device)
+    # weights_only=False: torch 2.6 flipped this default to guard against unpickling a
+    # checkpoint from a stranger. This one is our own train.py's output from our own
+    # box, and it deliberately carries more than tensors — the run's score dict holds
+    # numpy scalars, which the restricted unpickler refuses. The alternative, allowlisting
+    # numpy's scalar constructor, buys nothing here and breaks when numpy moves it.
+    checkpoint = torch.load(args.run / args.checkpoint, map_location=device, weights_only=False)
     model.load_state_dict(checkpoint["model"])
 
     # The checkpoint must be the one the run selected. A `best.pt` whose epoch disagrees
