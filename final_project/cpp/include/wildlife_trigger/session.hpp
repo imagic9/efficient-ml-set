@@ -56,8 +56,14 @@ class ModelSession {
     explicit ModelSession(SessionConfig config);
     ~ModelSession();
 
+    // Non-copyable: two objects must not own one ORT session. Movable, because a
+    // factory returns one by value — and declaring the copy constructor deleted
+    // suppresses the implicit move, so these must be spelled out or `return
+    // Pipeline{...}` silently tries to copy.
     ModelSession(const ModelSession &) = delete;
     ModelSession &operator=(const ModelSession &) = delete;
+    ModelSession(ModelSession &&) noexcept = default;
+    ModelSession &operator=(ModelSession &&) noexcept = default;
 
     // Run one NCHW float32 tensor, returning raw logits. `input` must hold exactly
     // the element count the contract declares.
