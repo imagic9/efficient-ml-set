@@ -71,6 +71,21 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def normalise_location(value) -> str:
+    """Compare locations as strings, always.
+
+    **This is not defensive tidiness; it is the rule.** The two metadata files disagree
+    about the type: full CCT stores `location` as a string (`"26"`), CCT-20 stores it as
+    an integer (`38`). So `image["location"] in cct20_locations` is `"26" in {26, 38}`,
+    which is False for *every* image — rule 3 would be silently disabled and the
+    supplement would draw `empty` frames from the very cameras it must avoid.
+
+    Measured on this data (2026-07-15): the raw comparison finds 0 overlapping images,
+    the normalised comparison finds 32,255. Nothing would have crashed.
+    """
+    return str(value)
+
+
 def load_cct20_identity(manifests_dir: Path) -> dict[str, set]:
     """Everything CCT-20 already uses: locations, image ids, sequence ids.
 
@@ -85,9 +100,9 @@ def load_cct20_identity(manifests_dir: Path) -> dict[str, set]:
     for split in ("train", "cis_val", "cis_test", "trans_val", "trans_test"):
         for line in (manifests_dir / f"{split}.jsonl").read_text().splitlines():
             record = json.loads(line)
-            locations.add(record["location"])
-            image_ids.add(record["image_id"])
-            seq_ids.add(record["seq_id"])
+            locations.add(normalise_location(record["location"]))
+            image_ids.add(str(record["image_id"]))
+            seq_ids.add(str(record["seq_id"]))
 
     return {"locations": locations, "image_ids": image_ids, "seq_ids": seq_ids}
 
@@ -112,21 +127,34 @@ def select(full_cct: Path, manifests_dir: Path, output: Path) -> dict:
     rejected = Counter()
     for image in document["images"]:
         image_labels = labels.get(image["id"], set())
-        if image_labels != empty_ids & image_labels or not image_labels:
-            pass  # fall through to the explicit checks below
+        # Rule 2: exactly `empty`. An image carrying both an empty annotation and an
+        # animal annotation is not an empty frame.
         if not image_labels or not image_labels.issubset(empty_ids):
             rejected["not_exactly_empty"] += 1
             continue
-        if image.get("location") in cct20["locations"]:
+        if normalise_location(image.get("location")) in cct20["locations"]:
             rejected["cct20_location"] += 1
             continue
-        if image["id"] in cct20["image_ids"]:
+        if str(image["id"]) in cct20["image_ids"]:
             rejected["cct20_image_id"] += 1
             continue
-        if image.get("seq_id") in cct20["seq_ids"]:
+        if str(image.get("seq_id")) in cct20["seq_ids"]:
             rejected["cct20_seq_id"] += 1
             continue
         candidates.append(image)
+
+    # Rule 3 must actually have removed something. CCT-20's 20 locations hold tens of
+    # thousands of full-CCT empty frames, so a zero here does not mean "clean data" --
+    # it means the comparison silently matched nothing, which is precisely the type
+    # mismatch normalise_location exists to prevent.
+    if rejected["cct20_location"] == 0:
+        raise RuntimeError(
+            "rule 3 rejected zero candidates for being in a CCT-20 location. CCT-20's "
+            "locations contain many full-CCT empty frames, so this means the location "
+            "comparison matched nothing -- almost certainly a type mismatch between "
+            "the two metadata files -- and the supplement would be drawn from the very "
+            "cameras it must avoid."
+        )
 
     # Rule 5: stratified across locations and sequences so one camera cannot dominate.
     # Round-robin over locations, and within a location over sequences, taking one frame
@@ -229,11 +257,13 @@ def verify_disjoint(manifest: Path, manifests_dir: Path) -> dict:
     cct20 = load_cct20_identity(manifests_dir)
     records = [json.loads(l) for l in manifest.read_text().splitlines()]
 
+    # Normalised on both sides, for the same reason select() is: an unnormalised
+    # verification would report "disjoint" for exactly the data that is not.
     location_leaks = sorted(
-        {r["location"] for r in records} & cct20["locations"]
+        {normalise_location(r["location"]) for r in records} & cct20["locations"]
     )
-    id_leaks = sorted({r["image_id"] for r in records} & cct20["image_ids"])
-    seq_leaks = sorted({r["seq_id"] for r in records} & cct20["seq_ids"])
+    id_leaks = sorted({str(r["image_id"]) for r in records} & cct20["image_ids"])
+    seq_leaks = sorted({str(r["seq_id"]) for r in records} & cct20["seq_ids"])
 
     return {
         "images": len(records),
