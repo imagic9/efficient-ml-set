@@ -1,0 +1,21 @@
+# M0 — the FP32 baseline (DESIGN §8, §7.2). Every other candidate starts from this.
+#
+# The recipe is DESIGN §7.2's default; any deviation must be recorded here rather than
+# passed on a command line, so the run's config file explains the run.
+run_name: m0_fp32_seed42
+seed: 42
+
+width: 256          # DESIGN §5.5 provisional Core input; C1a resolves it
+height: 192
+
+head_epochs: 5      # phase A: head only, backbone frozen
+max_epochs: 30      # phase B: full fine-tune, early-stopped
+batch_size: 64
+head_lr: 0.001
+full_lr: 0.0003
+weight_decay: 0.0001
+early_stopping_patience: 6
+amp: true           # allowed on gx10; never on Pi inference
+workers: 8
+
+exclude_empty_class: false
