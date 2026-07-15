@@ -104,10 +104,77 @@ that was wrong.)
 25× cheaper than the species model. Binary, calibrated for **high recall on
 non-empty**: the gate must never be the reason we miss a shot.
 
-**Species:** MobileNetV2 @224², multi-class over the CCT-20 classes. A **module**
-= a target class + a threshold. This gives every class a module from one training
-run, and per-class recall for free. (Per-species *binary* models would be more
-accurate — Phase 1.)
+**Species:** MobileNetV2 @224², multi-class over the CCT-20 classes. One forward
+pass yields probabilities for **all** classes.
+
+### Modules
+
+A **module** is not a model. It is a **policy**: a target class, a calibrated
+threshold, and the honest expectation that goes with them.
+
+```yaml
+module_id: bobcat-v1
+target_class: bobcat
+threshold: 0.62          # calibrated on val for 94% recall
+expected:
+  recall_cis:  0.94      # at a location like the ones it was trained on
+  recall_trans: 0.81     # at a brand-new location
+  false_fire_rate: 0.04
+```
+
+The separation matters: **the model is the capability, the module is the intent.**
+What is in frame is a fact the model computes; whether it is worth a photograph is
+a human choice that cannot be inferred from data.
+
+**Modules are what make the species model worth its energy.** Fire on *all* 15
+classes and the behaviour becomes identical to firing whenever the gate says
+`non-empty` — the species model would contribute nothing while costing ~25 ms.
+That is a motion trigger with extra steps: exactly the thing the photographer
+already owns and dislikes. The species model only earns its energy when the device
+fires on a **subset**. Selectivity is the product.
+
+So the number of enabled modules is a dial:
+
+| Enabled | Effect |
+|---|---|
+| 0 | Never fires. Useless. |
+| 1 | Maximum selectivity, best battery. The sweet spot. |
+| ~all 15 | Species model is dead weight; the gate alone is equivalent and 25 ms cheaper. |
+
+There is therefore a **measurable break-even**: beyond how many enabled classes
+does the species model stop paying for itself? Computable offline from the
+confusion matrix — see §9.
+
+**Multiple modules are free in compute.** Because the model is multi-class, three
+enabled modules mean checking three outputs of the *same* forward pass: one
+inference, same latency, same energy.
+
+**This is the argument that settles multi-class vs per-species binary models.**
+Per-species binary models would be more accurate individually, but three enabled
+modules would then mean **three inferences** — 3× latency and energy. Multi-module
+support and per-species binary models are incompatible. We keep multi-class.
+
+**What multiple modules do cost: the false-fire budget adds up.** With softmax and
+thresholds above 0.5, at most one class can exceed its threshold, so the per-class
+false-fire rates are roughly **additive**: three modules at ~5% each ≈ ~15%
+combined. More modules → more shots → shorter battery and a fuller card. This is a
+real trade-off the photographer must see, not discover in the field (§9, §13).
+
+**Known limitation — softmax couples the classes.** If a coyote and a bobcat are in
+frame together, softmax forces a single winner; multi-label sigmoid would handle
+both. CCT-20 labels one class per image, so the dataset does not even represent
+this case — there is nothing to train or measure it on. Softmax is correct for the
+MVP; sigmoid is a Phase-1 upgrade once real multi-animal data exists.
+
+**Falls out for free:** a *negative* module ("shoot everything except raccoons") is
+the same mechanism inverted.
+
+**Why the abstraction survives Phase 1.** Within one region a module is config on a
+shared model. **Across regions it must be a different model** — our CCT-20 model
+knows 15 North American species and has never seen an elephant; a photographer in
+Tanzania needs different weights entirely. One model cannot cover the world's
+species. The module is the primitive that hides that difference from the user, and
+that is the real reason it exists (§13).
 
 **The cascade's honest trade-off.** It optimizes **energy**, not shutter lag. On a
 real detection we pay gate + species (~30 ms) — 5 ms *worse* than species alone.
@@ -411,6 +478,22 @@ value a different way).
 | **p50 / p95 / p99 shutter lag** | p95 is the product spec, not the mean |
 | Average latency per trigger | Energy proxy → battery life |
 | Model size (FP32 vs INT8) | Compression |
+| **Fire rate & battery life vs number of enabled modules** | The multi-module trade-off (§3) |
+| **Species-model break-even point** | Beyond how many enabled classes is the gate alone equivalent? (§3) |
+
+**Two results that cost us nothing.** Both fall out of the same confusion matrix,
+offline, with no extra training and no extra measurement:
+
+1. **The multi-module curve** — false-fire rate, shots/night and estimated battery
+   life as a function of how many modules are enabled. Example shape:
+
+   > 1 module: 94% recall, 4% false fires, ~200 shots/night.
+   > 3 modules: ~92% mean recall, ~13% false fires, ~600 shots/night, ≈½ the
+   > autonomy.
+
+2. **The break-even** — the number of enabled classes at which firing on the
+   species model's subset stops beating firing on the gate alone. Past that point
+   the species model is 25 ms of dead weight, and we can say so with a number.
 
 **The headline slide** is not "we hit N FPS". It is:
 
@@ -482,7 +565,7 @@ Trigger (PIR / radar / audio)
 | Phase | Content |
 |---|---|
 | **Phase 0 — this course** | Pi 5 CPU-only decision core, ORT, cascade, compression stack, measured on CCT-20 |
-| **Phase 1 — MVP device** | Pi 5 + AI HAT+ (Hailo-8L) + NoIR camera + PIR + real shutter GPIO + LTE; per-species binary modules; audio (chainsaw/gunshot); collect real data |
+| **Phase 1 — MVP device** | Pi 5 + AI HAT+ (Hailo-8L) + NoIR camera + PIR + real shutter GPIO + LTE; **region model packs** (Africa/Europe/N. America — one model cannot cover the world's species); multi-label sigmoid for multi-animal frames; **fire budget** (photographer sets "max N shots/night", the device solves thresholds jointly across enabled modules); audio (chainsaw/gunshot); collect real data |
 | **Phase 2 — field prototype** | CM5 + Hailo-8L + STM32 supervisor (sleep/wake, power gating), eMMC, IP67, solar; OTA modules |
 | **Phase 3 — low-power product** | STM32N6 / Himax WE2 + Syntiant always-on audio, LTE-M / LoRa, months of autonomy, low BOM |
 
