@@ -38,11 +38,23 @@ version_le() {
 
 failures=0
 
-for target in "$@"; do
-    echo "=== ${target}"
+for given in "$@"; do
+    echo "=== ${given}"
+
+    if [[ ! -e "${given}" ]]; then
+        echo "  FAIL: not found"
+        failures=$((failures + 1))
+        continue
+    fi
+
+    # Resolve symlinks before inspecting. Shared libraries are conventionally
+    # reached through an unversioned link (libonnxruntime.so -> ...so.1.27.1),
+    # and `file`/`objdump` on the link describe the link, not the ELF.
+    target="$(readlink -f "${given}")"
+    [[ "${target}" != "${given}" ]] && echo "  -> ${target}"
 
     if [[ ! -f "${target}" ]]; then
-        echo "  FAIL: not found"
+        echo "  FAIL: symlink does not resolve to a file"
         failures=$((failures + 1))
         continue
     fi
