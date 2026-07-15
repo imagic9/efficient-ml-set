@@ -452,17 +452,17 @@ started before this passed.
 
 Depends on: Gate A.
 
-- [ ] Download `eccv_18_annotations.tar.gz` (3 MB) for the official CCT-20 splits.
-- [ ] Download `eccv_18_all_images_sm.tar.gz` (6 GB), capped at 1024 px per side.
-- [ ] Download `caltech_camera_traps.json.zip` (9 MB) for empty-supplement
+- [x] Download `eccv_18_annotations.tar.gz` (3 MB) for the official CCT-20 splits.
+- [x] Download `eccv_18_all_images_sm.tar.gz` (6 GB), capped at 1024 px per side.
+- [x] Download `caltech_camera_traps.json.zip` (9 MB) for empty-supplement
       selection. Do not download `cct_images.tar.gz` (105 GB) or the bounding boxes
       (35 MB, Stretch KD only).
-- [ ] Record URLs, timestamps, file sizes, and SHA-256 hashes.
-- [ ] **Record the observed image-dimension distribution of every split** and
+- [x] Record URLs, timestamps, file sizes, and SHA-256 hashes.
+- [x] **Record the observed image-dimension distribution of every split** and
       confirm the dominant frame against DESIGN §5.5. The input-shape argument and
       the reduced-decode alignment both rest on these numbers; neither may be
       inherited from the paper or from DESIGN.
-- [ ] Verify licensing/citation text for README/report/model card.
+- [x] Verify licensing/citation text for README/report/model card.
 
 Budget roughly 8.1 GB of downloads and about 40 GB of working disk on `gx10`
 (archive plus extraction plus artifacts).
@@ -470,23 +470,77 @@ Budget roughly 8.1 GB of downloads and about 40 GB of working disk on `gx10`
 **Outputs:** `data/README.md`, source manifest, checksums, and the split dimension
 report.
 
+**Done 2026-07-15.** Downloaded 6.50 GB total from LILA, now served from Google
+Cloud Storage (`storage.googleapis.com/public-datasets-lila/...`) — the URL is
+recorded per run because LILA has rehosted before. Hashes in
+`data/raw/source_manifest.json`; the 105 GB archive and the bboxes were not fetched.
+Licence: Community Data License Agreement (permissive variant).
+
+**DESIGN §5.5 is now measured rather than inherited.** The annotation JSON records
+the *original* geometry (2048x1494) and could never have answered this — the `_sm`
+archive is capped at 1024 px, so the frames we actually decode are different files.
+`data/dimensions.py` reads all 57,864 JPEG headers:
+
+| Claim | DESIGN said | Measured |
+|---|---|---|
+| dominant decoded frame | 1024x747 | **1024x747** |
+| its share of the corpus | ~91% | **91.4%** |
+| `_sm` long-side cap | 1024 | **1024** (max observed) |
+| unreadable frames | — | **0 of 57,864** |
+
+So the 256x192 input choice and the `1024 / 4 = 256` reduced-decode alignment both
+rest on the real corpus. Per-split dominance varies (trans-val is 100% 1024x747,
+cis-test 89.7%), which is why the aspect-ratio argument is made against the corpus
+rather than one split.
+
 ### B1 — Build official split manifests
 
 Depends on: B0.
 
-- [ ] Parse train, cis-val, cis-test, trans-val, and trans-test JSON.
-- [ ] Freeze the exact 16-class order in `configs/data/classes.yaml`.
-- [ ] Assert the class set is 14 animals plus `car` and `empty`; mark only the 14
+- [x] Parse train, cis-val, cis-test, trans-val, and trans-test JSON.
+- [x] Freeze the exact 16-class order in `configs/data/classes.yaml`.
+- [x] Assert the class set is 14 animals plus `car` and `empty`; mark only the 14
       animal classes as selectable policy targets.
-- [ ] Emit deterministic JSONL manifests with complete `labels`, optional
+- [x] Emit deterministic JSONL manifests with complete `labels`, optional
       `primary_label`, location, sequence, dimensions, and source metadata.
-- [ ] Reconcile counts to 13,553 / 3,484 / 15,827 / 1,725 / 23,275.
-- [ ] Fingerprint the official train/cis-val overlap as exactly 224 sequences,
+- [x] Reconcile counts to 13,553 / 3,484 / 15,827 / 1,725 / 23,275.
+- [x] Fingerprint the official train/cis-val overlap as exactly 224 sequences,
       270 cis-val images, and 10 bobcat images.
-- [ ] Generate immutable `cis_val_clean.jsonl` with 3,214 images / 144 bobcat
+- [x] Generate immutable `cis_val_clean.jsonl` with 3,214 images / 144 bobcat
       images by removing every train-overlapping `seq_id`.
 
 **Outputs:** five versioned manifests plus category/location summaries.
+
+**Done 2026-07-15.** Every number DESIGN pinned reconciles **exactly** against the
+downloaded JSONs — no adjustment, no rounding:
+
+| | Expected | Observed |
+|---|---|---|
+| split counts | 13,553 / 3,484 / 15,827 / 1,725 / 23,275 | all match (57,864 total) |
+| train↔cis-val overlap | 224 seqs · 270 imgs · 10 bobcat | **exact** |
+| `cis_val_clean` | 3,214 imgs · 144 bobcat | **exact** |
+| trans-val bobcat (§4 table) | 793 | 793 |
+| multi-class train images | "the seven" (B3) | 7 |
+
+That the leakage fingerprint lands on all three numbers is the real result: it means
+LILA has not republished the metadata, and DESIGN's §5.3 analysis was done against
+this exact data.
+
+**The class order is frozen: ascending CCT category ID**, which puts `bobcat` at
+index 3. Derived from the dataset rather than chosen, so it is traceable and
+deterministic; `car` (12) and `empty` (11) are marked non-selectable per DESIGN §4.
+The IDs are sparse (1, 3, 5, ... 99), so "the 16 classes" was not an order until
+this froze one — and every calibrated threshold binds to an index, so changing it
+later would silently rebind thresholds to different animals.
+
+The first generated `classes.yaml` was **malformed** (a flow mapping missing a comma
+after the padded name), which parsed as nonsense rather than failing. The writer now
+parses back what it wrote and asserts a round-trip. A generated config that does not
+load is a bug that surfaces far from its cause.
+
+**Note for C:** the A4 smoke `class_map.json` used a placeholder alphabetical order
+and is now superseded — the real class map must be generated from `classes.yaml`.
+A4's artifacts were explicitly marked provisional for exactly this reason.
 
 ### B2 — Build `cct_empty_train_v1`
 
