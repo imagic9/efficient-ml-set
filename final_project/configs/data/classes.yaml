@@ -1,0 +1,28 @@
+# The frozen 16-class order for CCT-20 (PLAN B1). GENERATED — do not edit.
+#
+# Ordered by ascending CCT category ID: derived from the dataset, so it is
+# deterministic and traceable to the source rather than to a preference.
+#
+# Changing this order silently rebinds every calibrated threshold to a
+# different animal. It is frozen for the life of the project.
+#
+# `car` and `empty` are model classes but never selectable policy targets
+# (DESIGN §4).
+
+classes:
+  - {index:  0, category_id:  1, name: opossum,   selectable_target: true}
+  - {index:  1, category_id:  3, name: raccoon,   selectable_target: true}
+  - {index:  2, category_id:  5, name: squirrel,  selectable_target: true}
+  - {index:  3, category_id:  6, name: bobcat,    selectable_target: true}
+  - {index:  4, category_id:  7, name: skunk,     selectable_target: true}
+  - {index:  5, category_id:  8, name: dog,       selectable_target: true}
+  - {index:  6, category_id:  9, name: coyote,    selectable_target: true}
+  - {index:  7, category_id: 10, name: rabbit,    selectable_target: true}
+  - {index:  8, category_id: 11, name: bird,      selectable_target: true}
+  - {index:  9, category_id: 16, name: cat,       selectable_target: true}
+  - {index: 10, category_id: 21, name: badger,    selectable_target: true}
+  - {index: 11, category_id: 30, name: empty,     selectable_target: false}
+  - {index: 12, category_id: 33, name: car,       selectable_target: false}
+  - {index: 13, category_id: 34, name: deer,      selectable_target: true}
+  - {index: 14, category_id: 51, name: fox,       selectable_target: true}
+  - {index: 15, category_id: 99, name: rodent,    selectable_target: true}

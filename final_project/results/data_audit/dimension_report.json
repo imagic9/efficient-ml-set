@@ -1,0 +1,150 @@
+{
+  "task": "B0",
+  "measured_from": "the extracted _sm JPEG headers, not the annotation JSON",
+  "why": "The annotation JSON records the ORIGINAL geometry (2048x1494). The _sm archive is capped at 1024 px per side, so the JSON cannot answer what this pipeline decodes. DESIGN \u00a75.5's input-shape argument and the reduced-decode alignment both rest on the decoded frame.",
+  "total_images_measured": 57864,
+  "distinct_sizes": 2,
+  "dominant": "1024x747",
+  "dominant_share": 0.9144,
+  "max_long_side": 1024,
+  "top_sizes": {
+    "1024x747": 52912,
+    "1024x768": 4952
+  },
+  "design_5_5_expectations": {
+    "dominant_sm_frame": "1024x747",
+    "dominant_share_claim": 0.91,
+    "sm_long_side_cap": 1024
+  },
+  "checks": {
+    "sm_long_side_capped_at_1024": true,
+    "dominant_matches_design_5_5": true,
+    "dominant_share_at_least_design_claim": true,
+    "every_image_measured": true
+  },
+  "all_checks_passed": true,
+  "per_split": [
+    {
+      "split": "train",
+      "images_in_annotations": 13553,
+      "images_measured": 13553,
+      "missing_or_unreadable": 0,
+      "missing_examples": [],
+      "observed_sm": {
+        "distribution": {
+          "1024x747": 12183,
+          "1024x768": 1370
+        },
+        "distinct_sizes": 2,
+        "dominant": "1024x747",
+        "dominant_share": 0.8989,
+        "max_long_side": 1024
+      },
+      "declared_original": {
+        "distribution": {
+          "2048x1494": 12183,
+          "2048x1536": 1054,
+          "2560x1920": 316
+        },
+        "dominant": "2048x1494"
+      }
+    },
+    {
+      "split": "cis_val",
+      "images_in_annotations": 3484,
+      "images_measured": 3484,
+      "missing_or_unreadable": 0,
+      "missing_examples": [],
+      "observed_sm": {
+        "distribution": {
+          "1024x747": 3388,
+          "1024x768": 96
+        },
+        "distinct_sizes": 2,
+        "dominant": "1024x747",
+        "dominant_share": 0.9724,
+        "max_long_side": 1024
+      },
+      "declared_original": {
+        "distribution": {
+          "2048x1494": 3388,
+          "2048x1536": 56,
+          "2560x1920": 40
+        },
+        "dominant": "2048x1494"
+      }
+    },
+    {
+      "split": "cis_test",
+      "images_in_annotations": 15827,
+      "images_measured": 15827,
+      "missing_or_unreadable": 0,
+      "missing_examples": [],
+      "observed_sm": {
+        "distribution": {
+          "1024x747": 14202,
+          "1024x768": 1625
+        },
+        "distinct_sizes": 2,
+        "dominant": "1024x747",
+        "dominant_share": 0.8973,
+        "max_long_side": 1024
+      },
+      "declared_original": {
+        "distribution": {
+          "2048x1494": 14202,
+          "2048x1536": 1203,
+          "2560x1920": 422
+        },
+        "dominant": "2048x1494"
+      }
+    },
+    {
+      "split": "trans_val",
+      "images_in_annotations": 1725,
+      "images_measured": 1725,
+      "missing_or_unreadable": 0,
+      "missing_examples": [],
+      "observed_sm": {
+        "distribution": {
+          "1024x747": 1725
+        },
+        "distinct_sizes": 1,
+        "dominant": "1024x747",
+        "dominant_share": 1.0,
+        "max_long_side": 1024
+      },
+      "declared_original": {
+        "distribution": {
+          "2048x1494": 1725
+        },
+        "dominant": "2048x1494"
+      }
+    },
+    {
+      "split": "trans_test",
+      "images_in_annotations": 23275,
+      "images_measured": 23275,
+      "missing_or_unreadable": 0,
+      "missing_examples": [],
+      "observed_sm": {
+        "distribution": {
+          "1024x747": 21414,
+          "1024x768": 1861
+        },
+        "distinct_sizes": 2,
+        "dominant": "1024x747",
+        "dominant_share": 0.92,
+        "max_long_side": 1024
+      },
+      "declared_original": {
+        "distribution": {
+          "2048x1494": 21414,
+          "2048x1536": 1198,
+          "2560x1920": 663
+        },
+        "dominant": "2048x1494"
+      }
+    }
+  ]
+}

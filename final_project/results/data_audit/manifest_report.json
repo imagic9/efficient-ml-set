@@ -1,0 +1,311 @@
+{
+  "task": "B1",
+  "classes": [
+    {
+      "index": 0,
+      "category_id": 1,
+      "name": "opossum",
+      "selectable_target": true
+    },
+    {
+      "index": 1,
+      "category_id": 3,
+      "name": "raccoon",
+      "selectable_target": true
+    },
+    {
+      "index": 2,
+      "category_id": 5,
+      "name": "squirrel",
+      "selectable_target": true
+    },
+    {
+      "index": 3,
+      "category_id": 6,
+      "name": "bobcat",
+      "selectable_target": true
+    },
+    {
+      "index": 4,
+      "category_id": 7,
+      "name": "skunk",
+      "selectable_target": true
+    },
+    {
+      "index": 5,
+      "category_id": 8,
+      "name": "dog",
+      "selectable_target": true
+    },
+    {
+      "index": 6,
+      "category_id": 9,
+      "name": "coyote",
+      "selectable_target": true
+    },
+    {
+      "index": 7,
+      "category_id": 10,
+      "name": "rabbit",
+      "selectable_target": true
+    },
+    {
+      "index": 8,
+      "category_id": 11,
+      "name": "bird",
+      "selectable_target": true
+    },
+    {
+      "index": 9,
+      "category_id": 16,
+      "name": "cat",
+      "selectable_target": true
+    },
+    {
+      "index": 10,
+      "category_id": 21,
+      "name": "badger",
+      "selectable_target": true
+    },
+    {
+      "index": 11,
+      "category_id": 30,
+      "name": "empty",
+      "selectable_target": false
+    },
+    {
+      "index": 12,
+      "category_id": 33,
+      "name": "car",
+      "selectable_target": false
+    },
+    {
+      "index": 13,
+      "category_id": 34,
+      "name": "deer",
+      "selectable_target": true
+    },
+    {
+      "index": 14,
+      "category_id": 51,
+      "name": "fox",
+      "selectable_target": true
+    },
+    {
+      "index": 15,
+      "category_id": 99,
+      "name": "rodent",
+      "selectable_target": true
+    }
+  ],
+  "class_order_rule": "ascending CCT category ID",
+  "splits": {
+    "train": {
+      "images": 13553,
+      "unlabelled_images": 0,
+      "multi_class_images": 7,
+      "sequences": 5527,
+      "locations": [
+        33,
+        38,
+        43,
+        51,
+        61,
+        88,
+        90,
+        108,
+        115,
+        120
+      ],
+      "label_counts": {
+        "opossum": 2726,
+        "rabbit": 2443,
+        "coyote": 1409,
+        "cat": 1287,
+        "squirrel": 1250,
+        "raccoon": 1027,
+        "dog": 820,
+        "bobcat": 786,
+        "car": 668,
+        "bird": 484,
+        "rodent": 375,
+        "skunk": 229,
+        "deer": 42,
+        "badger": 9,
+        "fox": 5
+      },
+      "bobcat_images": 786,
+      "sha256": "cfa8654070609c0f1d394207bcd7a064b30ce7e01e88a5b25dc27a92243f0e32",
+      "expected_images": 13553,
+      "count_reconciles": true
+    },
+    "cis_val": {
+      "images": 3484,
+      "unlabelled_images": 0,
+      "multi_class_images": 0,
+      "sequences": 1421,
+      "locations": [
+        33,
+        38,
+        43,
+        51,
+        61,
+        88,
+        90,
+        108,
+        115,
+        120
+      ],
+      "label_counts": {
+        "empty": 995,
+        "rabbit": 493,
+        "opossum": 490,
+        "coyote": 285,
+        "squirrel": 222,
+        "cat": 192,
+        "raccoon": 169,
+        "bobcat": 154,
+        "rodent": 143,
+        "dog": 139,
+        "bird": 114,
+        "skunk": 43,
+        "car": 41,
+        "deer": 3,
+        "badger": 1
+      },
+      "bobcat_images": 154,
+      "sha256": "04a2db5d2de2cf570100125eb6c7011f77cfd869e9c1ae371b3e279f11ed22aa",
+      "expected_images": 3484,
+      "count_reconciles": true
+    },
+    "cis_test": {
+      "images": 15827,
+      "unlabelled_images": 0,
+      "multi_class_images": 1,
+      "sequences": 6424,
+      "locations": [
+        33,
+        38,
+        43,
+        51,
+        61,
+        88,
+        90,
+        108,
+        115,
+        120
+      ],
+      "label_counts": {
+        "opossum": 4524,
+        "rabbit": 1758,
+        "cat": 1632,
+        "coyote": 1326,
+        "empty": 1180,
+        "raccoon": 1047,
+        "bobcat": 897,
+        "dog": 845,
+        "car": 791,
+        "squirrel": 659,
+        "bird": 574,
+        "rodent": 233,
+        "skunk": 194,
+        "deer": 162,
+        "badger": 4,
+        "fox": 2
+      },
+      "bobcat_images": 897,
+      "sha256": "4cf2bdb0e8029a1ef03dd1aeae53a58ab62f2244bfb658c02046350b2a61d492",
+      "expected_images": 15827,
+      "count_reconciles": true
+    },
+    "trans_val": {
+      "images": 1725,
+      "unlabelled_images": 0,
+      "multi_class_images": 61,
+      "sequences": 589,
+      "locations": [
+        125
+      ],
+      "label_counts": {
+        "bobcat": 793,
+        "opossum": 444,
+        "raccoon": 129,
+        "dog": 96,
+        "cat": 72,
+        "rabbit": 70,
+        "skunk": 63,
+        "empty": 61,
+        "coyote": 51,
+        "bird": 7
+      },
+      "bobcat_images": 793,
+      "sha256": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a",
+      "expected_images": 1725,
+      "count_reconciles": true
+    },
+    "trans_test": {
+      "images": 23275,
+      "unlabelled_images": 0,
+      "multi_class_images": 9,
+      "sequences": 8982,
+      "locations": [
+        0,
+        7,
+        28,
+        40,
+        46,
+        78,
+        100,
+        105,
+        130
+      ],
+      "label_counts": {
+        "opossum": 5505,
+        "raccoon": 5469,
+        "bobcat": 2338,
+        "coyote": 2249,
+        "empty": 1778,
+        "cat": 1418,
+        "car": 1113,
+        "squirrel": 1051,
+        "dog": 888,
+        "rabbit": 846,
+        "skunk": 328,
+        "bird": 224,
+        "rodent": 62,
+        "badger": 14,
+        "fox": 1
+      },
+      "bobcat_images": 2338,
+      "sha256": "e44bd722c8b1bdced45bd83c70560baa33d2f6c7872a8818e2be0ac8b6093329",
+      "expected_images": 23275,
+      "count_reconciles": true
+    }
+  },
+  "total_images": 57864,
+  "leakage": {
+    "why": "Official cis-val shares seq_id values with train. Burst frames in a sequence are near-duplicates, so a memorised training frame scores on its twin at validation. cis_val_clean removes every train-overlapping sequence and is what calibration and model selection use.",
+    "observed_overlap": {
+      "sequences": 224,
+      "cis_val_images": 270,
+      "bobcat_images": 10
+    },
+    "expected_overlap": {
+      "sequences": 224,
+      "cis_val_images": 270,
+      "bobcat_images": 10
+    },
+    "overlap_reconciles": true,
+    "cis_val_clean": {
+      "images": 3214,
+      "bobcat_images": 144
+    },
+    "expected_cis_val_clean": {
+      "images": 3214,
+      "bobcat_images": 144
+    },
+    "clean_reconciles": true,
+    "cis_val_clean_sha256": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15"
+  },
+  "all_counts_reconcile": true
+}
