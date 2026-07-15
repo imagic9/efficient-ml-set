@@ -746,7 +746,7 @@ Depends on: C0, C1.
       real-pixel utilization, and MACs; prefer 256x192 when statistically tied.
 - [x] Permit 320x240 only if both planned inputs fail the bobcat-recall rule.
       **Not triggered** — both candidates meet it; see the caveat below.
-- [ ] Generate canonical Python golden tensors for the selected input shape and
+- [x] Generate canonical Python golden tensors for the selected input shape and
       freeze their hashes.
 
 **Output:** `results/ablations/data_input_decision.md`, frozen preprocessing config,
@@ -797,6 +797,23 @@ reports the rate (§6.4) but never constrains it, so as written it will hand C3 
 operating point and report the primary rule satisfied. Measured on the C1a arms, which
 are shorter than M0 will be — but C3 must not read a satisfied rule as a working
 trigger. Flagged for Vadym; not changed here, because it is DESIGN's rule to change.
+
+**Golden tensors frozen** at 256x192 (`tests/fixtures/golden_tensors_256x192.json`, 20
+fixtures, `validate.golden_tensors`), which is what C0 deferred until this decision
+existed. Utilisation across the set runs 0.9740 to 1.0000 — the low end being the
+dominant 1024x747 frame, now agreeing with DESIGN §5.5 exactly.
+
+They are frozen at three strengths on purpose. The **geometry** is integer arithmetic and
+is exact everywhere; the **uint8 letterbox hash** is exact for a given OpenCV; the
+**float32 tensor hash is a Python-side tripwire only**. `INTER_LINEAR` and float
+arithmetic are not bit-identical across OpenCV builds, SIMD paths or architectures, so
+P1's cross-language check must compare tensors within a tolerance and take its exactness
+from the geometry. A bit-equality assertion across the boundary would fail for being run
+on a different machine, and a test that cries wolf is one the reader learns to skip.
+
+**Note for P1:** `data/preprocess.py:39` says `test_preprocess_parity` asserts the two
+implementations agree. **That test does not exist** — the comment describes intent. These
+fixtures are what it would be built from.
 
 ### C2 — Train primary baseline
 
