@@ -678,27 +678,57 @@ Phase C is permitted. The notebook is scheduled with the other reporting work in
 
 Depends on: Gate B.
 
-- [ ] Select at least 20 validation fixtures covering edge cases.
-- [ ] Freeze raw image hashes and preprocessing metadata; tensor shapes remain
+- [x] Select at least 20 validation fixtures covering edge cases.
+- [x] Freeze raw image hashes and preprocessing metadata; tensor shapes remain
       provisional until C1a selects the input contract.
 
 **Output:** frozen raw fixture set.
+
+**Done 2026-07-15.** 20 fixtures in `tests/fixtures/golden_raw.json`, chosen
+adversarially to the letterbox rather than sampled: every observed source geometry, the
+aspect-ratio extremes, odd dimensions where the integer pad is asymmetric, a bobcat
+frame and an empty frame. Drawn from validation only — DESIGN §5.4 seals the test
+splits, and a fixture is read every time the C++ preprocessing is checked.
+
+Tensor shapes are deliberately **not** frozen here. Freezing them before C1a picks the
+input contract would either pin the wrong shape or quietly bless whichever one ran
+first; the raw hashes are the part that is stable across that decision.
 
 ### C1 — Model and training engine
 
 Depends on: Gate B.
 
-- [ ] Implement ImageNet-pretrained MobileNetV2 width 1.0 with configurable fixed
+- [x] Implement ImageNet-pretrained MobileNetV2 width 1.0 with configurable fixed
       input shape and 16 outputs (14 animals + `car` + `empty`).
-- [ ] Implement effective-number weighted cross-entropy and persist its numeric
+- [x] Implement effective-number weighted cross-entropy and persist its numeric
       class-weight vector.
-- [ ] Implement two-phase head/full fine-tuning, checkpointing, early stopping,
+- [x] Implement two-phase head/full fine-tuning, checkpointing, early stopping,
       history logging, and run provenance.
-- [ ] Implement cis-val-clean/trans-val frame and sequence-balanced target metrics,
+- [x] Implement cis-val-clean/trans-val frame and sequence-balanced target metrics,
       support-aware macro F1, multi-label presence semantics, and selection score.
-- [ ] Add unit and smoke tests.
+- [x] Add unit and smoke tests.
 
 **Output:** tested training/evaluation engine and M0 config.
+
+**Done 2026-07-15.** `train.py` (engine), `data/dataset.py` (dataset, augmentation,
+weights), `metrics.py` (metrics and threshold selection), config `configs/train/m0_fp32.yaml`.
+The engine is proven by C1a: three arms ran end to end under it. Width/height are config
+keys rather than constants, which is what let C1a change the input geometry without
+touching code.
+
+The class-weight vector is persisted numerically into each run's history
+(`train.py:400`), not just derived at runtime — DESIGN §6.2's weighting is a claim about
+the run, so the run has to carry the actual numbers. `class_weights` counts
+`primary_label` rather than the full label set (weighting by co-occurring labels would
+inflate classes that appear alongside others) and floors an absent class at one sample:
+before the supplement, CCT-20's train split has no `empty` at all, and `1/0` would
+poison the entire vector.
+
+Two bugs found here were the silent kind, and both are now regression-tested: a loop
+rebound `index` in `__getitem__` so the returned dataset index became a *class* index —
+every sequence metric would have been computed against the wrong sequences — and a
+repeated `--override` silently replaced the earlier one (argparse `nargs="*"`), which
+launched a C1a arm with the wrong step budget and the wrong dataset.
 
 ### C1a — Data and input controls
 
