@@ -46,9 +46,24 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 # LILA per-image base, verified 2026-07-15. Images are served at original resolution.
-LILA_IMAGE_BASE = (
-    "https://lilawildlife.blob.core.windows.net/lila-wildlife/caltech-unzipped/cct_images"
-)
+#
+# LILA publishes the same files on GCP, AWS and Azure. Measured from gx10, fetching 48
+# images concurrently:
+#
+#   azure, 12 workers :   40 img/min   (and 4 of 48 requests failed)
+#   gcp,   12 workers :  740 img/min   (0 failures)
+#   gcp,   48 workers : 2144 img/min   (0 failures)
+#
+# Azure throttles hard enough that the retry loop absorbed it into ~20 s per image and
+# the full 5,000 would have taken over two hours. GCP is the same bytes 18x faster, and
+# it is where the 6.5 GB `_sm` archive already comes from. Mirrors change; re-measure
+# rather than inherit this.
+LILA_IMAGE_BASE = "https://storage.googleapis.com/public-datasets-lila/caltech-unzipped/cct_images"
+LILA_IMAGE_MIRRORS = {
+    "gcp": LILA_IMAGE_BASE,
+    "azure": "https://lilawildlife.blob.core.windows.net/lila-wildlife/caltech-unzipped/cct_images",
+    "aws": "https://us-west-2.opendata.source.coop/agentmorris/lila-wildlife/caltech-unzipped/cct_images",
+}
 
 SUPPLEMENT_SIZE = 5000
 SELECTION_SEED = 42  # DESIGN §5.2 rule 5, fixed.

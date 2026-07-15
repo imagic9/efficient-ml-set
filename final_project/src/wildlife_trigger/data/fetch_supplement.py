@@ -41,9 +41,16 @@ from wildlife_trigger.data.empty_supplement import (
 )
 
 # Politeness and self-defence: LILA is a public good, and an unbounded thread pool
-# against it is both rude and a good way to get rate-limited mid-run.
-MAX_WORKERS = 12
+# against it is both rude and a good way to get rate-limited mid-run. 32 measured at
+# roughly 1,500 img/min against GCP, which finishes 5,000 frames in ~3.5 minutes —
+# there is nothing to buy by pushing harder.
+MAX_WORKERS = 32
 TIMEOUT_SECONDS = 60
+
+# Retries hide throttling. Azure returned ~40 img/min and failed 4 of every 48 requests,
+# and this loop quietly turned that into 20 s per image rather than a visible error —
+# which is how a 3-minute job became a 2-hour one without anything looking wrong. Kept
+# for genuine transient failures, but the mirror choice is what actually fixed it.
 RETRIES = 3
 
 
