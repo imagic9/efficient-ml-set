@@ -185,30 +185,30 @@ Notes for later phases:
 
 Depends on: A1.
 
-- [ ] Define the isolated `gx10` Python/GPU training environment.
-- [ ] Define the `gx10` CPU-only C++/ONNX Runtime development environment.
-- [ ] Define a clean target-compatible ARM64 container on `gx10` for Pi build,
+- [x] Define the isolated `gx10` Python/GPU training environment.
+- [x] Define the `gx10` CPU-only C++/ONNX Runtime development environment.
+- [x] Define a clean target-compatible ARM64 container on `gx10` for Pi build,
       bundle-install, and full dry-run checks.
-- [ ] Record the target distro/glibc/compiler contract, pin the matching container
+- [x] Record the target distro/glibc/compiler contract, pin the matching container
       base by digest, and add `ldd` plus required-`GLIBC_*` symbol checks. If exact
       compatibility cannot be proved, make the pinned on-Pi source build the
       deployment path. A0 measured gx10 at glibc **2.39** against Pi OS Bookworm's
       **2.36**, so the base is `debian:bookworm-slim`: a binary linked against 2.36
       loads on a newer Pi OS, and the reverse does not.
-- [ ] Install and pin `qemu-user` in that container for ISA-level checks. A0
+- [x] Install and pin `qemu-user` in that container for ISA-level checks. A0
       measured `-cpu cortex-a76` advertising exactly the Pi 5 feature set
       (`asimd`+`asimddp`, no `sve`/`sve2`/`i8mm`/`bf16`) and `-cpu cortex-a72` the
       Pi 4 one (no `asimddp`). ORT dispatches kernels from these bits at runtime, so
       emulation reproduces the Pi's kernel choice and numerics. It reproduces
       **nothing** about latency — no emulated timing enters a results table.
-- [ ] Pin compiler, CMake, OpenCV, ONNX, ONNX Runtime, and Python dependencies.
-- [ ] Add environment-capture tooling and resolved run-config serialization.
-- [ ] Add checkpoint/resume and persistent logging for every long-running job.
-- [ ] Verify no secret, SSH key, token, or dataset credential is committed.
+- [x] Pin compiler, CMake, OpenCV, ONNX, ONNX Runtime, and Python dependencies.
+- [x] Add environment-capture tooling and resolved run-config serialization.
+- [x] Add checkpoint/resume and persistent logging for every long-running job.
+- [x] Verify no secret, SSH key, token, or dataset credential is committed.
 
 **Outputs:** lockfile(s), environment setup scripts, and environment JSON schema.
 
-**Findings so far (2026-07-15).** All pins live in `configs/env/pins.env`, the
+**Done 2026-07-15.** All pins live in `configs/env/pins.env`, the
 single source of truth both the Dockerfile and the setup scripts read.
 
 *ORT is not a compatibility risk.* The official aarch64 tarball needs at most
@@ -237,6 +237,39 @@ before deciding.
 from there would describe an environment we neither control nor can reproduce.
 `setup_gx10.sh` asserts the isolation before installing and fails if CUDA is
 missing rather than silently training on CPU.
+
+**Verified state.**
+
+| | Python (`~/venvs/wildlife_trigger`) | C++ (`wildlife-trigger-target:bookworm`) |
+|---|---|---|
+| ONNX Runtime | 1.27.0 | 1.27.0 |
+| OpenCV | 4.13.0 | 4.6.0 (bookworm apt) |
+| torch | 2.11.0+cu130, CUDA on GB10 cap 12.1 | — |
+| glibc | 2.39 (gx10, never shipped) | **2.36**, matching Pi OS Bookworm |
+| compiler | — | gcc 12.2, cmake 3.25.1 |
+
+Commands:
+
+```bash
+scripts/setup_gx10.sh              # isolated venv + requirements.lock (49 pins)
+scripts/build_target_container.sh  # bookworm image, ORT verified at build time
+scripts/verify_target_env.sh       # the A2 gate, unattended
+python -m pytest tests/python      # 40 passed
+```
+
+`verify_target_env.sh` proves, end to end: our binary needs GLIBC ≤ 2.34 and
+libonnxruntime ≤ 2.27 against a 2.36 target; ORT links, reports 1.27.0 and
+constructs a session **under `qemu -cpu cortex-a76`**. So the ISA rehearsal works
+with real ORT, not only with the probe.
+
+Secrets audit: no key material or credential-shaped string anywhere in history,
+not merely at HEAD. A dotfile `.env` is now ignored — deliberately `.env` and not
+`*.env`, since `configs/env/pins.env` must be committed — and the token-pattern
+check is a test rather than a one-off.
+
+**Left for E7:** OpenCV soname. Bookworm apt gives 4.6.0; a Trixie Pi would give
+another. Either bundle the `.so` or link statically — do not assume the Pi's apt
+matches.
 
 ### A3 — P0 toolchain spike
 
