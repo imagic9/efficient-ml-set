@@ -32,7 +32,7 @@
       "detail": {
         "pad_left": 0,
         "pad_top": 2,
-        "pixel_utilisation": 0.9790575916230366,
+        "pixel_utilisation": 0.9739583333333334,
         "resized": [
           256,
           187
@@ -103,7 +103,7 @@
       "passed": true,
       "detail": {
         "iterations": 100,
-        "end_to_end_p50_ms": 11.714248
+        "end_to_end_p50_ms": 12.249144999999999
       }
     },
     "benchmark_end_to_end_covers_stages": {
@@ -112,12 +112,12 @@
     },
     "system_monitor_reports_rss": {
       "passed": true,
-      "detail": 102324
+      "detail": 102376
     },
     "unavailable_sensors_are_honest": {
       "passed": true,
       "detail": {
-        "cpu_temperature_c": 46.1
+        "cpu_temperature_c": 46.6
       }
     },
     "self_test_passed": {

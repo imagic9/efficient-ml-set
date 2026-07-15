@@ -34,7 +34,7 @@
   "letterbox": {
     "pad_left": 0,
     "pad_top": 2,
-    "pixel_utilisation": 0.9790575916230366,
+    "pixel_utilisation": 0.9739583333333334,
     "resized": [
       256,
       187
@@ -50,9 +50,9 @@
   "note": "Single-shot timings are not a benchmark; use `benchmark`.",
   "policy_id": "smoke_bobcat_coyote_v0",
   "timings_ms": {
-    "end_to_end": 15.429856,
-    "inference": 11.060516,
+    "end_to_end": 16.596683,
+    "inference": 11.950721,
     "policy": 0.004352,
-    "preprocess": 4.364876
+    "preprocess": 4.641418
   }
 }

@@ -27,7 +27,7 @@
   "letterbox": {
     "pad_left": 0,
     "pad_top": 2,
-    "pixel_utilisation": 0.9790575916230366,
+    "pixel_utilisation": 0.9739583333333334,
     "resized": [
       256,
       187
@@ -41,12 +41,12 @@
   "model": "/work/results/a4/artifacts/smoke_mobilenetv2_16.onnx",
   "model_sha256": "36bd179d37ab54cf2a5d946ff0819d12626ea08eb999c5e7ac2d1eb5c08de7b2",
   "note": "Single-shot timings are not a benchmark; use `benchmark`.",
-  "ort_profile": "/work/results/a4/evidence/ort_profile_qemu_2026-07-15_18-53-31_995.json",
+  "ort_profile": "/work/results/a4/evidence/ort_profile_qemu_2026-07-15_21-17-16_653.json",
   "policy_id": "smoke_bobcat_v0",
   "timings_ms": {
-    "end_to_end": 928.183336,
-    "inference": 857.6636,
-    "policy": 0.414093,
-    "preprocess": 70.079676
+    "end_to_end": 1003.821364,
+    "inference": 931.127055,
+    "policy": 0.467088,
+    "preprocess": 72.199797
   }
 }
