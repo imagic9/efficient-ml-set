@@ -734,22 +734,69 @@ launched a C1a arm with the wrong step budget and the wrong dataset.
 
 Depends on: C0, C1.
 
-- [ ] Run the matched no-empty 15-output versus 5k-empty 16-output ablation from
+- [x] Run the matched no-empty 15-output versus 5k-empty 16-output ablation from
       DESIGN §5.2 and record cis/trans empty false-fire effects. Match the arms on
       **optimizer steps, not epochs** (13,546 vs 18,546 images = +36.9% steps per
       epoch); record steps, effective epochs, total images-seen, and non-empty
       images-seen for both.
-- [ ] Select the data/head contract from those two provisional 256x192 runs, reuse
+- [x] Select the data/head contract from those two provisional 256x192 runs, reuse
       the winner as the landscape reference, and train exactly one additional
       matched 224x224 run. Do not run an unnecessary full 2x2 control matrix.
-- [ ] Select/freeze the Core input using cis-val-clean/trans-val target metrics,
+- [x] Select/freeze the Core input using cis-val-clean/trans-val target metrics,
       real-pixel utilization, and MACs; prefer 256x192 when statistically tied.
-- [ ] Permit 320x240 only if both planned inputs fail the bobcat-recall rule.
+- [x] Permit 320x240 only if both planned inputs fail the bobcat-recall rule.
+      **Not triggered** — both candidates meet it; see the caveat below.
 - [ ] Generate canonical Python golden tensors for the selected input shape and
       freeze their hashes.
 
 **Output:** `results/ablations/data_input_decision.md`, frozen preprocessing config,
 and completed golden fixture set.
+
+**Decided 2026-07-16.** **Core input 256x192; data/head contract 5k-empty, 16 outputs.**
+Three arms, all on the same 6,000/1,055 optimizer-step budgets:
+
+| arm | steps used | score | cis F2 | trans F2 | cis false-fire | trans false-fire |
+|---|---:|---:|---:|---:|---:|---:|
+| `c1a_empty5k_16out_256x192` | 4,335 | **0.4280** | 0.5875 | 0.2684 | 0.0423 | 0.0386 |
+| `c1a_noempty_15out_256x192` | 4,220 | 0.3929 | 0.6028 | 0.1829 | 0.0547 | 0.0998 |
+| `c1a_empty5k_16out_224x224` | 6,000 | 0.3926 | 0.6499 | 0.1353 | 0.0544 | 0.0300 |
+
+**Neither decision was made on the selection score, because neither could be.** Both
+gaps are ~0.035, and a single arm's score moves up to 0.099 between *consecutive*
+epochs — the score is a max over that curve. A 10,000-replicate paired bootstrap over
+sequence clusters (`validate.tie_test`; sequences, not frames, because CCT frames come
+in bursts) calls both pairs **tied**:
+
+- input: CI [-0.0824, +0.0143], P(224x224 better) 7.5%
+- head: CI [-0.0095, +0.0792], P(supplement better) 93.9%
+
+So each decision rests on something the data does support:
+
+- **Input** — PLAN's pre-registered tie-break, which is not arbitrary here: at **-2.0%
+  MACs** 256x192 carries **+31.1% real pixels** (97.47% utilisation against 72.83%;
+  `validate.input_cost`). Both are ~49-50k-pixel tensors, but CCT's dominant frame is
+  1024x747 and a square spends a quarter of itself on grey bars. DESIGN §5.5's Pi
+  argument is the tiebreak's tiebreak: libjpeg scales 1024 by 1/4 during decode onto
+  exactly 256, so the network input needs no resize step.
+- **Head** — the false-fire effect, which is what the supplement was added to produce
+  and is far larger than the F2 gap: trans 0.0386 against 0.0998, cis 0.0423 against
+  0.0547. It reaches this having seen **25% fewer** animal frames, which is the opposite
+  of what "it just saw more animals" would predict.
+
+The 224x224 arm consumed its **whole 6,000-step budget** against the winner's 4,335 and
+still lost, so the one step imbalance in the set runs against the selected shape rather
+than for it.
+
+**The caveat on the 320x240 bullet, which matters for C3.** Both candidates "meet" the
+DESIGN §6.3 bobcat-recall rule, so the contingency is not triggered — but they meet it
+only at thresholds of **0.0011** and **0.000049**, which fire on ~78% of trans frames at
+a **67.6% false-fire rate**. The `non_trivial` guard rejects only a threshold that fires
+on *literally every* frame (`fire_rate >= 1.0`), and 0.779 clears that bar while being
+useless as a shutter trigger. DESIGN §6.3's primary rule has no false-fire ceiling: it
+reports the rate (§6.4) but never constrains it, so as written it will hand C3 this
+operating point and report the primary rule satisfied. Measured on the C1a arms, which
+are shorter than M0 will be — but C3 must not read a satisfied rule as a working
+trigger. Flagged for Vadym; not changed here, because it is DESIGN's rule to change.
 
 ### C2 — Train primary baseline
 
