@@ -132,8 +132,11 @@ model. The E chain therefore overlaps phases B-D rather than preceding them.
   available after the boreal stack was stopped (see DESIGN §4 operational note).
 - `torch-pruning 1.6.1` is already present. `onnx`, `onnxruntime` and `opencv` are
   not — A2 installs them.
-- gx10 cannot push to GitHub (403; the `~/.netrc` token lacks write). Artifacts
-  currently return to the workstation by `scp` and are committed there.
+- gx10 commits and pushes directly over SSH using a dedicated repo-scoped deploy
+  key (`~/.ssh/id_ed25519_efficientml`, host alias `github-efficientml`,
+  `IdentitiesOnly yes`). Write access verified. The `~/.netrc` HTTPS token is
+  read-only and is no longer used for this repository. Commit as
+  `Vadym <imagic9@gmail.com>` from either machine.
 
 ### A1 — Create repository skeleton
 
