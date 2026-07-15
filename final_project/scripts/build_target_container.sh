@@ -41,7 +41,8 @@ docker run --rm "${TARGET_IMAGE_TAG}" sh -c '
     echo "  cmake  : $(cmake --version | head -1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")"
     echo "  opencv : $(pkg-config --modversion opencv4 2>/dev/null || echo unknown)"
     echo "  qemu   : $(qemu-aarch64 --version | head -1 | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")"
-    echo "  ort    : $(ls /opt/onnxruntime/lib/libonnxruntime.so.* | head -1 | sed "s/.*so\.//")"
+    # Resolve the symlink: libonnxruntime.so.1 is a link and would report "1".
+    echo "  ort    : $(basename "$(readlink -f /opt/onnxruntime/lib/libonnxruntime.so)" | sed "s/^libonnxruntime\.so\.//")"
 '
 
 echo
