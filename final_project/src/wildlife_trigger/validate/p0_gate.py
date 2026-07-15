@@ -66,22 +66,47 @@ def probe(evidence: Path, model: str, mode: str) -> dict:
 
 
 def outputs_agree(evidence: Path, model: str) -> dict:
-    """Compare the C++ probe's output against Python ORT's on the same fixture."""
+    """Compare Python ORT's output against the C++ probe's on the same fixture.
+
+    Both sides must have read the shared fixture blob. An earlier version of this
+    check compared the C++ blob's argmax against the C++ probe's *own* reported
+    argmax — C++ against itself — and passed while proving nothing, because Python
+    was meanwhile running a separately generated input. The fixture path is
+    asserted here so that failure mode cannot return quietly.
+
+    This is a cheap smoke check, not P3. P3 owns real Python/C++ parity over a
+    fixture corpus with a stated tolerance; A3 only establishes that the two call
+    sites are not obviously running different models.
+    """
     python_report = load(evidence / f"{model}.python.coverage.json")
+    cpp_probe = probe(evidence, model, "native")
+
+    python_fixture = python_report.get("input_fixture", "")
+    cpp_fixture = cpp_probe.get("input_fixture", "")
+    if not python_fixture.endswith(".bin") or not cpp_fixture.endswith(".bin"):
+        raise MissingEvidence(
+            f"{model}: cannot compare call sites — Python read "
+            f"{python_fixture!r} and C++ read {cpp_fixture!r}. Both must read the "
+            "shared fixture blob or the comparison is meaningless."
+        )
+
     cpp_bin = evidence / f"cpp-native/{model}/output.bin"
     if not cpp_bin.exists():
         raise MissingEvidence(f"C++ output blob is missing: {cpp_bin}")
 
     cpp = np.fromfile(cpp_bin, dtype=np.float32)
+    python_argmax = python_report["output_summary"]["argmax"]
     cpp_argmax = int(cpp.argmax())
-    probe_argmax = int(probe(evidence, model, "native")["output_argmax"])
 
     return {
+        "python_argmax": python_argmax,
         "cpp_argmax": cpp_argmax,
-        "cpp_probe_reported_argmax": probe_argmax,
-        "blob_matches_probe_report": cpp_argmax == probe_argmax,
-        "python_output_mean": python_report.get("output_summary", {}).get("mean"),
+        "argmax_matches": python_argmax == cpp_argmax,
+        "cpp_blob_matches_probe_report": cpp_argmax
+        == int(cpp_probe["output_argmax"]),
+        "python_output_mean": python_report["output_summary"]["mean"],
         "cpp_output_mean": float(cpp.mean()),
+        "fixture": {"python": python_fixture, "cpp": cpp_fixture},
     }
 
 
@@ -121,7 +146,7 @@ def evaluate(evidence: Path) -> dict:
         agreement = outputs_agree(evidence, model)
         record(
             f"{model}_python_cpp_agree",
-            agreement["blob_matches_probe_report"] if ARGMAX_MUST_MATCH else True,
+            agreement["argmax_matches"] and agreement["cpp_blob_matches_probe_report"],
             agreement,
         )
 

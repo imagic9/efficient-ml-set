@@ -91,6 +91,7 @@ for model in m0_fp32 m1_ptq m2_qat; do
         --model "${MODELS}/${model}.onnx" \
         --label "${model}-python" \
         --workdir "${EVIDENCE}/python/${model}" \
+        --input-bin "${EVIDENCE}/input_1x3x224x224.bin" \
         --report "${EVIDENCE}/${model}.python.coverage.json" >/dev/null
     echo "    verdict exit=$?  (0=integer 2=not-integer 1=could-not-run)"
     set -e

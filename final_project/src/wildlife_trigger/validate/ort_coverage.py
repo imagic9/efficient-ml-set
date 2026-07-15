@@ -102,12 +102,31 @@ def save_optimized_graph(
     return session, (str(profile_prefix) if profile_prefix else None)
 
 
-def run_fixture(session: ort.InferenceSession, seed: int = 0) -> np.ndarray:
-    """Run one deterministic input so the profile has execution to report."""
+def run_fixture(
+    session: ort.InferenceSession, input_bin: Path | None = None, seed: int = 0
+) -> np.ndarray:
+    """Run one deterministic input so the profile has execution to report.
+
+    `input_bin` reads the shared blob `validate.fixture` wrote — the same bytes the
+    C++ probe reads. Pass it whenever the outputs will be compared across call
+    sites: generating a fresh array here instead, even from a fixed seed, means the
+    two runtimes saw different inputs and any output difference says nothing.
+    """
     spec = session.get_inputs()[0]
     shape = [d if isinstance(d, int) else 1 for d in spec.shape]
-    rng = np.random.default_rng(seed)
-    data = rng.standard_normal(shape, dtype=np.float32)
+
+    if input_bin is not None:
+        data = np.fromfile(input_bin, dtype=np.float32)
+        expected = int(np.prod(shape))
+        if data.size != expected:
+            raise ValueError(
+                f"fixture {input_bin} holds {data.size} float32 but the model "
+                f"wants {expected} for shape {shape}"
+            )
+        data = data.reshape(shape)
+    else:
+        data = np.random.default_rng(seed).standard_normal(shape, dtype=np.float32)
+
     return session.run(None, {spec.name: data})[0]
 
 
@@ -206,7 +225,11 @@ def verdict(optimized: dict, executed: dict) -> dict:
 
 
 def analyse(
-    model: Path, workdir: Path, label: str, intra_op_threads: int = 1
+    model: Path,
+    workdir: Path,
+    label: str,
+    input_bin: Path | None = None,
+    intra_op_threads: int = 1,
 ) -> dict:
     """Full pipeline: optimize, run a fixture, read the profile, decide."""
     workdir.mkdir(parents=True, exist_ok=True)
@@ -217,7 +240,7 @@ def analyse(
         profile_prefix=workdir / f"{label}.profile",
         intra_op_threads=intra_op_threads,
     )
-    output = run_fixture(session)
+    output = run_fixture(session, input_bin=input_bin)
     # end_profiling returns the real filename; ORT appends its own timestamp, so
     # guessing the path from the prefix would break on the next ORT release.
     profile_file = Path(session.end_profiling())
@@ -234,11 +257,15 @@ def analyse(
         "optimized_graph": optimized,
         "optimized_graph_path": str(optimized_path),
         "execution": executed,
+        "input_fixture": str(input_bin) if input_bin else "<generated, seed 0>",
         "output_summary": {
             "shape": list(output.shape),
             "dtype": str(output.dtype),
             "mean": float(output.mean()),
             "std": float(output.std()),
+            # The class, which must match across call sites even though the logits
+            # differ in their last bits.
+            "argmax": int(output.argmax()),
         },
         "verdict": verdict(optimized, executed),
     }
@@ -292,6 +319,12 @@ def main() -> int:
     )
     parser.add_argument("--optimized", type=Path, help="With --from-artifacts.")
     parser.add_argument("--profile", type=Path, help="With --from-artifacts.")
+    parser.add_argument(
+        "--input-bin",
+        type=Path,
+        help="Shared fixture blob to run, the same one the C++ probe reads. "
+        "Required for any cross-call-site output comparison to mean anything.",
+    )
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
 
@@ -312,7 +345,7 @@ def main() -> int:
         report = (
             analyse_artifacts(args.model, args.optimized, args.profile, args.label)
             if args.from_artifacts
-            else analyse(args.model, args.workdir, args.label)
+            else analyse(args.model, args.workdir, args.label, input_bin=args.input_bin)
         )
     except Exception as exc:
         emit(
