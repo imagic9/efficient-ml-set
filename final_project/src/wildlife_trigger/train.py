@@ -82,8 +82,15 @@ class TrainConfig:
     workers: int = 8
 
     # DESIGN §5.2: the ablation matches optimizer steps, not epochs. None = derive from
-    # max_epochs over this run's own dataset.
+    # this run's own dataset size.
+    #
+    # `head_steps` matters as much as `max_steps` and is easy to forget. The supplement
+    # arm has 289 steps/epoch against the no-empty arm's 211, so "phase A = 5 epochs"
+    # silently gives it 1,445 head steps versus 1,055 — a 37% larger head budget inside
+    # a comparison that is supposed to be step-matched. Matching the total while
+    # mismatching the phases is not matching.
     max_steps: int | None = None
+    head_steps: int | None = None
 
     # The no-empty arm trains a 15-output head on a training set with no `empty` frames.
     exclude_empty_class: bool = False
@@ -239,6 +246,12 @@ def run(config: TrainConfig) -> dict:
 
     steps_per_epoch = len(loaders["train"])
     max_steps = config.max_steps or steps_per_epoch * config.max_epochs
+    head_steps = config.head_steps or steps_per_epoch * config.head_epochs
+    if head_steps >= max_steps:
+        raise ValueError(
+            f"head_steps ({head_steps}) >= max_steps ({max_steps}): phase B would "
+            "never run and the backbone would never be fine-tuned."
+        )
 
     output = Path(config.output_dir) / config.run_name
     output.mkdir(parents=True, exist_ok=True)
@@ -265,19 +278,25 @@ def run(config: TrainConfig) -> dict:
 
     optimiser = set_phase("A")
     scheduler = None
+    phase = "A"
 
-    for epoch in range(config.max_epochs + config.head_epochs):
-        phase = "A" if epoch < config.head_epochs else "B"
-        if epoch == config.head_epochs:
-            optimiser = set_phase("B")
-            remaining = max(1, max_steps - step)
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=remaining)
-
+    for epoch in range(1000):  # bounded by max_steps and early stopping, not by this
         model.train()
         epoch_loss, batches = 0.0, 0
         for batch in loaders["train"]:
             if step >= max_steps:
                 break
+
+            # The phase boundary is a step count, not an epoch count, so two arms with
+            # different dataset sizes get identical head and fine-tune budgets.
+            if phase == "A" and step >= head_steps:
+                phase = "B"
+                optimiser = set_phase("B")
+                scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                    optimiser, T_max=max(1, max_steps - step)
+                )
+                print(f"  phase A -> B at step {step}", flush=True)
+
             images = batch["image"].to(device, non_blocking=True)
             targets = batch["target"].to(device, non_blocking=True)
 
@@ -327,7 +346,10 @@ def run(config: TrainConfig) -> dict:
             flush=True,
         )
 
-        if score["primary"] > best["score"]:
+        if score["primary"] > best["score"] and phase == "B":
+            # Phase A checkpoints are never selected: the backbone has not moved, so a
+            # head-only model that happens to score well early would be chosen over a
+            # properly fine-tuned one and the run's whole phase B would be discarded.
             best = {"score": score["primary"], "epoch": epoch}
             torch.save(
                 {
@@ -363,9 +385,13 @@ def run(config: TrainConfig) -> dict:
         "budget": {
             "steps": step,
             "max_steps": max_steps,
+            "head_steps": head_steps,
             "steps_per_epoch": steps_per_epoch,
             "effective_epochs": round(step / steps_per_epoch, 2),
             "images_seen": images_seen,
+            # DESIGN §5.2: this is the value that makes the compute-matched supplement
+            # arm's LOWER animal exposure explicit, rather than letting "empty data
+            # helps" quietly mean "this arm saw 37% fewer animals".
             "non_empty_images_seen": non_empty_seen,
             "train_images": len(data["train"]),
         },
