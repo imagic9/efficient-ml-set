@@ -16,13 +16,14 @@ These placeholders must be replaced before submission.
 
 Wildlife Trigger is a CPU-only Edge AI application for a Raspberry Pi 5. It
 receives a wildlife-camera frame, runs a full-frame classifier in C++, and emits
-an emulated shutter signal when the target animal — a bobcat — is present.
+an emulated shutter signal when any animal selected in the target policy is
+present. Bobcat is the primary target for training evaluation and course results.
 
 ```text
 saved JPEG frame
     -> C++ preprocessing
     -> MobileNetV2 / ONNX Runtime
-    -> bobcat score >= calibrated threshold?
+    -> any configured animal score >= its calibrated threshold?
     -> SHUTTER_TRIGGER=1 or 0
 ```
 
@@ -65,12 +66,14 @@ Pi bundle, and raw evidence so the work can be reproduced and defended.
 
 ## Core scope
 
-Core is intentionally limited to one model and one target policy:
+Core is intentionally limited to one model and a lightweight configurable target
+policy:
 
 - full-frame MobileNetV2, width 1.0, input 224x224;
 - 16 outputs: 15 CCT-20 animal classes plus `empty`;
 - ImageNet-pretrained transfer learning;
-- calibrated bobcat threshold;
+- generic `mode: any` target list with per-class thresholds;
+- calibrated bobcat policy as the primary graded configuration;
 - one inference per frame;
 - ONNX Runtime CPU Execution Provider;
 - C++17/OpenCV/ONNX Runtime application;
@@ -89,12 +92,42 @@ Core candidates:
 No candidate is assumed to win. The final optimized model is selected on
 validation evidence and then frozen before test evaluation.
 
-Gate/cascade, object detection, physical GPIO, power measurement, multiple target
-modules, illegal-logging detection, custom inference engines, NPU/Hailo, and
-battery-life claims are outside Core.
+Gate/cascade, object detection, physical GPIO, power measurement, separate
+per-species networks/model packs, multi-label simultaneous-species recognition,
+illegal-logging detection, custom inference engines, NPU/Hailo, and battery-life
+claims are outside Core.
 
 The only optional Stretch is crop-teacher knowledge distillation, and it remains
 locked until the complete Core submission passes its Definition of Done.
+
+### Configurable target policy
+
+The model always computes the same 15 animal scores plus `empty`. Selecting one
+or several known animals changes only a YAML policy and adds no model inference:
+
+```yaml
+schema_version: 1
+policy_id: bobcat_coyote_v1
+model_sha256: MODEL_SHA256
+class_map_sha256: CLASS_MAP_SHA256
+mode: any
+targets:
+  - class: bobcat
+    threshold: 0.42
+  - class: coyote
+    threshold: 0.55
+```
+
+The checked-in values above are schema examples, not final thresholds. The
+pipeline replaces them with validation-calibrated values bound to the final model.
+The bundle contains a bobcat-only policy, a per-class threshold catalog, and one
+validated multi-target example. Unknown or duplicate classes, `empty` as a target,
+invalid thresholds, unsupported modes, and hash mismatches are rejected.
+
+Selecting any existing CCT-20 animal requires no retraining. Adding a species
+outside the 15-class map requires labelled data and fine-tuning. Detecting two
+different species simultaneously in one frame would require a multi-label model
+or detector and is outside Core.
 
 ---
 
@@ -167,8 +200,8 @@ The implementation follows seven gated Core phases:
    FP32/PTQ/QAT -> ONNX -> ARM64 C++ before full training.
 2. **B — Data:** freeze official splits and location-disjoint empty supplement;
    pass all leakage/count/hash audits.
-3. **C — FP32 baseline:** train M0, calibrate bobcat policy, export ONNX, prove
-   preprocessing/model/C++ parity.
+3. **C — FP32 baseline:** train M0, calibrate the primary bobcat policy, define
+   the generic policy schema, export ONNX, and prove preprocessing/model/C++ parity.
 4. **D — Optimization:** build M1-M4 independently, compare on validation, freeze
    one final optimized candidate.
 5. **E — C++ and deployment:** implement/test the application, benchmark harness,
@@ -326,7 +359,8 @@ The final public release contains:
 3. Exact configs, lockfiles, tests, automation, and reproduction instructions.
 4. FP32 baseline and final optimized ONNX models, policies, model cards, hashes.
 5. Raspberry Pi deployment archive with installer, executable/runtime, models,
-   policy, class map, sample data, demo command, and checksums.
+   bobcat/multi-target policies, threshold catalog, class map, sample data, demo
+   command, and checksums.
 6. Raw training/evaluation/parity/Pi evidence and generated figures/tables.
 7. `notebooks/01_data_audit.ipynb` and `02_results_analysis.ipynb`, cleanly
    executable from frozen artifacts.

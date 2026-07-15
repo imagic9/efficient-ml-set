@@ -65,7 +65,8 @@ accuracy, provided the failure is measured correctly and explained.
 
 1. Prepare a leakage-safe wildlife dataset with CCT-20 cis/trans splits.
 2. Train one FP32 full-frame MobileNetV2 classifier.
-3. Calibrate a bobcat shutter threshold using validation data only.
+3. Calibrate a primary bobcat shutter threshold using validation data only and
+   implement a generic policy that can select any subset of the 15 known animals.
 4. Produce and evaluate:
    - FP32 baseline;
    - INT8 PTQ;
@@ -97,7 +98,8 @@ as an additional experiment.
 - gate/cascade model;
 - person/vehicle/illegal-logging detector;
 - elephant or regional model packs;
-- multiple target modules;
+- separate per-species neural networks or downloadable model packs;
+- multi-label recognition of simultaneous species in one frame;
 - custom inference engine;
 - Hailo/AI HAT/NPU;
 - battery-life claims;
@@ -119,11 +121,11 @@ C++ decode + deterministic full-frame preprocessing
 MobileNetV2, 16 logits: 15 animal classes + empty
       |
       v
-softmax -> bobcat score
+softmax -> configured animal scores
       |
-      +-- score >= calibrated threshold --> SHUTTER_TRIGGER=1
+      +-- any selected score >= its threshold --> SHUTTER_TRIGGER=1
       |
-      `-- otherwise ----------------------> SHUTTER_TRIGGER=0
+      `-- otherwise ----------------------------> SHUTTER_TRIGGER=0
 ```
 
 There is exactly one neural-network inference per frame. The same C++ application
@@ -136,6 +138,51 @@ The Raspberry Pi is assumed to be powered and the inference process resident.
 The project measures model loading separately but does not claim boot-from-off or
 suspend-to-inference latency. The emulated shutter signal is a console/JSON event,
 not a physical GPIO transition.
+
+### Configurable target policy
+
+The neural network is shared by every target selection. A policy is a small
+configuration file, not a separate model. It selects one or more of the 15 animal
+outputs and fires when any selected class passes its own threshold:
+
+```yaml
+schema_version: 1
+policy_id: bobcat_coyote_v1
+model_sha256: MODEL_SHA256
+class_map_sha256: CLASS_MAP_SHA256
+mode: any
+targets:
+  - class: bobcat
+    threshold: 0.42
+  - class: coyote
+    threshold: 0.55
+```
+
+The numbers above illustrate the numeric schema only; generated policies must
+replace them with measured validation-calibrated values.
+
+`empty` is never a valid target. `mode: any` is the only Core combination mode.
+The loader rejects an empty target list, duplicate or unknown classes, thresholds
+outside `[0, 1]`, unsupported modes, and model/class-map hash mismatches.
+
+The submission's primary evaluated policy remains the bobcat-only
+`bobcat_v1.yaml`. The same final model must also accept a multi-target example
+policy without another inference or model reload. This adds configuration-level
+modularity without adding networks or changing the benchmark question.
+
+The calibration pipeline produces a model-bound threshold catalog for all 15
+animal classes from validation data. For a class represented in both validation
+domains, apply the two-domain rule from section 6.3. If a class has no positives
+in one domain or too little support for that rule, use pooled validation F2 only
+as a fallback and record the missing-domain/low-support limitation. Never invent
+a threshold or claim validated recall without positive examples. A generated
+multi-target policy must store its combined validation trigger metrics because
+false-fire rates increase when multiple targets are joined with `any`.
+
+A new species outside the 15-class map requires labelled data, classifier-head
+adaptation, fine-tuning, export, and recalibration, but not training from random
+initialization. Simultaneous identification of multiple different species in one
+frame would require a multi-label classifier or detector and remains out of Core.
 
 ### Execution environments
 
@@ -281,15 +328,17 @@ deterministic.
 
 ### 6.1 Model output
 
-The model performs 16-way classification. The application action is binary:
+The model performs 16-way single-label classification. The application action is
+binary for a configured target set `T`:
 
 ```text
-fire(frame) = softmax(logits)[bobcat] >= threshold
+fire(frame, T) = any(softmax(logits)[class] >= threshold[class] for class in T)
 ```
 
-Do not equate top-1 accuracy with product quality. A bobcat may correctly trigger
-even when another logit is slightly larger, provided the policy is explicitly
-defined and evaluated consistently.
+Do not equate top-1 accuracy with product quality. A configured class may correctly
+trigger even when another logit is slightly larger, provided the policy is
+explicitly defined and evaluated consistently. The Core scientific evaluation
+uses `T = {bobcat}`; generic target selection is a product/configuration feature.
 
 ### 6.2 Loss and class imbalance
 
@@ -300,7 +349,7 @@ of the baseline training recipe and remains identical across compression runs.
 
 Do not use test frequencies for weighting or sampling.
 
-### 6.3 Threshold calibration
+### 6.3 Primary bobcat threshold calibration
 
 Calibrate the bobcat threshold on `cis-val + trans-val` only. Treat the two
 validation domains separately so the larger bobcat count in trans-val does not
@@ -323,6 +372,11 @@ comparison, report both:
 
 - each model at its own calibrated operating point;
 - every model at the FP32 baseline threshold, to expose calibration drift.
+
+After the final model is selected, run the same calibrator for every animal class
+to produce the generic threshold catalog described in section 4. Classes lacking
+adequate validation support must be explicitly flagged. These secondary thresholds
+do not affect model selection or replace the bobcat evaluation.
 
 ### 6.4 Primary accuracy metrics
 
@@ -630,9 +684,10 @@ version; do not retain the course container's obsolete hard-coded 1.14.1 package
    - reusable preallocated input buffer;
    - exact contract from section 5.5.
 3. `Policy`
-   - loads target class and threshold from YAML/JSON;
-   - validates class mapping and model hash;
-   - emits the shutter decision.
+   - loads `mode: any` plus one or more class/threshold entries from YAML/JSON;
+   - validates schema, non-empty/unique known animal targets, threshold bounds,
+     class mapping, and model hash;
+   - emits the shutter decision plus the selected class scores and passing targets.
 4. `DatasetRunner`
    - consumes a manifest in deterministic order;
    - writes JSONL predictions and stage timings;
@@ -653,7 +708,8 @@ version; do not retain the course container's obsolete hard-coded 1.14.1 package
 
 ### Required tests
 
-- unit tests for class mapping, threshold boundary, percentile calculation, and
+- unit tests for class mapping, single/multi-target `any`, exact threshold
+  boundaries, invalid/duplicate/`empty` targets, percentile calculation, and
   manifest parsing;
 - preprocessing golden-fixture tests;
 - corrupt/missing image behavior;
@@ -928,7 +984,8 @@ will submit the following complete package:
    - FP32 baseline ONNX;
    - final optimized ONNX;
    - optional intermediate deployable models;
-   - bobcat policy YAML;
+   - primary bobcat policy YAML, final-model threshold catalog, and one validated
+     multi-target example policy;
    - checksums and model cards.
 4. **Raspberry Pi deployment bundle**
    - release archive containing the C++ executable, required shared libraries or
@@ -1074,6 +1131,8 @@ Core is complete only when every item is true:
 
 - [ ] Baseline and final ONNX models pass preprocessing/model/C++ parity.
 - [ ] C++ CLI, dataset runner, benchmark harness, and self-tests pass.
+- [ ] The same final model passes bobcat-only and multi-target policy tests without
+      another model inference per frame.
 - [ ] ARM64 dry run succeeds from a clean environment.
 - [ ] Pi baseline and optimized runs use the same application and protocol.
 - [ ] Latency, FPS, RSS, CPU utilization, model size, and available thermal data

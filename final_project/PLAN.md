@@ -26,6 +26,8 @@ The executing agent must follow these rules:
   training, C++ work, shutter emulation, tests, dry runs, and deliverable builds;
 - use the rented Raspberry Pi 5 only for Phase F target-hardware verification
   and final measurements; never present `gx10` timings as Pi results;
+- keep bobcat as the primary graded target while implementing generic target-set
+  configuration over the same 15-animal output vector;
 - work only on Core until Gate G passes;
 - the only permitted post-Core Stretch is crop-teacher KD;
 - mark a task complete only when its listed artifact exists and its checks pass;
@@ -50,9 +52,10 @@ Do not use `[x]` for a partial implementation.
 
 ## 2. Fixed scope and critical path
 
-Core is one full-frame MobileNetV2 with 16 outputs and a calibrated bobcat
-shutter policy, exported to ONNX and executed by a C++ ONNX Runtime application
-on a Raspberry Pi 5.
+Core is one full-frame MobileNetV2 with 16 outputs and a generic configurable
+target policy, exported to ONNX and executed by a C++ ONNX Runtime application on
+a Raspberry Pi 5. Bobcat remains the primary calibrated and graded target; target
+selection never loads or runs another neural network.
 
 Optimization candidates:
 
@@ -77,9 +80,9 @@ C0 -> C1 -> C2 -> C3 -> C4 -> C5
 D1/D2/D3 -> D4 -> D5 -> D6
                          |
                          v
-E1 -> E2 -> E3 -> E4 -> E5 -> E6 -> E7 -> E8
-                                         |
-                                         v
+E1 -> E2 -> E3 -> E4 -> E5 -> E6 -> E6a -> E7 -> E8
+                                                |
+                                                v
 F1 -> F2 -> F3 -> F4 -> F5
                          |
                          v
@@ -267,10 +270,13 @@ Depends on: C2.
 - [ ] Search thresholds using cis-val and trans-val only.
 - [ ] Apply the two-domain 90% recall rule from DESIGN §6.3.
 - [ ] Save `artifacts/policies/bobcat_v1.yaml` bound to class map/model hash.
+- [ ] Implement the versioned generic policy schema with `mode: any`, non-empty
+      unique animal targets, per-class thresholds, and model/class-map hashes.
 - [ ] Produce validation precision/recall/F2/false-fire/fire-rate results and score
       distributions.
 
-**Output:** versioned M0 policy and validation report.
+**Output:** versioned M0 bobcat policy, generic policy schema, and validation
+report.
 
 ### C4 — Export and parity
 
@@ -403,9 +409,12 @@ Depends on: E1, C0.
 Depends on: E1, C4.
 
 - [ ] Implement model contract validation and ORT session/thread configuration.
-- [ ] Implement class-map/model-hash-bound bobcat policy loading.
-- [ ] Implement `SHUTTER_TRIGGER=0/1` output and structured inference result.
-- [ ] Add wrong-model/class-map/threshold tests.
+- [ ] Implement class-map/model-hash-bound loading of one or more target classes,
+      each with its own threshold; Core combination semantics are `mode: any`.
+- [ ] Implement `SHUTTER_TRIGGER=0/1` output with selected scores and passing
+      targets in the structured inference result.
+- [ ] Add single-target, multi-target, exact-boundary, empty/duplicate/unknown
+      target, unsupported-mode, wrong-model, class-map, and threshold-range tests.
 
 ### E4 — Dataset runner
 
@@ -439,9 +448,25 @@ Depends on: E5, Gate D.
 
 **Gate E6:** the C++ application is correct before performance claims are made.
 
+### E6a — Final-model target-policy catalog
+
+Depends on: D6, E3, E6.
+
+- [ ] Calibrate a threshold for each of the 15 animal classes on validation only.
+- [ ] Use the two-domain rule where both domains have positive support; otherwise
+      use the documented pooled-F2 fallback and flag the limitation.
+- [ ] Generate a final-model-bound threshold catalog with per-class support,
+      calibration status, metrics, and hashes.
+- [ ] Generate and validate `bobcat_coyote_v1.yaml` as the multi-target demo;
+      thresholds must come from the catalog, never placeholders.
+- [ ] Record combined validation trigger/false-fire metrics for the demo policy.
+
+**Output:** threshold catalog, primary bobcat policy, validated multi-target demo,
+and policy calibration evidence.
+
 ### E7 — Raspberry Pi deployment bundle
 
-Depends on: E6.
+Depends on: E6a.
 
 - [ ] Package C++ executable, required runtime/install instructions, M0 and final
       ONNX models, policies, class map, validation benchmark manifest, sample
