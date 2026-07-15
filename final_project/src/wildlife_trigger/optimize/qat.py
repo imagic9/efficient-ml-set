@@ -476,8 +476,17 @@ def main() -> int:
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--calibration-batches", type=int, default=8)
     parser.add_argument("--opset", type=int, default=P0_OPSET)
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--describe-json", type=Path)
     args = parser.parse_args()
+
+    # The global RNG, not only the local generators. MobileNetV2's classifier holds
+    # an nn.Dropout, which draws from torch's global stream during training and
+    # ignores any generator passed to the data. Without this the exported QAT model
+    # differs on every run: P0 measured the same pipeline produce argmax 21 and then
+    # 908 from identical inputs. DESIGN §9.2 requires seeds to be recorded, and an
+    # artifact that cannot be regenerated is not evidence.
+    torch.manual_seed(args.seed)
 
     model, structure = build_qat_model(pretrained=True)
     print(f"structure: {structure}")
@@ -526,6 +535,7 @@ def main() -> int:
         "structure": structure,
         "relu6_removal_equivalence": equivalence,
         "ste_check": ste,
+        "seed": args.seed,
         "steps": args.steps,
         "loss_first": losses[0] if losses else None,
         "loss_last": losses[-1] if losses else None,
