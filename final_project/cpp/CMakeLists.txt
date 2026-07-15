@@ -30,6 +30,7 @@ endif()
 
 add_library(wildlife_trigger_core
   src/cpu_features.cpp
+  src/hashing.cpp
 )
 target_include_directories(wildlife_trigger_core PUBLIC include)
 target_compile_options(wildlife_trigger_core PRIVATE
@@ -39,6 +40,12 @@ target_compile_options(wildlife_trigger_core PRIVATE
 if(WILDLIFE_CPU_TARGET)
   target_compile_options(wildlife_trigger_core PUBLIC -mcpu=${WILDLIFE_CPU_TARGET})
 endif()
+
+# Vendored nlohmann/json (DESIGN §11: no system JSON package, no network fetch).
+# SYSTEM so its ~950 KB of templates do not drown our own -Wall -Wextra output; we
+# do not maintain it and cannot act on its warnings.
+add_library(wildlife_trigger_json INTERFACE)
+target_include_directories(wildlife_trigger_json SYSTEM INTERFACE third_party)
 
 # --- ONNX Runtime ------------------------------------------------------------
 # The prebuilt aarch64 tarball unpacked in the target container, located by
@@ -72,6 +79,35 @@ if(WILDLIFE_BUILD_ORT_TOOLS)
     -Wall -Wextra -Wpedantic
   )
   message(STATUS "wildlife_trigger: ort_probe against ${ORT_PREFIX}")
+
+  # --- the application ---------------------------------------------------------
+  # OpenCV: only the modules actually used. Linking the world would drag video I/O
+  # and GUI backends into a bundle that must run headless on a Pi.
+  find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
+  message(STATUS "wildlife_trigger: OpenCV ${OpenCV_VERSION} (${OpenCV_DIR})")
+
+  add_library(wildlife_trigger_app
+    src/preprocess.cpp
+    src/session.cpp
+    src/policy.cpp
+    src/benchmark.cpp
+  )
+  target_link_libraries(wildlife_trigger_app
+    PUBLIC wildlife_trigger_core wildlife_trigger_json onnxruntime
+    PRIVATE ${OpenCV_LIBS}
+  )
+  target_include_directories(wildlife_trigger_app SYSTEM PUBLIC ${OpenCV_INCLUDE_DIRS})
+  target_compile_options(wildlife_trigger_app PRIVATE
+    $<$<CONFIG:Release>:-O3>
+    -Wall -Wextra -Wpedantic
+  )
+
+  add_executable(wildlife_trigger src/main.cpp)
+  target_link_libraries(wildlife_trigger PRIVATE wildlife_trigger_app ${OpenCV_LIBS})
+  target_compile_options(wildlife_trigger PRIVATE
+    $<$<CONFIG:Release>:-O3>
+    -Wall -Wextra -Wpedantic
+  )
 endif()
 
 include(CTest)
