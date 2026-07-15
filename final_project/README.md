@@ -124,13 +124,17 @@ The checked-in values above are schema examples, not final thresholds. The
 pipeline replaces them with validation-calibrated values bound to the final model.
 The bundle contains a bobcat-only policy, a per-class threshold catalog, and one
 validated multi-target example. Unknown/duplicate classes, `car` or `empty` as a
-wildlife target, invalid thresholds, unsupported modes, and hash mismatches are
-rejected.
+wildlife target, classes with no calibrated threshold, invalid thresholds,
+unsupported modes, and hash mismatches are rejected.
 
-Selecting any of the 14 existing CCT-20 animals requires no retraining. Adding a
-species outside the 16-class map requires labelled data and fine-tuning. Detecting two
-different species simultaneously in one frame would require a multi-label model
-or detector and is outside Core.
+Selecting an existing CCT-20 animal requires no retraining — but only where a
+threshold can be calibrated. CCT-20 validation has **zero `deer` and zero `fox`
+positives**, so those two are published as uncalibratable and refused as targets;
+`badger` has a single validation image and carries a low-support flag. The catalog
+covers at most 12 of the 14 animals. Adding a species outside the 16-class map
+requires labelled data and fine-tuning. Detecting two different species
+simultaneously in one frame would require a multi-label model or detector and is
+outside Core.
 
 ---
 

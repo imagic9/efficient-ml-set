@@ -244,6 +244,9 @@ Depends on: B3.
 - [ ] Produce class, location, sequence, split, and supplement statistics.
 - [ ] Verify multi-label counts 7 / 0 / 1 / 61 / 9 across the five official
       splits and test target-presence semantics.
+- [ ] Emit the per-class validation support table (images and sequences on
+      cis-val-clean and trans-val) and assert that the animal classes with zero
+      validation positives are exactly `deer` and `fox`.
 - [ ] Render/inspect representative RGB, IR-like, empty, bobcat, small, portrait,
       and landscape samples.
 - [ ] Complete and execute `notebooks/01_data_audit.ipynb` from a clean kernel.
@@ -288,7 +291,9 @@ Depends on: Gate B.
 Depends on: C0, C1.
 
 - [ ] Run the matched no-empty 15-output versus 5k-empty 16-output ablation from
-      DESIGN §5.2 and record cis/trans empty false-fire effects.
+      DESIGN §5.2 and record cis/trans empty false-fire effects. Match the arms on
+      **optimizer steps, not epochs** (13,546 vs 18,546 images = +36.9% steps per
+      epoch); record steps, epochs, and images-seen for both.
 - [ ] Run the matched 224x224 versus 256x192 aspect-preserving input control.
 - [ ] Select/freeze the Core input using cis-val-clean/trans-val target metrics,
       real-pixel utilization, and MACs; prefer 256x192 when statistically tied.
@@ -576,15 +581,20 @@ Depends on: F2.
 - [ ] Repeat validation after any safe fix.
 - [ ] Select the final optimized model using validation accuracy, real Pi latency,
       model size, and simplicity; write `final_decision.md`.
-- [ ] On `gx10`, train confirmation seeds 17/73 for the selected transformation
-      with frozen hyperparameters; these measure variability and do not replace
-      the seed-42 deployment artifact.
-- [ ] Calibrate a final-model threshold catalog for all 14 animals; flag classes
-      lacking support, generate the bobcat policy and validated
-      `bobcat_coyote_v1.yaml`, and record combined validation false-fire metrics.
+- [ ] Calibrate the final-model threshold catalog for every animal with validation
+      positives — **12 of 14; `deer` and `fox` have none and must be emitted as an
+      explicit uncalibratable list, `badger` has 1 image and is low-support**.
+      Generate the bobcat policy and the validated `bobcat_coyote_v1.yaml`, and
+      record combined validation false-fire metrics.
 - [ ] Freeze git commit, binary, selected model, policies, preprocessing/decode
       mode, ORT options, and thread count.
 - [ ] Archive freeze manifest before test evaluation.
+- [ ] **Only after the freeze:** launch confirmation seeds 17/73 for the selected
+      transformation on `gx10` in the background with frozen hyperparameters. They
+      measure variability, never replace the seed-42 deployment artifact, and must
+      not gate this freeze, any later trial day, or Gate F. Retraining a
+      pruned+QAT candidate twice can outlast a trial day; report them whenever
+      they land, including after the trial expires.
 
 **Freeze gate:** no artifact or configuration changes after this point.
 
@@ -598,6 +608,11 @@ Depends on: F3.
       processes/repetitions as specified.
 - [ ] Run the fixed Pi parity subset and match decisions to the frozen gx10
       reference; full test transfer to Pi is optional, not required.
+- [ ] **If the parity subset disagrees, stop before reporting any accuracy.** The
+      whole gx10 full-test shortcut is valid only while target-hardware decisions
+      match. Report the mismatch rate, treat Pi decisions as authoritative for the
+      affected frames, and if the difference cannot be explained, either run full
+      test accuracy on the Pi or withdraw the accuracy claim.
 - [ ] Capture raw per-frame predictions/timings/system logs.
 - [ ] Copy artifacts off the Pi immediately.
 
