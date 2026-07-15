@@ -37,6 +37,14 @@ __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
 
+# Key material. Public keys are safe to share, but they are still clutter in a
+# public repo — and the broader patterns stop a private key from ever being
+# swept up by `git add -A`.
+*.pub
+*.pem
+id_ed25519*
+id_rsa*
+
 # OS / editor
 .DS_Store
 .idea/
