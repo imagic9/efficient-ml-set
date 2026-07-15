@@ -79,6 +79,8 @@ flowchart TD
   B4 --> C1
   C0 --> C1A[C1a controls]
   C1 --> C1A --> C2 --> C3 --> C4 --> C5
+  C0 -.-> E2
+  C4 -.-> E3
   C5 --> D1
   C5 --> D2
   C5 --> D3 --> D4
@@ -97,6 +99,11 @@ flowchart TD
 A4 implements the minimal interfaces later hardened by E1-E5 against trained M0
 and the optimized shortlist. No Pi bundle is frozen before D6 produces the
 complete deployable shortlist.
+
+The dotted edges are the ones easiest to miss when reading the solid chain as the
+critical path: E1 may indeed start right after A4, but E2 cannot be finished before
+C0 freezes the golden fixtures and E3 cannot be finished before C4 exports a real
+model. The E chain therefore overlaps phases B-D rather than preceding them.
 
 ---
 
@@ -154,7 +161,12 @@ Depends on: A2.
 - [ ] Export ImageNet-pretrained MobileNetV2 FP32 to ONNX at provisional opset 17;
       explicitly reject the legacy opset-9 spike artifact.
 - [ ] Create a small static PTQ ONNX model.
-- [ ] Run one epoch/minimal step of the planned QAT path and export deployable
+- [ ] Choose the QAT library here rather than assuming one. Try, in DESIGN §8.2
+      order, direct QDQ fake-quant + `torch.onnx.export`, then NVIDIA
+      `pytorch-quantization`, then `torchao`; stop at the first that yields a QDQ
+      graph ORT executes as integer. Record every rejected candidate and its
+      failure — that is P0 evidence and belongs in the report.
+- [ ] Run one epoch/minimal step of the chosen QAT path and export deployable
       INT8 ONNX.
 - [ ] On `gx10`, load all three models with the exact planned C++ ORT build
       inside the target-compatible ARM64 environment.
@@ -192,13 +204,23 @@ end to end before data preparation or long training.
 
 Depends on: Gate A.
 
-- [ ] Download official CCT-20 split metadata.
-- [ ] Download the downsized CCT-20 images.
-- [ ] Download full-CCT image-level metadata for empty-supplement selection.
+- [ ] Download `eccv_18_annotations.tar.gz` (3 MB) for the official CCT-20 splits.
+- [ ] Download `eccv_18_all_images_sm.tar.gz` (6 GB), capped at 1024 px per side.
+- [ ] Download `caltech_camera_traps.json.zip` (9 MB) for empty-supplement
+      selection. Do not download `cct_images.tar.gz` (105 GB) or the bounding boxes
+      (35 MB, Stretch KD only).
 - [ ] Record URLs, timestamps, file sizes, and SHA-256 hashes.
+- [ ] **Record the observed image-dimension distribution of every split** and
+      confirm the dominant frame against DESIGN §5.5. The input-shape argument and
+      the reduced-decode alignment both rest on these numbers; neither may be
+      inherited from the paper or from DESIGN.
 - [ ] Verify licensing/citation text for README/report/model card.
 
-**Outputs:** `data/README.md`, source manifest, and checksums.
+Budget roughly 8.1 GB of downloads and about 40 GB of working disk on `gx10`
+(archive plus extraction plus artifacts).
+
+**Outputs:** `data/README.md`, source manifest, checksums, and the split dimension
+report.
 
 ### B1 — Build official split manifests
 
@@ -225,11 +247,22 @@ Depends on: B1.
 - [ ] Extract all 20 CCT-20 location IDs.
 - [ ] Select exactly 5,000 full-CCT `empty` images from locations disjoint from
       all 20, stratified across locations/sequences with seed 42.
-- [ ] Download selected images only.
-- [ ] Compute image checksums and emit the supplement manifest.
+- [ ] Download selected images only (~2.1 GB, served at original resolution).
+- [ ] **Downsize every image to max 1024 px per side** per DESIGN §5.2 step 7,
+      matching the `_sm` archive. Record the resampling filter and JPEG quality in
+      the data config. Without this the supplement arrives at ~2048 px while every
+      CCT-20 split is 1024 px, making resolution a shortcut feature perfectly
+      correlated with `empty` — and one that fails silently, because val/test
+      contain only `_sm` frames.
+- [ ] Compute original and downsized checksums; emit the supplement manifest with
+      both dimension sets.
+- [ ] **Run the supplement-versus-CCT-20 shortcut probe.** Train a small binary
+      classifier to separate the two pools. Near chance means the confound is
+      closed; a materially higher score blocks training and is recorded.
 - [ ] Confirm no selected image ID, sequence, or location leaks into CCT-20.
 
-**Output:** frozen `cct_empty_train_v1.jsonl` and checksums.
+**Output:** frozen `cct_empty_train_v1.jsonl`, checksums, and the shortcut-probe
+result.
 
 ### B3 — Implement data and preprocessing code
 
@@ -422,6 +455,10 @@ Depends on: Gate C.
       Core pruning roots to expansion channels. Each dependency group must couple
       expansion output/BN, depthwise input/output/groups/BN, and projection input;
       keep projection/residual widths, stem, final conv, and classifier fixed.
+- [ ] Set `round_to=8` on the pruner (`hw1/src/structured.py:33`) so surviving
+      widths stay SIMD-aligned. Unaligned widths make MACs fall while latency does
+      not, which would turn the pruning verdict into an artifact of the solver
+      rather than a fact about MobileNetV2.
 - [ ] Profile M0 parameters/MACs.
 - [ ] Produce sensitivity evidence for dependency groups.
 - [ ] After each pruning step, test depthwise group/channel equality, residual-add
@@ -433,8 +470,10 @@ Depends on: Gate C.
 
 Depends on: D3.
 
-- [ ] Create approximately 15%, 30%, and 45% MAC-reduction candidates.
+- [ ] Create approximately 15%, 30%, and 45% MAC-reduction candidates with
+      `round_to=8`; record requested versus realized MAC reduction separately.
 - [ ] Physically remove channels and verify changed shapes/MACs.
+- [ ] Assert every surviving channel count is a multiple of 8 before fine-tuning.
 - [ ] Fine-tune each under the fixed data/loss contract.
 - [ ] Export deployable candidates with the P0-accepted opset and parity-check
       them; verify changed physical shapes/MACs in ONNX.
@@ -464,6 +503,14 @@ Depends on: D1, D2, D4, D5.
 - [ ] Remove candidates dominated on validation bobcat F2, MACs, and model size.
 - [ ] Write `results/model_selection/pre_pi_shortlist.md`, including every
       rejection and all non-dominated deployable candidates.
+- [ ] **Build and freeze `benchmark_val_1000.jsonl`** per DESIGN §12.2. No earlier
+      task owned this file, yet E7 packages it and F4 runs the mandatory parity on
+      it. Stratify by bobcat, empty, rare, multi-label, and preprocessing edge
+      cases, and add the dedicated **threshold-adjacent stratum**
+      (`|score - threshold| < eps`, over-sampled) using the M0 operating point.
+      Only those frames can flip a decision between gx10 and the Pi, so a subset
+      without them can pass while proving nothing. The manifest is fixed and
+      identical for every model, including M0-FP32.
 - [ ] Freeze models, candidate-specific bobcat policies, preprocessing, class map,
       and hashes for Pi validation; keep test labels sealed.
 
@@ -651,8 +698,13 @@ Depends on: F3.
       model/policy/runtime artifacts; save frame and sequence-aware metrics.
 - [ ] Run full M0-vs-optimized Pi benchmark, at least 1,000 frames, three separate
       processes/repetitions as specified.
-- [ ] Run the fixed Pi parity subset and match decisions to the frozen gx10
-      reference; full test transfer to Pi is optional, not required.
+- [ ] Run the fixed Pi parity subset for **both M0-FP32 and the selected winner**
+      and match decisions to the frozen gx10 reference; full test transfer to Pi is
+      optional, not required. Record score deltas, not only decision agreement, so
+      drift that has not yet crossed a threshold stays visible. Expect any
+      divergence in the FP32 arm rather than the INT8 one: QDQ convolutions
+      accumulate exactly in int32, while float accumulation order differs between
+      GB10 SVE2 and Pi NEON.
 - [ ] **If the parity subset disagrees, stop before claiming target equivalence.**
       Report score and decision mismatch rates and treat Pi decisions as
       authoritative for affected frames. If the difference cannot be explained,

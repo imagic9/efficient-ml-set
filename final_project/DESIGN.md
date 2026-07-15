@@ -298,6 +298,26 @@ The ECCV paper states 57,868 images, while the current downloadable split JSONs
 sum to 57,864. The pipeline must record the exact downloaded file hashes and use
 the JSON contents, not a number copied from the paper, as executable truth.
 
+#### Required downloads and their resolution
+
+| Source | Size | Contents |
+|---|---:|---|
+| `eccv_18_all_images_sm.tar.gz` | 6 GB | all 57,864 CCT-20 frames, **downsized to a maximum of 1024 px on a side** |
+| `eccv_18_annotations.tar.gz` | 3 MB | CCT-20 split metadata |
+| `caltech_camera_traps.json.zip` | 9 MB | full-CCT image-level metadata, used only to select the empty supplement |
+| per-image CCT paths | ~2.1 GB | the 5,000 selected empty frames, served **at original resolution only** |
+
+Total data acquisition is approximately **8.1 GB**. The 105 GB `cct_images.tar.gz`
+archive is never downloaded. `caltech_bboxes_20200316.json` (35 MB) is required
+only if the Stretch KD experiment in section 20 is ever unlocked.
+
+**The benchmark images and the supplement therefore arrive at different
+resolutions.** CCT-20 is capped at 1024 px per side; per-image downloads are not.
+Section 5.2 mandates the correction, and section 5.5 states the input geometry
+against the downsized frames the pipeline actually consumes. B0 must record the
+observed dimension distribution of every downloaded split rather than inheriting a
+number from the paper or from this document.
+
 CCT-20 contains **14 animal categories, `car`, and `empty`** (16 total). `car` is
 kept as a distractor class but is not a selectable wildlife target. The exact
 category IDs are non-contiguous, so the model order is defined once in
@@ -336,9 +356,39 @@ Build `cct_empty_train_v1` from full CCT metadata using these rules:
    seed `42`. Avoid letting one camera dominate the sample.
 6. Download only selected images through the LILA per-image cloud paths; do not
    download the full 105 GB archive.
-7. Save a manifest containing image ID, location, sequence ID, source URL,
-   relative path, label, and checksum.
-8. Use this supplement for training only. Do not create a new test set from it.
+7. **Downsize every selected image to a maximum of 1024 px on a side**, matching
+   the CCT-20 `_sm` archive, before it enters the training set. Record the
+   resampling filter and JPEG quality in the data config, and store both the
+   original and downsized checksums.
+8. Save a manifest containing image ID, location, sequence ID, source URL,
+   relative path, label, original dimensions, downsized dimensions, and both
+   checksums.
+9. Use this supplement for training only. Do not create a new test set from it.
+
+Step 7 is not cosmetic. Per-image CCT downloads are served at original resolution
+(~2048x1494) while every CCT-20 split is capped at 1024 px per side. Skipping it
+makes `empty` the only training class carrying double resolution and its own JPEG
+recompression signature — a feature perfectly correlated with the label.
+
+That failure is silent and it corrupts the headline number. Validation and test
+contain **only** `_sm` frames, so the shortcut is absent at evaluation time: a model
+that learned "2048-px artifacts mean empty" cannot recognize `empty` on
+`cis-val-clean` or `trans-val`, and the bobcat false-fire rate is inflated exactly
+where it is measured. The `A-empty-5k` ablation would then read as "the supplement
+barely helped" and the cause would be misattributed to the location-disjoint rule.
+
+Because the supplement is already location-disjoint by necessity (rule 3), the
+model sees `empty` only on unfamiliar backgrounds. That is a second feature
+correlated with the same label, and it is unavoidable: within the 10 cis
+locations, every `empty` frame in full CCT is already spent in cis-val and
+cis-test, so a background-matched supplement does not exist. Rule 7 removes the
+one confound that *is* removable; the report must state the remaining one.
+
+**Shortcut probe.** Before training, train a small binary classifier to separate
+supplement frames from CCT-20 `_sm` frames. Near-chance accuracy means the
+resolution/encoding confound is closed. High accuracy means it is live: record the
+value, fix the downsizing procedure, and do not proceed on the assumption that the
+supplement is clean.
 
 This changes the training recipe relative to the paper, so the report must say so.
 All project models use the same augmented training dataset, preserving a fair
@@ -354,6 +404,19 @@ Before freezing M0, run one matched data ablation:
   `cct_empty_train_v1`.
 
 Use the same backbone initialization, augmentations, seed, and validation protocol.
+
+**This ablation cannot change the deployed head.** It tests whether the empty
+supplement earns its place in the training data; the Core model is 16-output in
+every case. `A-empty-0` is a diagnostic arm, not a deployment candidate: a shutter
+trigger that has no `empty` output must resolve every empty frame onto some animal
+or `car` logit, and CCT-20's own splits are 3.5-28.6% empty. The 15-output head
+exists only because a 16th output trained on zero positives would be degenerate and
+would confound the data question with a dead-logit question.
+
+If `A-empty-0` wins, the finding is "the 5,000-image supplement does not pay for
+its animal-exposure cost at fixed compute" — and the response is to revisit the
+supplement size or sampling, not to ship a 15-output model. Every other statement
+of 16 outputs in this document stands unconditionally.
 
 **Match the budget in optimizer steps, not epochs.** The supplement changes the
 training set from 13,546 to 18,546 images (+36.9% steps per epoch), so an
@@ -384,6 +447,13 @@ Before training, automated tests must prove:
   train/cis-test, train/trans-val, train/trans-test, and cis-val/cis-test;
 - train locations are disjoint from trans-val and trans-test locations;
 - supplemental-empty IDs, sequences, and locations are disjoint from CCT-20;
+- every supplement image is at most 1024 px on its long side after section 5.2
+  step 7, and its manifest records original and downsized dimensions plus both
+  checksums;
+- the observed image-dimension distribution of every split is recorded, and the
+  supplement's distribution is consistent with the CCT-20 `_sm` splits;
+- the supplement-versus-CCT-20 shortcut probe scores at or near chance; a
+  materially higher score is recorded and blocks training;
 - every manifest stores the complete ordered label set for each image;
 - observed distinct-class multi-label image counts match 7 / 0 / 1 / 61 / 9 for
   train / cis-val / cis-test / trans-val / trans-test;
@@ -440,22 +510,38 @@ a small animal.
 
 The provisional Core input is **256x192 (width x height)**. This is nearly the
 same pixel budget as 224x224 but matches the dominant CCT aspect ratio much more
-closely. Measured on the dominant CCT frame (2048x1494, 91% of all images):
+closely. The dominant original CCT frame is 2048x1494 (91% of all images); the
+`_sm` archive this pipeline consumes caps the long side at 1024, so the dominant
+frame we actually decode is **1024x747**. Measured on that frame:
 
 | Input | Real content | Pixel utilisation | Grey padding | Tensor px | Linear scale |
 |---|---|---:|---:|---:|---:|
-| 224x224 | 224x163 | 72.8% | **27.2%** | 50,176 | 0.1094 |
-| 256x192 | 256x187 | **97.4%** | 2.6% | 49,152 | **0.1250** |
+| 224x224 | 224x163 | 72.8% | **27.2%** | 50,176 | 0.2188 |
+| 256x192 | 256x187 | **97.4%** | 2.6% | 49,152 | **0.2500** |
+
+Utilisation, padding, and tensor pixels depend only on the aspect ratio, so
+downsizing leaves them unchanged and the comparison is unaffected — only the
+absolute scale factors double relative to the original frames. B0 must confirm the
+observed dimension distribution before this table is treated as measured.
 
 The square letterbox spends over a quarter of every inference on grey bars that
 carry no information. 256x192 buys **14% more linear resolution on the animal with
 2% fewer input pixels** and should reduce spatial MACs by approximately the same
 amount; exported-model MACs remain the authoritative compute measurement. Both
 dimensions stay divisible by 32, so MobileNetV2's five downsampling stages still
-produce a clean 8x6 feature map. Before M0 is frozen,
-run the matched input-shape control described below; the winning fixed shape
-becomes part of the immutable model/preprocessing contract for every M0-M4
-candidate.
+produce a clean 8x6 feature map.
+
+256x192 also aligns with the JPEG decoder, which is a second and independent
+argument for it. Libjpeg can scale during decode at 1/2, 1/4, and 1/8 for close to
+free, and `1024 / 4 = 256` while `747 / 4 = 186.75`, so a 1/4 reduced decode emits
+**256x187 — the network input, with no resize step at all**. Only the 5-row grey
+pad remains. The square 224x224 input has no such alignment: it would decode to
+256x187 and then pay a downscale to 224x163. Section 11 treats reduced decode as a
+first-class latency candidate on this basis.
+
+Before M0 is frozen, run the matched input-shape control described below; the
+winning fixed shape becomes part of the immutable model/preprocessing contract for
+every M0-M4 candidate.
 
 Canonical preprocessing for a configured fixed `(width, height)`:
 
@@ -725,10 +811,25 @@ QAT initializes from the FP32 M0 checkpoint, not from the PTQ model.
 - verify integer execution using the exported/optimized graphs, operator/data-type
   coverage, ORT profile, and target latency together.
 
-Quantization APIs change over time. Parity gate P0 must prove one end-to-end QAT -> ONNX
--> ORT C++ path and pin the exact compatible PyTorch/torchao/ONNX/ORT versions in
-the lockfile before long training begins. Do not silently fall back to a different
-quantization meaning.
+Quantization APIs change over time, and this document deliberately does **not**
+pre-select the QAT library. The tool is an output of parity gate P0, not an input
+to it: P0 must prove one end-to-end QAT -> ONNX -> ORT C++ path on MobileNetV2 and
+only then pin the exact compatible PyTorch/QAT-library/ONNX/ORT versions in the
+lockfile, before long training begins.
+
+P0 evaluates, in this order, and stops at the first that produces a QDQ graph ORT
+executes as integer:
+
+1. QDQ fake-quant modules inserted directly and exported with `torch.onnx.export` —
+   fewest moving parts, and the export semantics are ours rather than a library's;
+2. NVIDIA `pytorch-quantization` — TensorRT-oriented but emits QDQ that ORT accepts;
+3. `torchao`, only if it demonstrably works here.
+
+Ordering matters because the CNN -> ONNX QDQ export path is where these libraries
+diverge most; several target LLM workloads and carry weak or deprecated ONNX
+export for convolutional models. Record which candidates failed and why — a
+rejected path is P0 evidence and belongs in the report's "what did not work"
+section. Do not silently fall back to a different quantization meaning.
 
 ### 8.3 Structured pruning — M3
 
@@ -754,14 +855,27 @@ Procedure:
 2. Run sensitivity analysis using validation bobcat F2/recall, not generic
    accuracy.
 3. Create candidates targeting approximately 15%, 30%, and 45% MAC reduction.
-4. Physically remove channels; zero masks alone do not qualify as structured
+4. Round every surviving channel count to a multiple of **8** (`round_to=8` in the
+   dependency solver). Record the requested and realized MAC reduction separately.
+5. Physically remove channels; zero masks alone do not qualify as structured
    pruning.
-5. After every pruning step, assert equality of depthwise `groups`, `in_channels`,
+6. After every pruning step, assert equality of depthwise `groups`, `in_channels`,
    and `out_channels`; residual-add shape equality; forward/backward execution;
    and ONNX exportability.
-6. Fine-tune each candidate with the same data and loss contract.
-7. Export each candidate and confirm that ONNX MACs and tensor shapes changed.
-8. Select one M3 candidate on the validation Pareto frontier for QAT.
+7. Fine-tune each candidate with the same data and loss contract.
+8. Export each candidate and confirm that ONNX MACs and tensor shapes changed.
+9. Select one M3 candidate on the validation Pareto frontier for QAT.
+
+Step 4 protects the conclusion, not the accuracy. ORT/MLAS kernels on ARM
+vectorize over 8- and 16-channel groups, so an unaligned width such as 403 is
+processed as if it were 408 and the tail lanes are wasted. Pruning 576 -> 403 would
+then show roughly 30% fewer MACs and almost no latency change, and the project
+would report "structured pruning does not speed up MobileNetV2" while blaming
+depthwise separable convolutions — when the real cause was the channel count. The
+same trap is worse for M4, where INT8 kernels are more alignment-sensitive than
+FP32. With rounding in place, a null pruning result is a measurement of the
+architecture instead of an artifact of the solver. `hw1/src/structured.py:33`
+already constructs the pruner, so this is one argument.
 
 The report must distinguish parameter reduction, MAC reduction, file size, and
 measured latency; they are not interchangeable.
@@ -1006,18 +1120,27 @@ Run a bounded, validation-only inference-pipeline matrix:
 
 1. reference versus fused preprocessing;
 2. full JPEG decode versus OpenCV/libjpeg-turbo reduced decode at 1/2 and 1/4;
-   1/8 is allowed only if validation accuracy is also measured;
 3. supported ORT graph-optimization levels;
 4. intra-op threads `1, 2, 4`;
 5. ORT memory arena on/off when exposed by the pinned build;
 6. CPU affinity only when the remote Pi exposes a stable, documentable control.
 
+Factor 2 is a first-class latency candidate rather than a footnote. On a 1024x747
+`_sm` frame, `IMREAD_REDUCED_COLOR_4` decodes straight to 256x187 — the 256x192
+network input minus the grey pad — so the aligned path skips the resize entirely
+and does strictly less DCT work than a full decode. Decoding a 1024 px JPEG is
+plausibly more expensive than MobileNetV2 inference itself on a Cortex-A76, which
+would make this the largest single end-to-end win available; the profile decides,
+not this paragraph. 1/8 is excluded because 1024/8 = 128 lands below the input and
+would require an upscale.
+
 Reference/fused preprocessing must pass P1. Reduced JPEG decode intentionally
 changes pixels, so it is an accuracy/decision-drift candidate, not a parity-
 equivalent implementation: compare it through P4 and keep it only if validation
-bobcat metrics remain within the predeclared tolerance. Change one factor at a
-time before testing a combined configuration. Report isolated and combined
-effects; do not attribute total model speedup to preprocessing alone.
+bobcat metrics remain within the predeclared tolerance. Its appeal must not
+shorten that check — an aligned decode is still a different image. Change one
+factor at a time before testing a combined configuration. Report isolated and
+combined effects; do not attribute total model speedup to preprocessing alone.
 
 XNNPACK is not a Core requirement. ONNX Runtime CPU EP, bottleneck profiles,
 decode reduction, preprocessing fusion, graph settings, threads, and memory
@@ -1054,7 +1177,18 @@ Prepare before renting the Pi:
   preprocessing edge cases where available. **Pi parity on this manifest is
   mandatory** — it is the evidence that licenses evaluating full test accuracy on
   `gx10` instead of on the Pi, and it is the "target-hardware parity" required by
-  Gate F;
+  Gate F. It must therefore be built to test that specific claim:
+  - include a dedicated **threshold-adjacent stratum**: frames whose target score
+    satisfies `|score - threshold| < eps`, over-sampled well beyond their natural
+    frequency. A hardware difference can only change `SHUTTER_TRIGGER` on those
+    frames, so a subset that omits them can pass while proving nothing;
+  - include **M0-FP32** explicitly, not only the optimized winner. FP32 is the
+    exposed case: float accumulation order depends on vector width, and GB10 uses
+    SVE2 where the Pi uses NEON. INT8 QDQ convolutions accumulate exactly in int32,
+    so i8mm and dotprod return bit-identical results — the intuition that the
+    quantized models are riskier is inverted here;
+  - record score deltas, not only decision agreement, so a drift that has not yet
+    crossed a threshold is still visible;
 - full cis-test and trans-test manifests for frozen final accuracy evaluation on
   `gx10` with the exact C++/ORT artifacts;
 - an optional small post-freeze *test-split* parity subset for Pi, run only if
@@ -1432,7 +1566,8 @@ choice, pruning result, threshold, and benchmark number.
 At minimum generate:
 
 1. Dataset split/class/location audit table.
-2. Official-vs-clean cis-val leakage table and empty-supplement ablation.
+2. Official-vs-clean cis-val leakage table, empty-supplement ablation, and the
+   supplement shortcut-probe score.
 3. 224x224-vs-256x192 input-shape control with real-pixel utilization/MACs.
 4. Training curves for M0 and final optimized model.
 5. Validation shortlist and final Pi-selection table.
@@ -1463,7 +1598,10 @@ All plots include units, sample counts, split, model ID, and commit/run ID.
 | PTQ loses accuracy on depthwise MobileNetV2 | This is pre-registered; use QAT/quantization debugging and keep PTQ as a negative result if necessary |
 | QAT export/runtime path is unstable | P0 before training; pin compatible versions; fail early rather than improvise during Pi trial |
 | Legacy opset 9 blocks quantization or changes export semantics | Start P0 at opset 17, require one accepted opset across M0-M4, and reject legacy spike artifacts |
-| Structured pruning does not speed MobileNetV2 | Show real MAC reduction and measured lack of speedup; final model may be unpruned QAT |
+| Empty supplement arrives at 2x the resolution of CCT-20 | Per-image CCT downloads are original-resolution; downsize to max 1024 px per side before training, record filter/quality, and run the shortcut probe. A materially above-chance probe blocks training |
+| Empty supplement is location-disjoint by necessity | Unavoidable: every `empty` frame at the 10 cis locations is already spent in cis-val/cis-test. Close the removable resolution confound, report the remaining background confound, and measure cis/trans empty false-fire separately |
+| Structured pruning does not speed MobileNetV2 | Round surviving widths to multiples of 8 first, so the null result is about the architecture and not about unaligned SIMD lanes; then show real MAC reduction and measured lack of speedup. Final model may be unpruned QAT |
+| The chosen QAT library cannot export deployable QDQ ONNX for MobileNetV2 | No library is pre-committed; P0 walks the ranked candidate list in §8.2, stops at the first that ORT executes as integer, and records every rejection as evidence |
 | Pruning breaks depthwise groups or residual shapes | Restrict Core roots to coupled expansion-channel groups; assert group/residual shapes and export after every step |
 | `gx10` latency misranks Cortex-A76 candidates | Use it only for pathology detection; shortlist by validation/MACs/size and select on Pi validation latency |
 | Planned Pi 5 trial is lost | Try another Pi 5 provider, then RPi 4; if no Pi is available, Gate F fails and Core remains incomplete. Preserve a clearly labelled partial submission and never substitute `gx10` timings |
@@ -1495,6 +1633,11 @@ Core is complete only when every item is true:
 - [ ] Multi-label train/evaluation rules and counts are tested.
 - [ ] Empty supplement is ID-, sequence-, and location-disjoint from CCT-20 and
       reproducible.
+- [ ] Empty supplement is downsized to max 1024 px per side to match the CCT-20
+      `_sm` archive, and the supplement-versus-CCT-20 shortcut probe scores at or
+      near chance.
+- [ ] Every M3/M4 surviving channel count is a multiple of 8, with requested and
+      realized MAC reduction recorded separately.
 - [ ] Empty-supplement and input-shape controls are completed before M0 freeze,
       with the empty ablation matched on optimizer steps rather than epochs.
 - [ ] M0, M1, M2, M3, and M4 results exist or a technically justified failed
@@ -1525,7 +1668,8 @@ Core is complete only when every item is true:
 - [ ] ARM64 dry run succeeds from a clean environment.
 - [ ] Pi baseline and optimized runs use the same application and protocol.
 - [ ] Full frozen cis-test/trans-test C++ evaluation runs on gx10; Pi parity subset
-      decisions match the frozen reference.
+      decisions match the frozen reference for both M0-FP32 and the selected winner,
+      including the threshold-adjacent stratum, with score deltas recorded.
 - [ ] Latency, FPS, RSS, CPU utilization, model size, and available thermal data
       are recorded with raw evidence.
 

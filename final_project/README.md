@@ -184,6 +184,13 @@ Core therefore adds a deterministic supplement of 5,000 full-CCT empty images,
 selected only from locations disjoint from all 20 CCT-20 locations. Only those
 images are downloaded; the full 105 GB CCT archive is not required.
 
+CCT-20 ships downsized to a maximum of 1024 px per side, while per-image CCT
+downloads are served at original resolution. The supplement is therefore downsized
+to match before training, and a shortcut probe confirms the two pools are not
+separable — otherwise resolution alone would predict `empty`. Total data
+acquisition is about 8.1 GB: 6 GB for the CCT-20 `_sm` archive, ~2.1 GB for the
+supplement, and ~12 MB of metadata.
+
 Before M0 is frozen, matched ablations test the 5k empty supplement and compare
 224x224 square letterbox with 256x192 landscape letterbox. These are controlled
 data/input decisions, not extra deployment models.
