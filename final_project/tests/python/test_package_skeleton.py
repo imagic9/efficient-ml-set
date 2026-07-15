@@ -91,6 +91,23 @@ def test_no_authored_file_is_silently_ignored() -> None:
     prune = {
         ".git", "build", "__pycache__", ".pytest_cache", ".ruff_cache",
         "node_modules", ".venv", "venv", "Docker_VSCode",
+        # Generated or downloaded trees, added as Phase B produced them. Pruning must
+        # stay narrow or this test stops doing its job: it catches a .gitignore rule
+        # that drops something we AUTHORED, so anything not pruned must be ours.
+        #   raw/     — the LILA archives and their extraction (data/raw)
+        #   cache/   — the preprocessing cache (data/cache), rebuilt by data.cache
+        #   images/  — fetched supplement frames (data/images)
+        #   bundle/  — staged deployment bundles, rebuilt by scripts/build_bundle.sh
+        "raw", "cache", "images", "bundle",
+    }
+
+    # Generated files sitting inside authored directories, which the prune list cannot
+    # reach without excluding their committed neighbours.
+    generated_files = {
+        # A build intermediate: B0 writes it so B1 can attach observed geometry without
+        # a second pass over 57,864 files. The manifests carry the same data per image,
+        # and the report that matters is committed under results/data_audit/.
+        "data/manifests/dimensions.json",
     }
     authored_suffixes = {
         ".py", ".cpp", ".hpp", ".c", ".h", ".txt", ".toml", ".yaml", ".yml",
@@ -107,7 +124,10 @@ def test_no_authored_file_is_silently_ignored() -> None:
     for path in PROJECT_ROOT.rglob("*"):
         if not path.is_file():
             continue
-        if is_generated(path.relative_to(PROJECT_ROOT).parts):
+        relative = path.relative_to(PROJECT_ROOT)
+        if is_generated(relative.parts):
+            continue
+        if str(relative) in generated_files:
             continue
         if path.suffix not in authored_suffixes:
             continue

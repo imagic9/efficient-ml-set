@@ -153,19 +153,27 @@ def test_threshold_rule_picks_the_largest_meeting_the_recall_floor() -> None:
     assert "primary" in result["rule"]
 
 
-def test_threshold_rule_records_which_constraint_it_could_not_meet() -> None:
-    """A model that cannot reach 90% must say so, not silently fall back."""
-    # Two positives, one scored below every negative: no threshold reaches 90% recall
-    # without firing on everything.
-    scores = np.array([0.9, 0.1, 0.5])
-    present = np.array([1.0, 1.0, 0.0])
+def test_the_rule_never_returns_a_fire_on_everything_threshold() -> None:
+    """"Non-trivial" in DESIGN §6.3 is load-bearing, and dropping it is silent.
+
+    Candidates are the observed scores, so the smallest one fires on every frame and
+    scores 100% recall by construction. Without the non-trivial qualifier the 90% floor
+    is *always* satisfiable, the fallback becomes dead code, and a hopeless model gets an
+    operating point that photographs everything.
+
+    Here the one positive scores below both negatives, so the only way to catch it is to
+    fire on all three.
+    """
+    scores = np.array([0.10, 0.50, 0.90])
+    present = np.array([1.0, 0.0, 0.0])
     seqs = ["a", "b", "c"]
     domains = {"cis": (scores, present, seqs), "trans": (scores, present, seqs)}
 
-    result = M.select_threshold(domains, min_sequence_recall=0.95)
+    result = M.select_threshold(domains, min_sequence_recall=0.90)
 
+    assert result["chosen_is_trivial"] is False, "a trigger that fires on every frame is not an operating point"
     assert "fallback" in result["rule"]
-    assert result["unmet_constraint"], "the unmet constraint must be recorded"
+    assert result["unmet_constraint"], "the unmet constraint must be recorded, not hidden"
 
 
 def test_macro_f1_excludes_classes_without_real_support() -> None:

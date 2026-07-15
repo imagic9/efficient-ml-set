@@ -152,13 +152,20 @@ def select_threshold(
     """DESIGN §6.3's primary threshold rule.
 
     1. search all unique observed scores;
-    2. choose the LARGEST threshold whose sequence-balanced recall is >= 90% on BOTH
-       cis-val-clean and trans-val;
+    2. choose the LARGEST **non-trivial** threshold whose sequence-balanced recall is
+       >= 90% on BOTH cis-val-clean and trans-val;
     3. if none exists, maximise mean frame-level F2 and record which constraint failed.
 
     Largest, not best: among thresholds that meet the recall floor, the highest one fires
     least often, and every unnecessary fire is a wasted frame. The floor is the
     requirement; F2 does not get to trade it away.
+
+    **"Non-trivial" is load-bearing and easy to drop.** The candidates are the observed
+    scores, so the smallest of them fires on every frame and scores 100% recall by
+    construction — the floor is therefore *always* satisfiable, and without this
+    qualifier step 3 would be unreachable dead code and the rule could return a trigger
+    that photographs everything. A threshold that fires on every frame in a domain
+    discriminates nothing, so it does not count as meeting the constraint.
 
     Both domains separately, because trans-val holds far more bobcats than
     cis-val-clean and a pooled constraint would let trans-val's 793 hide a cis failure.
@@ -183,17 +190,33 @@ def select_threshold(
                 "mean_frame_f2": float(
                     np.mean([m["frame_f2"] for m in per_domain.values()])
                 ),
+                # Trivial = fires on every frame of some domain. Such a "trigger"
+                # separates nothing; it is not an operating point.
+                "trivial": any(m["fire_rate"] >= 1.0 for m in per_domain.values()),
             }
         )
 
-    meeting = [r for r in rows if r["min_sequence_balanced_recall"] >= min_sequence_recall]
+    meeting = [
+        r
+        for r in rows
+        if r["min_sequence_balanced_recall"] >= min_sequence_recall and not r["trivial"]
+    ]
     if meeting:
         chosen = max(meeting, key=lambda r: r["threshold"])
-        rule = "primary: largest threshold with sequence-balanced recall >= 90% on both domains"
+        rule = (
+            "primary: largest non-trivial threshold with sequence-balanced recall "
+            f">= {min_sequence_recall:.0%} on both domains"
+        )
         unmet = None
     else:
-        chosen = max(rows, key=lambda r: r["mean_frame_f2"])
-        rule = "fallback: no threshold met the 90% floor on both domains; maximised mean frame F2"
+        # Non-trivial candidates only: falling back to a fire-on-everything threshold
+        # because it maximises F2 would be worse than the rule it replaced.
+        non_trivial = [r for r in rows if not r["trivial"]] or rows
+        chosen = max(non_trivial, key=lambda r: r["mean_frame_f2"])
+        rule = (
+            f"fallback: no non-trivial threshold met the {min_sequence_recall:.0%} "
+            "sequence-balanced recall floor on both domains; maximised mean frame F2"
+        )
         unmet = {
             domain: chosen["per_domain"][domain]["sequence_balanced_recall"]
             for domain in scores_by_domain
@@ -205,8 +228,10 @@ def select_threshold(
         "rule": rule,
         "min_sequence_recall_required": min_sequence_recall,
         "unmet_constraint": unmet,
+        "chosen_is_trivial": chosen["trivial"],
         "per_domain": chosen["per_domain"],
         "candidates_searched": len(candidates),
+        "non_trivial_candidates": sum(1 for r in rows if not r["trivial"]),
     }
 
 
