@@ -1,0 +1,62 @@
+{
+  "empty_targets": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/empty_targets.json: target list is empty. A policy that selects nothing can never fire; that is a configuration mistake, not a valid 'off' switch."
+  },
+  "unsupported_mode": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/unsupported_mode.json: mode 'all' is unsupported. DESIGN \u00a74 defines 'any' as the only Core combination mode."
+  },
+  "unknown_class": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/unknown_class.json: target 'unicorn' is not a class this model knows"
+  },
+  "non_selectable_class": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/non_selectable_class.json: target 'empty' is a model class but not a selectable wildlife target (DESIGN \u00a74 excludes car and empty)."
+  },
+  "duplicate_target": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/duplicate_target.json: target 'bobcat' is listed twice"
+  },
+  "threshold_above_one": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/threshold_above_one.json: threshold for 'bobcat' is outside [0, 1]"
+  },
+  "threshold_below_zero": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/threshold_below_zero.json: threshold for 'bobcat' is outside [0, 1]"
+  },
+  "null_threshold_class": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/null_threshold_class.json: target 'badger' has no threshold. Classes without a calibrated operating point must be rejected, never given an invented number."
+  },
+  "unsupported_schema_version": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/unsupported_schema_version.json: schema_version 99 is not supported (this build reads 1)"
+  },
+  "wrong_model_hash": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/wrong_model_hash.json: policy was calibrated for model 0000000000000000... but the loaded model is 36bd179d37ab54cf.... Thresholds are model-specific (DESIGN \u00a76.3: quantization changes score distributions), and class indices may not even agree."
+  },
+  "wrong_class_map_hash": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: /work/results/a4/artifacts/invalid_policies/wrong_class_map_hash.json: policy expects class map 0000000000000000... but the loaded map is 6d2111c592960b01.... A threshold would be applied to the wrong class index."
+  },
+  "malformed_json": {
+    "rejected": true,
+    "exit_code": 1,
+    "error": "error: malformed JSON in /work/results/a4/artifacts/invalid_policies/malformed_json.json: [json.exception.parse_error.101] parse error at line 1, column 39: syntax error while parsing object key - invalid literal; last read: '\"any\", ta'; expected string literal"
+  }
+}

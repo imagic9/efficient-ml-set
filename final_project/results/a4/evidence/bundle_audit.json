@@ -1,0 +1,23 @@
+{
+  "bundle": "/home/deploy/efficientml/efficient-ml-set/final_project/results/a4/bundle",
+  "required_paths": [
+    "bin/wildlife_trigger",
+    "bin/run.sh",
+    "lib/libonnxruntime.so",
+    "lib/libonnxruntime.so.1",
+    "policies/class_map.json",
+    "policies/bobcat_v0.json",
+    "MANIFEST.sha256"
+  ],
+  "missing_paths": [],
+  "checksums_verified": true,
+  "file_count": 7,
+  "max_glibc": "2.34",
+  "max_glibc_allowed": "2.36",
+  "glibc_per_object": {
+    "./bin/wildlife_trigger": "2.34",
+    "./lib/libonnxruntime.so.1.27.0": "2.27"
+  },
+  "passed": true,
+  "note": "The session-optimized graph is deliberately NOT bundled: ORT warns a graph serialized above ORT_ENABLE_EXTENDED is only valid in the environment that optimized it. The Pi optimizes the ordinary model itself. OpenCV is also not bundled \u2014 a known E7 gap."
+}

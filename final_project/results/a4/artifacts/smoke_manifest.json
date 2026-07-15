@@ -1,0 +1,51 @@
+{
+  "class_map": {
+    "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/a4/artifacts/class_map.json",
+    "sha256": "6d2111c592960b01812404c77254c9bfc6e6ed086746c5789c49de15c708b3d7"
+  },
+  "input_shape": {
+    "nchw": [
+      1,
+      3,
+      192,
+      256
+    ],
+    "note": "DESIGN \u00a75.5 provisional Core input; C1a resolves 224x224 vs 256x192 on validation data and only the winner enters M0-M4."
+  },
+  "model": {
+    "inputs": [
+      {
+        "dtype": "FLOAT",
+        "name": "input",
+        "shape": [
+          1,
+          3,
+          192,
+          256
+        ]
+      }
+    ],
+    "opset": {
+      "": 17
+    },
+    "outputs": [
+      {
+        "dtype": "FLOAT",
+        "name": "logits",
+        "shape": [
+          1,
+          16
+        ]
+      }
+    ],
+    "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/a4/artifacts/smoke_mobilenetv2_16.onnx",
+    "sha256": "36bd179d37ab54cf2a5d946ff0819d12626ea08eb999c5e7ac2d1eb5c08de7b2",
+    "size_bytes": 8950240
+  },
+  "policies": {
+    "bobcat_coyote_v0.json": "/home/deploy/efficientml/efficient-ml-set/final_project/results/a4/artifacts/bobcat_coyote_v0.json",
+    "bobcat_v0.json": "/home/deploy/efficientml/efficient-ml-set/final_project/results/a4/artifacts/bobcat_v0.json"
+  },
+  "provisional": "A4 smoke artifacts. Not M0. No number here is a result.",
+  "seed": 0
+}

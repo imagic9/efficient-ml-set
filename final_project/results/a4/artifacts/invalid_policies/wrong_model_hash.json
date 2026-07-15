@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "policy_id": "bad",
+  "mode": "any",
+  "model_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "targets": [
+    {
+      "class": "bobcat",
+      "threshold": 0.5
+    }
+  ]
+}

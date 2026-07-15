@@ -1,0 +1,164 @@
+{
+  "gate": "A4",
+  "passed": true,
+  "checks": {
+    "infer_produced_decision": {
+      "passed": true,
+      "detail": {
+        "class": "squirrel",
+        "index": 13,
+        "score": 0.0923461988568306
+      }
+    },
+    "shutter_trigger_is_binary": {
+      "passed": true,
+      "detail": 0
+    },
+    "every_target_scored": {
+      "passed": true,
+      "detail": [
+        "bobcat"
+      ]
+    },
+    "trigger_matches_any_semantics": {
+      "passed": true,
+      "detail": {
+        "trigger": 0,
+        "passing": []
+      }
+    },
+    "letterbox_preserved_whole_frame": {
+      "passed": true,
+      "detail": {
+        "pad_left": 0,
+        "pad_top": 2,
+        "pixel_utilisation": 0.9790575916230366,
+        "resized": [
+          256,
+          187
+        ],
+        "scale": 0.25,
+        "source": [
+          1024,
+          747
+        ]
+      }
+    },
+    "multi_target_policy_without_reload": {
+      "passed": true,
+      "detail": [
+        "bobcat",
+        "coyote"
+      ]
+    },
+    "policy_rejects_empty_targets": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/empty_targets.json: target list is empt"
+    },
+    "policy_rejects_unsupported_mode": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/unsupported_mode.json: mode 'all' is un"
+    },
+    "policy_rejects_unknown_class": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/unknown_class.json: target 'unicorn' is"
+    },
+    "policy_rejects_non_selectable_class": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/non_selectable_class.json: target 'empt"
+    },
+    "policy_rejects_duplicate_target": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/duplicate_target.json: target 'bobcat' "
+    },
+    "policy_rejects_threshold_above_one": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/threshold_above_one.json: threshold for"
+    },
+    "policy_rejects_threshold_below_zero": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/threshold_below_zero.json: threshold fo"
+    },
+    "policy_rejects_null_threshold_class": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/null_threshold_class.json: target 'badg"
+    },
+    "policy_rejects_unsupported_schema_version": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/unsupported_schema_version.json: schema"
+    },
+    "policy_rejects_wrong_model_hash": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/wrong_model_hash.json: policy was calib"
+    },
+    "policy_rejects_wrong_class_map_hash": {
+      "passed": true,
+      "detail": "error: /work/results/a4/artifacts/invalid_policies/wrong_class_map_hash.json: policy expec"
+    },
+    "policy_rejects_malformed_json": {
+      "passed": true,
+      "detail": "error: malformed JSON in /work/results/a4/artifacts/invalid_policies/malformed_json.json: "
+    },
+    "benchmark_schema_valid": {
+      "passed": true,
+      "detail": {
+        "iterations": 100,
+        "end_to_end_p50_ms": 11.714248
+      }
+    },
+    "benchmark_end_to_end_covers_stages": {
+      "passed": true,
+      "detail": "end-to-end must be at least inference; a target is an end-to-end target"
+    },
+    "system_monitor_reports_rss": {
+      "passed": true,
+      "detail": 102324
+    },
+    "unavailable_sensors_are_honest": {
+      "passed": true,
+      "detail": {
+        "cpu_temperature_c": 46.1
+      }
+    },
+    "self_test_passed": {
+      "passed": true,
+      "detail": 0
+    },
+    "runs_under_pi5_isa": {
+      "passed": true,
+      "detail": "asimd,asimddp"
+    },
+    "qemu_agrees_with_native": {
+      "passed": true,
+      "detail": {
+        "native": "squirrel",
+        "cortex_a76": "squirrel"
+      }
+    },
+    "bundle_glibc_audit_passed": {
+      "passed": true,
+      "detail": "2.34"
+    },
+    "bundle_is_complete": {
+      "passed": true,
+      "detail": [
+        "bin/wildlife_trigger",
+        "bin/run.sh",
+        "lib/libonnxruntime.so",
+        "lib/libonnxruntime.so.1",
+        "policies/class_map.json",
+        "policies/bobcat_v0.json",
+        "MANIFEST.sha256"
+      ]
+    },
+    "bundle_checksums_verify": {
+      "passed": true,
+      "detail": "7 files in MANIFEST.sha256"
+    },
+    "bundle_self_test_passed": {
+      "passed": true,
+      "detail": "the staged bundle runs from its own launcher"
+    }
+  },
+  "failed_checks": []
+}

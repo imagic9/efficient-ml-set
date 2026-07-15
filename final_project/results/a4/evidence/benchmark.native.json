@@ -1,0 +1,61 @@
+{
+  "environment": {
+    "cpu_features": "asimd,asimddp,sve,sve2,i8mm,bf16",
+    "looks_like_pi5": false,
+    "onnxruntime_version": "1.27.0"
+  },
+  "fps": {
+    "end_to_end_from_p50": 85.36612849582833,
+    "inference_from_p50": 110.52061786993504
+  },
+  "image": "/work/tests/fixtures/frame_1024x747.jpg",
+  "intra_op_threads": 1,
+  "measured_iterations": 100,
+  "model": "/work/results/a4/artifacts/smoke_mobilenetv2_16.onnx",
+  "model_sha256": "36bd179d37ab54cf2a5d946ff0819d12626ea08eb999c5e7ac2d1eb5c08de7b2",
+  "provenance": "DESIGN §12.4: a latency number is a Pi result only when measured ON a Pi. Measured on any other host -- gx10 natively or under QEMU -- this is a smoke check of the timing path, never a performance claim.",
+  "schema_version": 1,
+  "stages_ms": {
+    "end_to_end": {
+      "max": 12.577481,
+      "mean": 11.730797819999998,
+      "min": 11.427715,
+      "p50": 11.714248,
+      "p95": 12.0541026,
+      "p99": 12.330569060000002
+    },
+    "inference": {
+      "max": 9.831903,
+      "mean": 9.071383909999998,
+      "min": 8.813752,
+      "p50": 9.0480855,
+      "p95": 9.30947035,
+      "p99": 9.556179090000002
+    },
+    "policy": {
+      "max": 0.000768,
+      "mean": 0.0006353600000000001,
+      "min": 0.000448,
+      "p50": 0.00064,
+      "p95": 0.000752,
+      "p99": 0.000768
+    },
+    "preprocess": {
+      "max": 2.925288,
+      "mean": 2.6586246299999994,
+      "min": 2.580011,
+      "p50": 2.648594,
+      "p95": 2.74312025,
+      "p99": 2.8238179500000005
+    }
+  },
+  "system": {
+    "cpu_frequency_khz": 2808000,
+    "cpu_temperature_c": 46.1,
+    "peak_rss_kib": 102324,
+    "system_cpu_seconds": 0.036963,
+    "throttling": "unavailable",
+    "user_cpu_seconds": 1.392629
+  },
+  "warmup_iterations": 10
+}

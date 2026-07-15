@@ -1,0 +1,42 @@
+{
+  "animal_classes": [
+    "badger",
+    "bird",
+    "bobcat",
+    "cat",
+    "coyote",
+    "deer",
+    "dog",
+    "fox",
+    "opossum",
+    "rabbit",
+    "raccoon",
+    "rodent",
+    "skunk",
+    "squirrel"
+  ],
+  "classes": [
+    "badger",
+    "bird",
+    "bobcat",
+    "cat",
+    "coyote",
+    "deer",
+    "dog",
+    "fox",
+    "opossum",
+    "rabbit",
+    "raccoon",
+    "rodent",
+    "skunk",
+    "squirrel",
+    "car",
+    "empty"
+  ],
+  "non_selectable_classes": [
+    "car",
+    "empty"
+  ],
+  "provisional": "A4 smoke placeholder. The 16 class NAMES are fixed by DESIGN \u00a74, but their integer order comes from the CCT-20 annotations and is frozen by B1, which cannot run before Gate A. Do not train against this order.",
+  "schema_version": 1
+}

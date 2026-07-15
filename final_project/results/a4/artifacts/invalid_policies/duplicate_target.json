@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "policy_id": "bad",
+  "mode": "any",
+  "targets": [
+    {
+      "class": "bobcat",
+      "threshold": 0.4
+    },
+    {
+      "class": "bobcat",
+      "threshold": 0.6
+    }
+  ]
+}

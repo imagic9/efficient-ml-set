@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "policy_id": "bad",
+  "mode": "any",
+  "targets": [
+    {
+      "class": "empty",
+      "threshold": 0.5
+    }
+  ]
+}

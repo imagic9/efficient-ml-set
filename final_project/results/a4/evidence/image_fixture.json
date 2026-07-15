@@ -1,0 +1,10 @@
+{
+  "path": "/home/deploy/efficientml/efficient-ml-set/final_project/tests/fixtures/frame_1024x747.jpg",
+  "width": 1024,
+  "height": 747,
+  "seed": 0,
+  "jpeg_quality": 92,
+  "bytes": 115476,
+  "sha256": "2d774fdb2c8206d03a1c111c02dfd57f5e9a985fc61a18808ce46ffb0bd08f3b",
+  "provenance": "Synthetic. Not CCT-20, not a photograph, not training data. Exists so the A4 slice can decode a real JPEG at the dominant CCT `_sm` geometry before Gate A permits the dataset download. No prediction on it is a result."
+}

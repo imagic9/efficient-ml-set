@@ -1,0 +1,19 @@
+{
+  "gate": "A",
+  "passed": true,
+  "requires": {
+    "P0": {
+      "passed": true,
+      "checks": 16,
+      "failed": [],
+      "report": "results/p0/p0_gate.json"
+    },
+    "A4": {
+      "passed": true,
+      "checks": 29,
+      "failed": [],
+      "report": "results/a4/a4_gate.json"
+    }
+  },
+  "permits": "The CCT-20 download (Phase B) and long training runs (Phase C). Neither may start before this passes: PLAN puts the toolchain risk first precisely so a quantization or deployment dead-end is found in an hour rather than after a week of training."
+}

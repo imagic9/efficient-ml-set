@@ -1,0 +1,18 @@
+{
+  "class_map_sha256": "6d2111c592960b01812404c77254c9bfc6e6ed086746c5789c49de15c708b3d7",
+  "mode": "any",
+  "model_sha256": "36bd179d37ab54cf2a5d946ff0819d12626ea08eb999c5e7ac2d1eb5c08de7b2",
+  "policy_id": "smoke_bobcat_coyote_v0",
+  "provisional": "Threshold 0.5 is an arbitrary midpoint, NOT a calibrated operating point. DESIGN \u00a76.3 calibrates the real threshold on cis-val-clean + trans-val, which do not exist yet. No A4 number is a result.",
+  "schema_version": 1,
+  "targets": [
+    {
+      "class": "bobcat",
+      "threshold": 0.5
+    },
+    {
+      "class": "coyote",
+      "threshold": 0.5
+    }
+  ]
+}

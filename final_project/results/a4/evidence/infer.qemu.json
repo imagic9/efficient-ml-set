@@ -1,0 +1,52 @@
+{
+  "class_map_sha256": "6d2111c592960b01812404c77254c9bfc6e6ed086746c5789c49de15c708b3d7",
+  "decision": {
+    "SHUTTER_TRIGGER": 0,
+    "passing_targets": [],
+    "targets": [
+      {
+        "class": "bobcat",
+        "index": 2,
+        "passed": false,
+        "score": 0.05698597431182861,
+        "threshold": 0.5
+      }
+    ],
+    "top1": {
+      "class": "squirrel",
+      "index": 13,
+      "score": 0.0923461988568306
+    }
+  },
+  "environment": {
+    "cpu_features": "asimd,asimddp",
+    "looks_like_pi5": true,
+    "onnxruntime_version": "1.27.0"
+  },
+  "image": "/work/tests/fixtures/frame_1024x747.jpg",
+  "letterbox": {
+    "pad_left": 0,
+    "pad_top": 2,
+    "pixel_utilisation": 0.9790575916230366,
+    "resized": [
+      256,
+      187
+    ],
+    "scale": 0.25,
+    "source": [
+      1024,
+      747
+    ]
+  },
+  "model": "/work/results/a4/artifacts/smoke_mobilenetv2_16.onnx",
+  "model_sha256": "36bd179d37ab54cf2a5d946ff0819d12626ea08eb999c5e7ac2d1eb5c08de7b2",
+  "note": "Single-shot timings are not a benchmark; use `benchmark`.",
+  "ort_profile": "/work/results/a4/evidence/ort_profile_qemu_2026-07-15_18-53-31_995.json",
+  "policy_id": "smoke_bobcat_v0",
+  "timings_ms": {
+    "end_to_end": 928.183336,
+    "inference": 857.6636,
+    "policy": 0.414093,
+    "preprocess": 70.079676
+  }
+}
