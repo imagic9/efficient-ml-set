@@ -15,10 +15,14 @@ one silently.
 
 Read in this order:
 
-1. [`README.md`](README.md) — project orientation, scope, and entry points.
-2. [`DESIGN.md`](DESIGN.md) — complete technical and submission specification.
-3. This file — task order, dependencies, outputs, and gates.
-4. The newest `Handoff/HANDOFF_*.md` — current session state and deviations.
+1. [`PROGRESS.md`](PROGRESS.md) — status board: what is done, what is next.
+2. [`README.md`](README.md) — project orientation, scope, and entry points.
+3. [`DESIGN.md`](DESIGN.md) — complete technical and submission specification.
+4. This file — task order, dependencies, outputs, and gates.
+5. The newest `Handoff/HANDOFF_*.md` — current session state and deviations.
+
+`PROGRESS.md` tracks *state*; this file defines *the work*. If they disagree, this
+file is right and `PROGRESS.md` is stale.
 
 The executing agent must follow these rules:
 
