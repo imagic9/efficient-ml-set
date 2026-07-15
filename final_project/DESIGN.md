@@ -51,7 +51,7 @@ This question maps directly to the assignment:
 |---|---|
 | Model training and optimization, 15 pts | MobileNetV2 justification; FP32 baseline; PTQ; QAT; structured pruning; accuracy/compute trade-offs |
 | C++ inference, 15 pts | Correct preprocessing, ONNX Runtime inference, target policy, signal emulation, dataset runner, benchmark harness, tests |
-| Benchmarking and metrics, 10 pts | Baseline and optimized models measured on the same Pi 5 with latency, FPS, resource use, and accuracy |
+| Benchmarking and metrics, 10 pts | Baseline and optimized latency/FPS/resources on the same Pi 5; frozen full-test C++ accuracy plus target-hardware parity |
 | Analysis and presentation, 10 pts | Reproducible tables and plots; what worked; what failed; bottlenecks; concrete next steps |
 
 The project is successful even if an optimization fails to improve speed or
@@ -66,7 +66,7 @@ accuracy, provided the failure is measured correctly and explained.
 1. Prepare a leakage-safe wildlife dataset with CCT-20 cis/trans splits.
 2. Train one FP32 full-frame MobileNetV2 classifier.
 3. Calibrate a primary bobcat shutter threshold using validation data only and
-   implement a generic policy that can select any subset of the 15 known animals.
+   implement a generic policy that can select any subset of the 14 known animals.
 4. Produce and evaluate:
    - FP32 baseline;
    - INT8 PTQ;
@@ -118,7 +118,7 @@ saved JPEG frame
 C++ decode + deterministic full-frame preprocessing
       |
       v
-MobileNetV2, 16 logits: 15 animal classes + empty
+MobileNetV2, 16 logits: 14 animals + car + empty
       |
       v
 softmax -> configured animal scores
@@ -142,7 +142,7 @@ not a physical GPIO transition.
 ### Configurable target policy
 
 The neural network is shared by every target selection. A policy is a small
-configuration file, not a separate model. It selects one or more of the 15 animal
+configuration file, not a separate model. It selects one or more of the 14 animal
 outputs and fires when any selected class passes its own threshold:
 
 ```yaml
@@ -161,16 +161,17 @@ targets:
 The numbers above illustrate the numeric schema only; generated policies must
 replace them with measured validation-calibrated values.
 
-`empty` is never a valid target. `mode: any` is the only Core combination mode.
-The loader rejects an empty target list, duplicate or unknown classes, thresholds
-outside `[0, 1]`, unsupported modes, and model/class-map hash mismatches.
+`car` and `empty` are model classes but are not selectable wildlife targets.
+`mode: any` is the only Core combination mode. The loader rejects an empty target
+list, duplicate/unknown/non-animal classes, thresholds outside `[0, 1]`,
+unsupported modes, and model/class-map hash mismatches.
 
 The submission's primary evaluated policy remains the bobcat-only
 `bobcat_v1.yaml`. The same final model must also accept a multi-target example
 policy without another inference or model reload. This adds configuration-level
 modularity without adding networks or changing the benchmark question.
 
-The calibration pipeline produces a model-bound threshold catalog for all 15
+The calibration pipeline produces a model-bound threshold catalog for all 14
 animal classes from validation data. For a class represented in both validation
 domains, apply the two-domain rule from section 6.3. If a class has no positives
 in one domain or too little support for that rule, use pooled validation F2 only
@@ -179,7 +180,7 @@ a threshold or claim validated recall without positive examples. A generated
 multi-target policy must store its combined validation trigger metrics because
 false-fire rates increase when multiple targets are joined with `any`.
 
-A new species outside the 15-class map requires labelled data, classifier-head
+A new species outside the 16-class map requires labelled data, classifier-head
 adaptation, fine-tuning, export, and recalibration, but not training from random
 initialization. Simultaneous identification of multiple different species in one
 frame would require a multi-label classifier or detector and remains out of Core.
@@ -211,8 +212,9 @@ possible. If a portable binary cannot be proven, the deployment bundle must
 include pinned source/build automation and compile on the Pi during provisioning.
 
 The rented Raspberry Pi 5 is the only second execution environment. It is used
-only for Phase F provisioning, target-hardware smoke/parity checks, and the final
-CPU performance/resource/accuracy measurements. Results from `gx10` may be used
+only for Phase F provisioning, target-hardware smoke/parity checks, and final CPU
+performance/resource measurements. Frozen full-test accuracy runs on `gx10` with
+the exact C++/ORT artifacts after the Pi validation freeze. Results from `gx10` may be used
 for correctness and candidate screening, but never reported as Pi latency, FPS,
 memory, temperature, or throttling evidence. During Phase F, `gx10` remains the
 control and evidence host: it drives remote commands where practical and receives
@@ -239,9 +241,27 @@ The ECCV paper states 57,868 images, while the current downloadable split JSONs
 sum to 57,864. The pipeline must record the exact downloaded file hashes and use
 the JSON contents, not a number copied from the paper, as executable truth.
 
-CCT-20 contains 15 animal categories plus `empty` (16 total). The category order
-in the model is defined once in `configs/data/classes.yaml` and must never be
-inferred from dictionary iteration order.
+CCT-20 contains **14 animal categories, `car`, and `empty`** (16 total). `car` is
+kept as a distractor class but is not a selectable wildlife target. The exact
+category IDs are non-contiguous, so the model order is defined once in
+`configs/data/classes.yaml` and must never be inferred from dictionary iteration
+order.
+
+### 5.1.1 Known official sequence overlap and cleaned development split
+
+The official CCT-20 metadata contains one known sequence-level overlap:
+
+- train and cis-val share exactly **224 `seq_id` values**;
+- those sequences account for **270 cis-val images** (7.7%);
+- **10 of the 270** are bobcat images;
+- every other cross-split sequence intersection is zero.
+
+Never rewrite the official split. Produce an immutable derived manifest
+`cis_val_clean.jsonl` by removing from cis-val every image whose `seq_id` occurs
+in train. Its expected size is **3,214 images**, including **144 bobcat images**.
+Use `cis-val-clean`, not official cis-val, for checkpoint selection, preprocessing
+selection, pruning/quantization choices, and threshold calibration. Report both
+clean and official cis-val results so the leakage effect remains visible.
 
 ### 5.2 Required empty-frame supplement
 
@@ -254,17 +274,33 @@ Build `cct_empty_train_v1` from full CCT metadata using these rules:
 1. Collect the set of all 20 CCT-20 location IDs.
 2. Candidate image label must be exactly `empty`.
 3. Candidate location must be disjoint from all 20 CCT-20 locations.
-4. Select **5,000 images**, stratified across locations and sequences, with fixed
+4. Candidate image ID and `seq_id` must be absent from every CCT-20 split.
+5. Select **5,000 images**, stratified across locations and sequences, with fixed
    seed `42`. Avoid letting one camera dominate the sample.
-5. Download only selected images through the LILA per-image cloud paths; do not
+6. Download only selected images through the LILA per-image cloud paths; do not
    download the full 105 GB archive.
-6. Save a manifest containing image ID, location, sequence ID, source URL,
+7. Save a manifest containing image ID, location, sequence ID, source URL,
    relative path, label, and checksum.
-7. Use this supplement for training only. Do not create a new test set from it.
+8. Use this supplement for training only. Do not create a new test set from it.
 
 This changes the training recipe relative to the paper, so the report must say so.
 All project models use the same augmented training dataset, preserving a fair
 baseline-versus-optimized comparison.
+
+#### Empty-supplement ablation
+
+Before freezing M0, run one matched data ablation:
+
+- `A-empty-0`: a 15-output non-empty classifier (14 animals + `car`) trained on
+  official train only;
+- `A-empty-5k`: the planned 16-output classifier trained with
+  `cct_empty_train_v1`.
+
+Use the same backbone initialization, optimizer budget, augmentations, seed, and
+validation protocol. Compare bobcat recall/F2, bobcat false-fire rate on cis and
+trans empty frames separately, calibration stability, and empty top-1 recall
+where defined. This ablation tests the supplement assumption; it does not add a
+new deployment candidate or alter the M0-M4 compression ladder.
 
 ### 5.3 Dataset assertions — hard data gate
 
@@ -272,11 +308,18 @@ Before training, automated tests must prove:
 
 - split image counts match the table above;
 - category set is exactly the configured 16 classes;
+- category names are exactly 14 animals plus `car` and `empty`;
 - every image ID is unique within a split;
 - no image occurs in more than one split;
-- no sequence spans train and either validation split;
+- train/cis-val overlap is exactly the known 224 sequences / 270 images / 10
+  bobcat images, and `cis-val-clean` contains 3,214 images / 144 bobcat images;
+- all other required cross-split sequence intersections are zero, including
+  train/cis-test, train/trans-val, train/trans-test, and cis-val/cis-test;
 - train locations are disjoint from trans-val and trans-test locations;
-- supplemental-empty locations are disjoint from every CCT-20 location;
+- supplemental-empty IDs, sequences, and locations are disjoint from CCT-20;
+- every manifest stores the complete ordered label set for each image;
+- observed distinct-class multi-label image counts match 7 / 0 / 1 / 61 / 9 for
+  train / cis-val / cis-test / trans-val / trans-test;
 - every manifest path exists and every checksum matches;
 - class and location distributions are written to `results/data_audit/`.
 
@@ -284,29 +327,57 @@ If any assertion fails, stop. Do not train around a split problem.
 
 ### 5.4 Test-set discipline
 
-`cis-test` and `trans-test` are sealed until models, thresholds, code, runtime
-configuration, and thread count are frozen. All development decisions use only
-train, cis-val, trans-val, and an unlabeled validation benchmark manifest.
+`cis-test` and `trans-test` model results are sealed until models, thresholds,
+code, runtime configuration, and thread count are frozen. Mechanical data-audit
+code may parse labels to verify schema/counts/multi-label rules and then write
+sealed manifests, but it must not compute model metrics or expose predictions for
+development. All model/runtime decisions use only train, cis-val-clean, trans-val,
+and an unlabeled validation benchmark manifest.
 
-Final test labels may be used only by the final evaluation job. Rerunning an
-unchanged frozen artifact for reproducibility is allowed; changing anything after
-viewing test results is not.
+Beyond the mechanical audit above, final test labels may be used only by the final
+evaluation job. Rerunning an unchanged frozen artifact for reproducibility is
+allowed; changing anything after viewing test results is not.
+
+### 5.4.1 Multi-label annotation rule
+
+The model remains a single-label softmax classifier, but the source annotations
+contain images with more than one distinct class. The executable rule is:
+
+1. Manifests store `labels` as the complete sorted set of distinct classes.
+2. Images with exactly one distinct class receive that class as `primary_label`.
+3. The seven multi-label train images are excluded from weighted-CE training and
+   recorded in the data audit; do not choose an arbitrary primary label.
+4. Multi-label validation/test images remain in every target-presence metric. An
+   image is positive for bobcat whenever `bobcat` is in `labels`, regardless of
+   the other labels.
+5. Single-label confusion matrices and macro F1 exclude multi-label images and
+   state the excluded count. Per-target recall/precision/F2 and policy metrics do
+   not exclude them.
+
+This rule makes product recall unambiguous without claiming simultaneous
+multi-species recognition from a softmax model.
 
 ### 5.5 Preprocessing
 
 The network must see the complete frame; do not use a center crop that can remove
 a small animal.
 
-Canonical preprocessing:
+The provisional Core input is **256x192 (width x height)**. This is nearly the
+same pixel budget as 224x224 but matches the dominant CCT aspect ratio much more
+closely. Before M0 is frozen, run the matched input-shape control described below;
+the winning fixed shape becomes part of the immutable model/preprocessing
+contract for every M0-M4 candidate.
+
+Canonical preprocessing for a configured fixed `(width, height)`:
 
 1. Decode JPEG as 8-bit BGR with OpenCV.
 2. Convert BGR to RGB.
-3. Resize while preserving aspect ratio so the longer side is 224 pixels.
-4. Center-pad the shorter side to 224 using RGB value `(114, 114, 114)`.
+3. Resize while preserving aspect ratio to fit inside the configured width/height.
+4. Center-pad the remaining rows/columns using RGB value `(114, 114, 114)`.
 5. Convert to float32 and divide by 255.
 6. Normalize with ImageNet mean `(0.485, 0.456, 0.406)` and standard deviation
    `(0.229, 0.224, 0.225)`.
-7. Convert HWC RGB to contiguous NCHW tensor `[1, 3, 224, 224]`.
+7. Convert HWC RGB to contiguous NCHW; provisional shape is `[1, 3, 192, 256]`.
 
 The Python and C++ implementations must share golden fixtures and match within a
 documented tolerance.
@@ -321,6 +392,20 @@ Training-only augmentation, applied before normalization:
 
 Record every transform and parameter in configuration. Validation/test are fully
 deterministic.
+
+#### Input-shape control before M0
+
+Compare exactly two candidates under the same seed and training budget:
+
+- `I-square`: 224x224 aspect-preserving letterbox;
+- `I-landscape`: 256x192 aspect-preserving letterbox.
+
+Select on cis-val-clean/trans-val bobcat F2 and sequence-balanced recall, with
+MACs and real-pixel utilization reported. Prefer 256x192 when the target metrics
+are statistically indistinguishable; fall back to 224x224 if the landscape input
+materially hurts them. Only the selected shape proceeds to M0-M4. A 320x240
+candidate is permitted only as a documented contingency if neither candidate can
+meet the validation bobcat-recall operating rule; it is not a default search axis.
 
 ---
 
@@ -351,20 +436,30 @@ Do not use test frequencies for weighting or sampling.
 
 ### 6.3 Primary bobcat threshold calibration
 
-Calibrate the bobcat threshold on `cis-val + trans-val` only. Treat the two
+Calibrate the bobcat threshold on `cis-val-clean + trans-val` only. Treat the two
 validation domains separately so the larger bobcat count in trans-val does not
-hide a cis-val failure.
+hide a cis failure. Trans-val contains only one camera location, so it is evidence
+for that unseen location, not a universal estimate across unseen cameras.
+
+Bursts contain correlated near-duplicate frames. For threshold selection, compute
+**sequence-balanced recall**: calculate frame recall inside each positive
+`seq_id`, then average those sequence values with equal weight. Keep ordinary
+frame-level recall as the primary reported product metric.
 
 Primary rule:
 
 1. Search all unique bobcat scores.
-2. Choose the largest threshold for which bobcat recall is at least 90% on both
-   cis-val and trans-val.
+2. Choose the largest threshold for which sequence-balanced bobcat recall is at
+   least 90% on both cis-val-clean and trans-val.
 3. If no non-trivial threshold meets both constraints, choose the threshold
-   maximizing the mean of cis-val and trans-val F2 and record which recall
-   constraint was not met.
+   maximizing the mean frame-level F2 across cis-val-clean and trans-val and
+   record which sequence-balanced recall constraint was not met.
 4. Save the threshold, calibration metrics, score distribution, and dataset hash
    to `artifacts/policies/bobcat_v1.yaml`.
+5. Bootstrap complete `seq_id` clusters within each validation domain and save the
+   95% interval/distribution of the selected threshold. The deployed point
+   threshold still comes from the full cleaned validation data, not a bootstrap
+   replicate.
 
 The threshold is calibrated separately for each candidate model because
 quantization changes score distributions. For the final baseline-versus-optimized
@@ -373,7 +468,7 @@ comparison, report both:
 - each model at its own calibrated operating point;
 - every model at the FP32 baseline threshold, to expose calibration drift.
 
-After the final model is selected, run the same calibrator for every animal class
+After the final model is selected, run the same calibrator for all 14 animal classes
 to produce the generic threshold catalog described in section 4. Classes lacking
 adequate validation support must be explicitly flagged. These secondary thresholds
 do not affect model selection or replace the bobcat evaluation.
@@ -387,12 +482,15 @@ Report separately for cis-test and trans-test:
 - bobcat F2;
 - false-fire rate = false triggers / non-bobcat frames;
 - fire rate = all triggers / all frames;
-- macro F1 and per-class recall — secondary model-quality metrics;
+- per-class support, recall, precision, and F1 for every class with positives;
+- support-aware macro F1 over classes with at least 20 positive images and at
+  least 5 positive `seq_id` values in that split; list the included classes;
 - confusion matrix;
 - 95% confidence intervals by bootstrap over `seq_id`, not individual frames.
 
-Also report per-location bobcat recall on trans-test. Do not claim a universally
-calibrated probability from softmax scores.
+Report frame-level and sequence-balanced bobcat recall, threshold uncertainty,
+and per-location bobcat recall on trans-test. Multi-label images follow section
+5.4.1. Do not claim a universally calibrated probability from softmax scores.
 
 ---
 
@@ -400,8 +498,9 @@ calibrated probability from softmax scores.
 
 ### 7.1 Architecture
 
-**MobileNetV2, width multiplier 1.0, input 224x224, ImageNet-pretrained.** Replace
-the classifier with a 16-output linear layer.
+**MobileNetV2, width multiplier 1.0, ImageNet-pretrained.** Replace the classifier
+with a 16-output linear layer. The provisional fixed input is 256x192; the
+224x224-vs-256x192 control in section 5.5 freezes the final Core input before M0.
 
 Reasons:
 
@@ -412,8 +511,15 @@ Reasons:
 - small enough for repeated Pi benchmarks;
 - the course container already proves the MobileNetV2/ONNX/C++ toolchain.
 
-Core does not perform neural architecture search. Architecture search would add a
-new experimental axis without earning a separate rubric category.
+Core does not perform neural architecture search. HW4 remains useful background:
+MobileNetV2's inverted residual blocks are an efficient search-space choice, and
+its validation-only search discipline, weight-sharing caveats, and proxy-rank
+analysis inform this project. A new supernet is still excluded because real Pi
+latency is unavailable until the short rental window, `gx10` latency is not a
+reliable Cortex-A76 ranking proxy, and weight-sharing proxy noise would add a
+second model-selection problem before the required pruning/quantization/C++ work
+is complete. After Core, a bounded width/input-shape study could reuse HW4 ideas;
+it must not replace the frozen Core result.
 
 ### 7.2 Training recipe
 
@@ -428,8 +534,9 @@ Default recipe; all deviations must be recorded in the run config:
 - cosine learning-rate decay;
 - mixed precision allowed on gx10, never on Pi inference;
 - early stopping patience: 6 epochs;
-- checkpoint selection score: mean of cis-val and trans-val bobcat F2, with
-  bobcat recall used as the first tie-break and macro F1 as the second;
+- checkpoint selection score: mean of cis-val-clean and trans-val bobcat F2,
+  with sequence-balanced bobcat recall used as the first tie-break and
+  support-aware macro F1 as the second;
 - save last and best checkpoints plus full optimizer/scheduler state.
 
 Do not tune on overall accuracy alone.
@@ -463,12 +570,18 @@ not create a misleading sequential chain.
 | M3 | Structured-pruned FP32 | M0 FP32 checkpoint | Does real channel/MAC removal improve Pi latency? |
 | M4 | Structured-pruned + QAT | selected M3 checkpoint | Is the combined candidate Pareto-superior? |
 
-No candidate is assumed to win. The final model is chosen from M1-M4 on the
-validation Pareto frontier, then measured on test and Pi.
+No candidate is assumed to win. Validation produces a deployable shortlist from
+M1-M4; real Pi validation latency selects the final optimized model before any
+test labels are opened.
 
 ### 8.1 PTQ — M1
 
 Use ONNX Runtime static quantization for the CNN.
+
+Pre-registered expectation: MobileNetV2 PTQ may lose more accuracy than a
+standard-convolution model because depthwise layers and activation ranges are
+quantization-sensitive. A measured PTQ failure is evidence, not an emergency
+reason to change the test protocol; QAT is the planned recovery path.
 
 - calibration data: 1,024 training images, stratified by class and source,
   including supplemental empty images;
@@ -480,7 +593,7 @@ Use ONNX Runtime static quantization for the CNN.
 - record which nodes remain FP32 and why.
 
 Choose the PTQ configuration by validation bobcat F2 subject to measured model
-size and operator coverage. Do not select it using Pi test labels.
+size and operator coverage. Do not select it using test labels.
 
 ### 8.2 QAT — M2
 
@@ -494,7 +607,7 @@ QAT initializes from the FP32 M0 checkpoint, not from the PTQ model.
 - export a real INT8 ONNX graph, not a float graph carrying rounded weights;
 - verify operator coverage and actual integer kernels in the ORT profile.
 
-Quantization APIs change over time. Phase E0 must prove one end-to-end QAT -> ONNX
+Quantization APIs change over time. Parity gate P0 must prove one end-to-end QAT -> ONNX
 -> ORT C++ path and pin the exact compatible PyTorch/torchao/ONNX/ORT versions in
 the lockfile before long training begins. Do not silently fall back to a different
 quantization meaning.
@@ -527,19 +640,25 @@ Apply the validated QAT procedure to the selected pruned FP32 model. If M4 is
 slower or less accurate than M2, M2 remains the final model. A more complicated
 stack does not win by default.
 
-### 8.5 Final-model selection
+### 8.5 Pre-Pi shortlist and final-model selection
 
-Before opening test labels, choose the final deploy candidate using validation:
+Before renting the Pi, build a deployable shortlist using validation:
 
 1. Reject candidates that fail export/parity/correctness gates.
-2. Prefer candidates satisfying the 90% validation bobcat-recall operating rule.
-3. Among them, choose the Pareto-best trade-off between validation bobcat F2,
-   ARM64 ORT microbenchmark latency from the E0-compatible harness, and model
-   size.
-4. If multiple remain, choose the simpler transformation.
+2. Retain candidates satisfying the 90% sequence-balanced validation bobcat-recall
+   operating rule; if none do, retain the best documented fallback candidates.
+3. Remove candidates dominated on validation bobcat F2, MACs, and model size.
+4. Use `gx10` latency only to detect pathologies such as float fallback; never use
+   it to rank Cortex-A76 performance.
+5. Prefer a simpler transformation when two candidates are otherwise equivalent,
+   but package every non-dominated deployable candidate for Pi validation.
 
-Write the decision and rejected alternatives to
-`results/model_selection/decision.md` before final test evaluation.
+Write the shortlist and rejected alternatives to
+`results/model_selection/pre_pi_shortlist.md`. On Pi Day 2, measure the shortlist
+on the fixed validation benchmark. On Day 3, choose the final optimized model from
+the validation-accuracy/Pi-latency/size Pareto evidence, write
+`results/model_selection/final_decision.md`, freeze model/policy/runtime, and only
+then allow final test evaluation.
 
 ---
 
@@ -613,7 +732,7 @@ clean environment without manually executing notebook cells.
 
 Export is part of correctness, not packaging.
 
-### E0 — toolchain spike
+### P0 — toolchain spike
 
 Before full training:
 
@@ -625,7 +744,7 @@ Before full training:
 5. Run one image and capture an ORT profile.
 6. Pin compatible versions only after this succeeds.
 
-### E1 — preprocessing parity
+### P1 — preprocessing parity
 
 For at least 20 fixtures covering landscape, portrait, grayscale-looking IR, and
 odd dimensions:
@@ -637,7 +756,7 @@ odd dimensions:
 
 This catches BGR/RGB, interpolation, padding, layout, and normalization bugs.
 
-### E2 — FP32 model parity
+### P2 — FP32 model parity
 
 PyTorch and ORT FP32 must match on a fixed validation fixture set:
 
@@ -646,7 +765,7 @@ PyTorch and ORT FP32 must match on a fixed validation fixture set:
 - identical bobcat fire/no-fire decisions except samples explicitly identified as
   lying within the numeric tolerance of the threshold.
 
-### E3 — quantized-model validation
+### P3 — quantized-model validation
 
 For PTQ/QAT, compare the correct framework reference with ORT and report numeric
 drift. Exact FP32 equality is not expected, but the model must satisfy:
@@ -656,13 +775,29 @@ drift. Exact FP32 equality is not expected, but the model must satisfy:
 - ORT Python and ORT C++ predictions/decisions identical on fixtures;
 - no silent fallback to an unintended model or preprocessing path.
 
-### E4 — C++ dataset parity
+### P4 — C++ dataset parity
 
 On a validation manifest, Python evaluation and the C++ dataset runner must emit
 the same ordered image IDs, labels, target scores within tolerance, trigger
 decisions, and confusion matrix.
 
 No model reaching a failed gate may be deployed to the Pi.
+
+### Mandatory early vertical slice
+
+Before data preparation or full training, the target-compatible ARM64 environment
+must run a thin end-to-end slice using a 16-output smoke model:
+
+```text
+saved JPEG -> C++ decode/preprocess -> ORT -> generic policy
+           -> SHUTTER_TRIGGER JSON -> benchmark JSON + system metrics
+```
+
+The slice must also build/install from the provisional deployment bundle and emit
+schema-valid results. Accuracy is irrelevant for the smoke model; interface,
+correctness plumbing, observability, and packaging are the gate. This makes the
+C++/benchmark path an early prerequisite rather than work deferred until after
+model optimization.
 
 ---
 
@@ -720,9 +855,35 @@ version; do not retain the course container's obsolete hard-coded 1.14.1 package
 
 ### C++ optimization experiment
 
-Measure reference versus fused preprocessing while holding the model constant.
-The fused path is retained only after parity passes. Report its isolated latency
-effect; do not attribute total model speedup to preprocessing.
+Run a bounded, validation-only inference-pipeline matrix:
+
+1. reference versus fused preprocessing;
+2. full JPEG decode versus OpenCV/libjpeg-turbo reduced decode at 1/2 and 1/4;
+   1/8 is allowed only if validation accuracy is also measured;
+3. supported ORT graph-optimization levels;
+4. intra-op threads `1, 2, 4`;
+5. ORT memory arena on/off when exposed by the pinned build;
+6. CPU affinity only when the remote Pi exposes a stable, documentable control.
+
+Reference/fused preprocessing must pass P1. Reduced JPEG decode intentionally
+changes pixels, so it is an accuracy/decision-drift candidate, not a parity-
+equivalent implementation: compare it through P4 and keep it only if validation
+bobcat metrics remain within the predeclared tolerance. Change one factor at a
+time before testing a combined configuration. Report isolated and combined
+effects; do not attribute total model speedup to preprocessing alone.
+
+XNNPACK is not a Core requirement. ONNX Runtime CPU EP, bottleneck profiles,
+decode reduction, preprocessing fusion, graph settings, threads, and memory
+configuration satisfy the inference-level optimization scope without introducing
+a second backend/toolchain.
+
+### Performance target
+
+For resident batch-1 inference on saved JPEGs, the primary engineering target is
+Pi p95 end-to-end latency at or below **200 ms** (at least 5 end-to-end FPS). The
+aspirational target is p95 at or below **100 ms** (about 10 FPS). Model load/cold
+start is measured separately. These are project targets, not claims of measured
+professional camera-trigger latency.
 
 ---
 
@@ -741,9 +902,13 @@ effect; do not attribute total model speedup to preprocessing.
 Prepare before renting the Pi:
 
 - `benchmark_val_1000.jsonl`: fixed stratified validation subset for performance
-  tuning and dry runs;
-- full cis-test and trans-test manifests for final accuracy evaluation;
-- all images copied or downloadable before the trial begins.
+  tuning, parity, and dry runs, including bobcat, empty, rare, multi-label, and
+  preprocessing edge cases where available;
+- full cis-test and trans-test manifests for frozen final accuracy evaluation on
+  `gx10` with the exact C++/ORT artifacts;
+- an optional small post-freeze test parity subset for Pi only if transfer/storage
+  permit it. Do not copy the full approximately 6 GB test image set to Pi by
+  default.
 
 The same ordered benchmark manifest is used for every model.
 
@@ -781,6 +946,10 @@ both separately.
 - retain raw per-frame timings;
 - report all repetitions, not only the fastest.
 
+When measuring an inference-pipeline optimization, vary only that named factor
+and run the required validation accuracy/decision-drift check. When comparing
+models, use the frozen winning C++ pipeline unchanged.
+
 Latency is not called energy. Without a power meter, the report may say that
 lower active compute time is relevant to energy, but it may not claim measured
 joules or battery life.
@@ -790,10 +959,10 @@ joules or battery life.
 | Day | Allowed work |
 |---|---|
 | 1 | Provision, record environment, install pinned artifacts, smoke test only |
-| 2 | Validation benchmark, thread sweep, profiling, final safe runtime fixes |
-| 3 | Re-run validation, freeze git commit/models/policies/configuration |
-| 4 | Final cis-test/trans-test accuracy and full baseline/optimized benchmark |
-| 5 | Exact unchanged repeat, artifact backup, no tuning from test results |
+| 2 | Validation benchmark of M0 plus shortlist; decode/thread/ORT profiling; safe fixes only |
+| 3 | Select final optimized model from Pi validation evidence; train confirmation seeds; freeze everything |
+| 4 | Full frozen cis-test/trans-test C++ accuracy on gx10; Pi M0-vs-final performance benchmark and parity subset |
+| 5 | Exact unchanged Pi benchmark/parity repeat, artifact backup, no tuning from test results |
 
 If Core is not dry-run complete before Day 1, do not start the trial.
 
@@ -809,25 +978,31 @@ The implementing agent follows this order.
 - establish Python and C++ test runners;
 - create pinned `gx10` training and target-compatible ARM64/C++ environments;
 - create lockfiles and environment capture;
-- run E0 toolchain spike.
+- run P0 toolchain spike;
+- complete the mandatory 16-output C++ vertical slice, benchmark JSON, system
+  metrics, and provisional bundle install.
 
-**Gate A:** FP32, PTQ, and minimal QAT models load in ARM64 C++ ORT.
+**Gate A:** FP32, PTQ, and minimal QAT models load in ARM64 C++ ORT, and the thin
+saved-JPEG-to-trigger benchmark path works end to end.
 
 ### Phase B — data
 
 - download metadata and required images;
 - build frozen manifests and empty supplement;
+- build and fingerprint `cis-val-clean` while preserving official cis-val;
 - implement audit assertions;
 - create data-audit notebook and report.
 
-**Gate B:** all D1 assertions pass; manifests and hashes are committed.
+**Gate B:** all section 5.3 assertions pass; manifests and hashes are committed.
 
 ### Phase C — FP32 baseline
 
 - implement dataset/transforms/model/training/evaluation;
+- resolve the 224x224 versus 256x192 input-shape control;
+- run the empty-supplement data ablation;
 - train seed 42 baseline;
 - calibrate threshold;
-- export and pass E1-E4;
+- export and pass P1-P4;
 - run confirmation seeds 17 and 73.
 
 **Gate C:** reproducible M0 metrics, policy, ONNX, parity, and model card exist.
@@ -840,7 +1015,8 @@ The implementing agent follows this order.
 - M4 selected pruning + QAT;
 - update a single machine-readable comparison table after each candidate.
 
-**Gate D:** final model decision written before test labels are opened.
+**Gate D:** a validation/MACs/size-based deployable shortlist is written before
+Pi rental; `gx10` latency has not been used to rank Pi candidates.
 
 ### Phase E — C++ application
 
@@ -860,7 +1036,8 @@ validated results.
 - back up raw data and environment details.
 
 **Gate F:** baseline-vs-optimized Pi evidence contains latency, FPS, resource use,
-accuracy, and three repetitions.
+target-hardware parity, and three repetitions; frozen full-test C++ accuracy exists
+from `gx10` using the exact model/policy/runtime artifacts.
 
 ### Phase G — analysis and submission
 
@@ -1080,16 +1257,20 @@ choice, pruning result, threshold, and benchmark number.
 At minimum generate:
 
 1. Dataset split/class/location audit table.
-2. Training curves for M0 and final optimized model.
-3. Validation model-selection table.
-4. Cis/trans target metrics with sequence-bootstrap confidence intervals.
-5. Per-class confusion matrices for M0 and final.
-6. Accuracy vs model size/MACs table.
-7. Pi table: model, precision, file size, threads, p50/p95/p99 inference,
+2. Official-vs-clean cis-val leakage table and empty-supplement ablation.
+3. 224x224-vs-256x192 input-shape control with real-pixel utilization/MACs.
+4. Training curves for M0 and final optimized model.
+5. Validation shortlist and final Pi-selection table.
+6. Cis/trans target metrics with sequence-bootstrap confidence intervals and
+   threshold uncertainty.
+7. Per-class support/confusion matrices for M0 and final, with multi-label
+   exclusions stated.
+8. Accuracy vs model size/MACs table.
+9. Pi table: model, precision, file size, threads, p50/p95/p99 inference,
    end-to-end FPS, peak RSS, CPU utilization, temperature/throttling.
-8. Pareto plot: trans bobcat recall or F2 vs Pi p95 latency.
-9. Reference vs fused C++ preprocessing latency.
-10. At least six representative failure cases with scores and explanations.
+10. Pareto plot: trans bobcat recall or F2 vs Pi p95 latency.
+11. Full/reduced JPEG decode and reference/fused preprocessing latency/accuracy.
+12. At least six representative failure cases with scores and explanations.
 
 All plots include units, sample counts, split, model ID, and commit/run ID.
 
@@ -1099,15 +1280,22 @@ All plots include units, sample counts, split, model ID, and commit/run ID.
 
 | Risk | Decision rule |
 |---|---|
-| Empty supplement introduces bias | Keep it location-disjoint, deterministic, documented, and identical across all models |
+| Official train/cis-val sequence leakage biases selection | Preserve official split, use fingerprinted `cis-val-clean` for decisions, report both |
+| Empty supplement introduces background/domain bias | Keep it ID/sequence/location-disjoint, deterministic, identical across models, and run the matched no-empty ablation |
+| Multi-label annotations make softmax metrics ambiguous | Store all labels, exclude seven multi-label train images from CE, include presence in target metrics, exclude them from single-label confusion/macro F1 |
 | Trans bobcat recall is poor | Report honestly; do not train on trans-test. Stretch KD is allowed only after Core completion |
-| PTQ loses accuracy | Use QAT; use quantization debugging; keep PTQ as a negative result |
-| QAT export/runtime path is unstable | E0 before training; pin compatible versions; fail early rather than improvise during Pi trial |
+| 224-square letterbox wastes useful pixels | Resolve the pre-registered 224x224-vs-256x192 control before M0 |
+| PTQ loses accuracy on depthwise MobileNetV2 | This is pre-registered; use QAT/quantization debugging and keep PTQ as a negative result if necessary |
+| QAT export/runtime path is unstable | P0 before training; pin compatible versions; fail early rather than improvise during Pi trial |
 | Structured pruning does not speed MobileNetV2 | Show real MAC reduction and measured lack of speedup; final model may be unpruned QAT |
-| C++ preprocessing silently differs | E1 golden tensor fixtures block deployment |
-| ORT C++ differs from Python | E3/E4 block deployment |
+| `gx10` latency misranks Cortex-A76 candidates | Use it only for pathology detection; shortlist by validation/MACs/size and select on Pi validation latency |
+| C++ preprocessing silently differs | P1 golden tensor fixtures block deployment |
+| ORT C++ differs from Python | P3/P4 block deployment |
+| Reduced JPEG decode changes decisions | Treat it as an accuracy candidate, not parity; keep only after P4 validation |
 | Remote Pi hides sensors/governor | Record unavailable values; use exposed `/proc`/`sysfs`; do not fabricate resource/energy claims |
 | Five-day trial is spent debugging | Exact ARM64 dry run and one-command benchmark are prerequisites |
+| Full test transfer consumes about 6 GB and rental time | Run frozen full accuracy on gx10; Pi receives the fixed benchmark/parity subset by default |
+| ARM64 binary/ABI differs between gx10 and Pi | Prefer one proven official ORT AArch64 artifact in both target-compatible environments; otherwise build from pinned source on Pi |
 | Scope creep | Only Core until Gate G; only crop-teacher KD afterward |
 | Public repo cannot store large models | GitHub Release/LFS plus hashes and download script |
 
@@ -1120,11 +1308,17 @@ Core is complete only when every item is true:
 ### Data and ML
 
 - [ ] Data manifests, hashes, distributions, and leakage assertions pass.
+- [ ] Official cis-val is preserved; fingerprinted `cis-val-clean` drives all
+      development decisions.
+- [ ] Multi-label train/evaluation rules and counts are tested.
 - [ ] Empty supplement is location-disjoint and reproducible.
+- [ ] Empty-supplement and input-shape controls are completed before M0 freeze.
 - [ ] M0, M1, M2, M3, and M4 results exist or a technically justified failed
       candidate is preserved and documented.
 - [ ] Thresholds use validation only.
-- [ ] Final model decision predates test evaluation.
+- [ ] Final optimized model is selected on Pi validation evidence before test
+      evaluation; `gx10` latency did not rank candidates.
+- [ ] Confirmation seeds 17/73 exist for M0 and the selected final transformation.
 - [ ] Cis/trans metrics and confidence intervals exist.
 
 ### Deployment and C++
@@ -1135,6 +1329,8 @@ Core is complete only when every item is true:
       another model inference per frame.
 - [ ] ARM64 dry run succeeds from a clean environment.
 - [ ] Pi baseline and optimized runs use the same application and protocol.
+- [ ] Full frozen cis-test/trans-test C++ evaluation runs on gx10; Pi parity subset
+      decisions match the frozen reference.
 - [ ] Latency, FPS, RSS, CPU utilization, model size, and available thermal data
       are recorded with raw evidence.
 
@@ -1171,10 +1367,10 @@ This section is dormant until Core completion.
 | S1 | Full frames plus GT crops as training augmentation | No teacher |
 | S2 | Full frame | Soft animal-class distribution from crop teacher |
 
-The crop teacher trains only on the 15 animal classes because empty frames have no
-box. If the Core student retains 16 outputs, KD is applied only on non-empty
-samples and compares the teacher distribution with the student's animal logits
-after excluding and renormalizing the `empty` dimension.
+The crop teacher trains on the 15 non-empty categories (14 animals plus `car`),
+because empty frames have no box. If the Core student retains 16 outputs, KD is
+applied only on non-empty samples and compares the teacher distribution with the
+student's non-empty logits after excluding and renormalizing the `empty` dimension.
 
 Required controls:
 

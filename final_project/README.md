@@ -69,8 +69,9 @@ Pi bundle, and raw evidence so the work can be reproduced and defended.
 Core is intentionally limited to one model and a lightweight configurable target
 policy:
 
-- full-frame MobileNetV2, width 1.0, input 224x224;
-- 16 outputs: 15 CCT-20 animal classes plus `empty`;
+- full-frame MobileNetV2, width 1.0; provisional 256x192 input, frozen after a
+  matched 224x224 control;
+- 16 outputs: 14 CCT-20 animal classes plus `car` and `empty`;
 - ImageNet-pretrained transfer learning;
 - generic `mode: any` target list with per-class thresholds;
 - calibrated bobcat policy as the primary graded configuration;
@@ -89,8 +90,9 @@ Core candidates:
 | M3 | Structured-pruned FP32 |
 | M4 | Structured-pruned + QAT |
 
-No candidate is assumed to win. The final optimized model is selected on
-validation evidence and then frozen before test evaluation.
+No candidate is assumed to win. Validation accuracy/MACs/size creates a pre-Pi
+shortlist; real Pi validation latency selects the final optimized model before
+test evaluation.
 
 Gate/cascade, object detection, physical GPIO, power measurement, separate
 per-species networks/model packs, multi-label simultaneous-species recognition,
@@ -102,7 +104,7 @@ locked until the complete Core submission passes its Definition of Done.
 
 ### Configurable target policy
 
-The model always computes the same 15 animal scores plus `empty`. Selecting one
+The model always computes 14 animal scores plus `car` and `empty`. Selecting one
 or several known animals changes only a YAML policy and adds no model inference:
 
 ```yaml
@@ -121,11 +123,12 @@ targets:
 The checked-in values above are schema examples, not final thresholds. The
 pipeline replaces them with validation-calibrated values bound to the final model.
 The bundle contains a bobcat-only policy, a per-class threshold catalog, and one
-validated multi-target example. Unknown or duplicate classes, `empty` as a target,
-invalid thresholds, unsupported modes, and hash mismatches are rejected.
+validated multi-target example. Unknown/duplicate classes, `car` or `empty` as a
+wildlife target, invalid thresholds, unsupported modes, and hash mismatches are
+rejected.
 
-Selecting any existing CCT-20 animal requires no retraining. Adding a species
-outside the 15-class map requires labelled data and fine-tuning. Detecting two
+Selecting any of the 14 existing CCT-20 animals requires no retraining. Adding a
+species outside the 16-class map requires labelled data and fine-tuning. Detecting two
 different species simultaneously in one frame would require a multi-label model
 or detector and is outside Core.
 
@@ -143,6 +146,17 @@ Primary benchmark: Caltech Camera Traps-20 (CCT-20).
 | trans-val | 1,725 | Validation at one unseen location |
 | trans-test | 23,275 | Final test at nine unseen locations |
 
+The official train and cis-val share 224 sequences affecting 270 cis-val images,
+including 10 bobcat images. The project preserves official cis-val but creates
+`cis-val-clean` with 3,214 images / 144 bobcat images for every development
+decision. All other relevant sequence intersections are zero.
+
+The metadata also contains a few distinct-class multi-label images. Their complete
+label sets are preserved; seven multi-label train images are excluded from
+single-label CE, while validation/test target metrics count bobcat as present
+whenever it occurs in the label set. Single-label confusion/macro metrics state
+their multi-label exclusions.
+
 The current downloadable split files contain 57,864 images in total. Test labels
 remain sealed until model, threshold, C++ binary, runtime options, preprocessing,
 and thread configuration are frozen.
@@ -151,6 +165,10 @@ The official CCT-20 train split currently contains no `empty` training frames.
 Core therefore adds a deterministic supplement of 5,000 full-CCT empty images,
 selected only from locations disjoint from all 20 CCT-20 locations. Only those
 images are downloaded; the full 105 GB CCT archive is not required.
+
+Before M0 is frozen, matched ablations test the 5k empty supplement and compare
+224x224 square letterbox with 256x192 landscape letterbox. These are controlled
+data/input decisions, not extra deployment models.
 
 Datasets and large image archives are never committed to the public repository.
 Versioned manifests, source URLs, hashes, and audit outputs are committed.
@@ -196,18 +214,18 @@ architecture from old files or conversation history.
 
 The implementation follows seven gated Core phases:
 
-1. **A — Repository and toolchain:** create structure, pin environments, prove
-   FP32/PTQ/QAT -> ONNX -> ARM64 C++ before full training.
-2. **B — Data:** freeze official splits and location-disjoint empty supplement;
-   pass all leakage/count/hash audits.
-3. **C — FP32 baseline:** train M0, calibrate the primary bobcat policy, define
-   the generic policy schema, export ONNX, and prove preprocessing/model/C++ parity.
-4. **D — Optimization:** build M1-M4 independently, compare on validation, freeze
-   one final optimized candidate.
+1. **A — Repository and toolchain:** pin environments and require an early saved-
+   JPEG -> C++ -> ORT -> policy -> benchmark vertical slice before full training.
+2. **B — Data:** freeze official/clean splits, multi-label rules, and the location-
+   disjoint empty supplement; pass every count/leakage/hash audit.
+3. **C — FP32 baseline:** resolve empty/input controls, train M0, calibrate bobcat,
+   define generic policy, export ONNX, and pass parity gates P1-P4.
+4. **D — Optimization:** build M1-M4 independently and freeze a deployable
+   validation/MACs/size shortlist, not a gx10-latency winner.
 5. **E — C++ and deployment:** implement/test the application, benchmark harness,
    system monitor, deployment bundle, and clean ARM64 dry run.
-6. **F — Raspberry Pi:** profile on validation, freeze, then run unchanged final
-   cis/trans accuracy and baseline-versus-optimized benchmarks.
+6. **F — Raspberry Pi:** select the optimized winner on Pi validation latency,
+   freeze, run full C++ test accuracy on gx10, and benchmark/parity-check on Pi.
 7. **G — Submission:** generate analysis, report, slides, public release, model
    artifacts, deployment bundle, and submission manifest.
 
@@ -298,8 +316,8 @@ environment variables.
 
 ### Rented Raspberry Pi 5
 
-The Pi is the only second execution environment and the only valid source of
-target latency/FPS/resource evidence. Its trial is measurement time, not normal
+The Pi is the only valid source of target latency/FPS/resource evidence. Its trial
+is measurement time, not normal
 development time. It receives a frozen deployment archive only after the clean
 `gx10` ARM64 dry run; then target smoke/parity tests are repeated before final
 benchmarks. `gx10` performance numbers must never be presented as Pi results. The
@@ -313,11 +331,11 @@ PLAN §8.
 
 No model reaches the Pi until all applicable gates pass:
 
-1. Python vs C++ preprocessing golden tensors.
-2. PyTorch vs ORT FP32 logits and decisions.
-3. Quantized graph/operator validation and framework-vs-ORT drift report.
-4. ORT Python vs ORT C++ scores and decisions.
-5. Python vs C++ validation dataset predictions/confusion matrix.
+1. P0: FP32/PTQ/QAT toolchain and ARM64 C++ execution.
+2. P1: Python vs C++ preprocessing golden tensors.
+3. P2: PyTorch vs ORT FP32 logits and decisions.
+4. P3: quantized graph/operator/runtime validation.
+5. P4: Python vs C++ validation dataset scores, decisions, and metrics.
 
 This is especially important because OpenCV decodes BGR, while the pretrained
 model expects RGB/ImageNet normalization.
@@ -326,15 +344,21 @@ model expects RGB/ImageNet normalization.
 
 ## Final evaluation
 
-Accuracy is target-centric and reported separately for cis-test and trans-test:
+Full frozen C++/ORT accuracy runs on `gx10` after the Pi validation freeze and is
+reported separately for cis-test and trans-test:
 
 - bobcat recall — primary;
 - bobcat precision and F2;
 - false-fire rate and fire rate;
-- macro F1 and per-class recall;
+- frame and sequence-balanced target recall;
+- per-class support and support-aware macro F1;
 - confusion matrix;
-- sequence-bootstrap 95% confidence intervals;
+- sequence-bootstrap metric and threshold intervals;
 - per-location bobcat recall on trans-test.
+
+The Pi repeats parity on a fixed validation subset and provides the authoritative
+performance measurements; transferring the full approximately 6 GB test image set
+to the rented Pi is optional.
 
 System results compare the same C++ application and protocol:
 
@@ -345,6 +369,11 @@ System results compare the same C++ application and protocol:
 - peak RSS and CPU utilization;
 - exposed frequency, temperature, and throttling status;
 - three process-level repetitions.
+
+Primary performance target: Pi p95 end-to-end latency <= 200 ms (>=5 FPS).
+Aspirational target: p95 <= 100 ms (about 10 FPS). Full/reduced JPEG decode,
+reference/fused preprocessing, ORT graph settings, threads, and memory settings are
+measured as bounded inference-level candidates.
 
 Latency is not presented as measured energy. There is no physical power meter.
 
@@ -407,8 +436,9 @@ demo/          sample command/output and optional short recording
 |---|---|
 | `Docker_VSCode/` | ARM64/C++/ONNX toolchain reference only |
 | `hw1/src/structured.py` | Starting point for dependency-aware structured pruning; must be adapted and tested |
-| `hw2`/`hw3` QAT code | Training-loop ideas only; Core requires a new deployable affine INT8 path proven in E0 |
+| `hw2`/`hw3` QAT code | Training-loop ideas only; Core requires a new deployable affine INT8 path proven in P0 |
 | `hw3/src/distill.py` | Post-Core crop-teacher KD Stretch only |
+| `hw4/` NAS/supernet | Search discipline, MBConv/width-space insight, and proxy-rank caveats only; no Core supernet because gx10 latency cannot rank Pi and NAS would add a second selection problem |
 
 Do not copy legacy preprocessing, input sizes, class counts, quantizers, or metrics
 without adapting them to DESIGN and proving parity.
@@ -439,7 +469,7 @@ Core completion is defined by the checklist in DESIGN §19 and Gate G in PLAN.
 
 Only after it passes may the project run the optional crop-teacher KD experiment:
 
-- crop teacher on the 15 animal classes;
+- crop teacher on the 15 non-empty classes (14 animals + `car`);
 - crop-augmentation control;
 - cross-view KD under the same student budget;
 - KD counts as successful only if it beats the crop-augmentation control.

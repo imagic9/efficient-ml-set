@@ -27,13 +27,14 @@ The executing agent must follow these rules:
 - use the rented Raspberry Pi 5 only for Phase F target-hardware verification
   and final measurements; never present `gx10` timings as Pi results;
 - keep bobcat as the primary graded target while implementing generic target-set
-  configuration over the same 15-animal output vector;
+  configuration over the 14 animal outputs; `car` and `empty` are not targets;
 - work only on Core until Gate G passes;
 - the only permitted post-Core Stretch is crop-teacher KD;
 - mark a task complete only when its listed artifact exists and its checks pass;
 - preserve commands, configs, logs, raw predictions, and raw timings;
 - never reconstruct slide/report numbers manually;
-- never inspect cis-test/trans-test labels before the freeze task;
+- never evaluate models or make decisions from cis-test/trans-test labels before
+  the freeze task; mechanical manifest/schema audits are allowed;
 - use validation data for model/runtime/thread decisions;
 - stop at a failed gate and fix the cause before continuing;
 - keep all paths and commands non-interactive and rerunnable;
@@ -65,33 +66,36 @@ Optimization candidates:
 - M3 — structured-pruned FP32;
 - M4 — structured-pruned + QAT.
 
-Critical path:
+Dependency overview:
 
-```text
-A0 -> A1 -> A2 -> A3
-                |
-                v
-B0 -> B1 -> B2 -> B3 -> B4
-                         |
-                         v
-C0 -> C1 -> C2 -> C3 -> C4 -> C5
-                         |
-                         v
-D1/D2/D3 -> D4 -> D5 -> D6
-                         |
-                         v
-E1 -> E2 -> E3 -> E4 -> E5 -> E6 -> E6a -> E7 -> E8
-                                                |
-                                                v
-F1 -> F2 -> F3 -> F4 -> F5
-                         |
-                         v
-G1 -> G2 -> G3 -> G4 -> G5 -> Gate G
+```mermaid
+flowchart TD
+  A0 --> A1 --> A2 --> A3
+  A3 --> A4 --> GA[Gate A]
+  A4 --> E1 --> E2 --> E3 --> E4 --> E5
+  GA --> B0 --> B1 --> B2 --> B3 --> B4
+  B4 --> C0
+  B4 --> C1
+  C0 --> C1A[C1a controls]
+  C1 --> C1A --> C2 --> C3 --> C4 --> C5
+  C5 --> D1
+  C5 --> D2
+  C5 --> D3 --> D4
+  D2 --> D5
+  D4 --> D5
+  D1 --> D6
+  D2 --> D6
+  D4 --> D6
+  D5 --> D6
+  D6 --> E6
+  E5 --> E6 --> E7 --> E8
+  E8 --> F1 --> F2 --> F3 --> F4 --> F5
+  F5 --> G1 --> G2 --> G3 --> G4 --> G5 --> GG[Gate G]
 ```
 
-Some C++ work may proceed against the M0 smoke-test export while optimization is
-running, but no final deployment bundle is built before D6 freezes the selected
-model.
+A4 implements the minimal interfaces later hardened by E1-E5 against trained M0
+and the optimized shortlist. No Pi bundle is frozen before D6 produces the
+complete deployable shortlist.
 
 ---
 
@@ -138,7 +142,7 @@ Depends on: A1.
 
 **Outputs:** lockfile(s), environment setup scripts, and environment JSON schema.
 
-### A3 — E0 toolchain spike
+### A3 — P0 toolchain spike
 
 Depends on: A2.
 
@@ -151,8 +155,23 @@ Depends on: A2.
 - [ ] Run a fixture and save ORT profiles/operator coverage.
 - [ ] Pin versions only after FP32/PTQ/QAT all work end to end.
 
-**Gate A:** all three model forms load and execute in ARM64 C++; the QAT artifact
-is genuinely quantized and no unsupported toolchain assumption remains.
+**Output:** P0 evidence that all three model forms execute in ARM64 C++ and the
+QAT artifact is genuinely quantized.
+
+### A4 — Mandatory early C++ vertical slice
+
+Depends on: A3. This task implements the minimal smoke subset of E1-E5.
+
+- [ ] Export a deterministic 16-output smoke model and class map.
+- [ ] Run saved JPEG -> C++ decode/preprocess -> ORT -> generic policy ->
+      `SHUTTER_TRIGGER` JSON.
+- [ ] Produce schema-valid per-stage benchmark JSON and system-monitor output.
+- [ ] Build and install a provisional ARM64 deployment bundle in the clean
+      target-compatible environment.
+- [ ] Preserve the exact command, output, ORT profile, and bundle checksum.
+
+**Gate A:** P0 passes and the thin C++ inference/benchmark/deployment path works
+end to end before data preparation or long training.
 
 ---
 
@@ -176,9 +195,15 @@ Depends on: B0.
 
 - [ ] Parse train, cis-val, cis-test, trans-val, and trans-test JSON.
 - [ ] Freeze the exact 16-class order in `configs/data/classes.yaml`.
-- [ ] Emit deterministic JSONL manifests with image, label, location, sequence,
-      dimensions, and source metadata.
+- [ ] Assert the class set is 14 animals plus `car` and `empty`; mark only the 14
+      animal classes as selectable policy targets.
+- [ ] Emit deterministic JSONL manifests with complete `labels`, optional
+      `primary_label`, location, sequence, dimensions, and source metadata.
 - [ ] Reconcile counts to 13,553 / 3,484 / 15,827 / 1,725 / 23,275.
+- [ ] Fingerprint the official train/cis-val overlap as exactly 224 sequences,
+      270 cis-val images, and 10 bobcat images.
+- [ ] Generate immutable `cis_val_clean.jsonl` with 3,214 images / 144 bobcat
+      images by removing every train-overlapping `seq_id`.
 
 **Outputs:** five versioned manifests plus category/location summaries.
 
@@ -191,7 +216,7 @@ Depends on: B1.
       all 20, stratified across locations/sequences with seed 42.
 - [ ] Download selected images only.
 - [ ] Compute image checksums and emit the supplement manifest.
-- [ ] Confirm no selected image/location/sequence leaks into CCT-20.
+- [ ] Confirm no selected image ID, sequence, or location leaks into CCT-20.
 
 **Output:** frozen `cct_empty_train_v1.jsonl` and checksums.
 
@@ -200,6 +225,8 @@ Depends on: B1.
 Depends on: B1, B2.
 
 - [ ] Implement dataset readers and manifest validation.
+- [ ] Exclude the seven distinct-class multi-label train images from CE while
+      retaining full label sets for target-presence evaluation.
 - [ ] Implement canonical aspect-preserving resize/pad/RGB/NCHW/ImageNet
       normalization from DESIGN §5.5.
 - [ ] Implement training-only photometric augmentation without animal-removing
@@ -215,13 +242,16 @@ Depends on: B3.
 
 - [ ] Implement every assertion in DESIGN §5.3.
 - [ ] Produce class, location, sequence, split, and supplement statistics.
+- [ ] Verify multi-label counts 7 / 0 / 1 / 61 / 9 across the five official
+      splits and test target-presence semantics.
 - [ ] Render/inspect representative RGB, IR-like, empty, bobcat, small, portrait,
       and landscape samples.
 - [ ] Complete and execute `notebooks/01_data_audit.ipynb` from a clean kernel.
 - [ ] Store machine-readable audit output and figures.
 
-**Gate B:** all counts, category mappings, IDs, sequence/location disjointness,
-paths, and hashes pass. No model training begins before Gate B.
+**Gate B:** every DESIGN §5.3 count, known-overlap fingerprint, clean-split,
+category, multi-label, ID/sequence/location, path, and hash assertion passes. No
+model training begins before Gate B.
 
 ---
 
@@ -232,28 +262,46 @@ paths, and hashes pass. No model training begins before Gate B.
 Depends on: Gate B.
 
 - [ ] Select at least 20 validation fixtures covering edge cases.
-- [ ] Save canonical Python tensors and preprocessing metadata.
-- [ ] Freeze fixture hashes for later C++ parity.
+- [ ] Freeze raw image hashes and preprocessing metadata; tensor shapes remain
+      provisional until C1a selects the input contract.
 
-**Output:** `tests/fixtures/preprocessing/` golden set.
+**Output:** frozen raw fixture set.
 
 ### C1 — Model and training engine
 
 Depends on: Gate B.
 
-- [ ] Implement ImageNet-pretrained MobileNetV2 width 1.0, input 224, 16 outputs.
+- [ ] Implement ImageNet-pretrained MobileNetV2 width 1.0 with configurable fixed
+      input shape and 16 outputs (14 animals + `car` + `empty`).
 - [ ] Implement effective-number weighted cross-entropy and persist its numeric
       class-weight vector.
 - [ ] Implement two-phase head/full fine-tuning, checkpointing, early stopping,
       history logging, and run provenance.
-- [ ] Implement cis-val/trans-val target metrics and selection score.
+- [ ] Implement cis-val-clean/trans-val frame and sequence-balanced target metrics,
+      support-aware macro F1, multi-label presence semantics, and selection score.
 - [ ] Add unit and smoke tests.
 
 **Output:** tested training/evaluation engine and M0 config.
 
+### C1a — Data and input controls
+
+Depends on: C0, C1.
+
+- [ ] Run the matched no-empty 15-output versus 5k-empty 16-output ablation from
+      DESIGN §5.2 and record cis/trans empty false-fire effects.
+- [ ] Run the matched 224x224 versus 256x192 aspect-preserving input control.
+- [ ] Select/freeze the Core input using cis-val-clean/trans-val target metrics,
+      real-pixel utilization, and MACs; prefer 256x192 when statistically tied.
+- [ ] Permit 320x240 only if both planned inputs fail the bobcat-recall rule.
+- [ ] Generate canonical Python golden tensors for the selected input shape and
+      freeze their hashes.
+
+**Output:** `results/ablations/data_input_decision.md`, frozen preprocessing config,
+and completed golden fixture set.
+
 ### C2 — Train primary baseline
 
-Depends on: C1.
+Depends on: C1a.
 
 - [ ] Train seed 42 on gx10.
 - [ ] Save best/last checkpoints and optimizer/scheduler state.
@@ -267,11 +315,13 @@ Depends on: C1.
 
 Depends on: C2.
 
-- [ ] Search thresholds using cis-val and trans-val only.
-- [ ] Apply the two-domain 90% recall rule from DESIGN §6.3.
+- [ ] Search thresholds using cis-val-clean and trans-val only.
+- [ ] Apply the two-domain 90% sequence-balanced recall rule from DESIGN §6.3.
+- [ ] Bootstrap `seq_id` clusters and save the threshold distribution/95% interval.
 - [ ] Save `artifacts/policies/bobcat_v1.yaml` bound to class map/model hash.
 - [ ] Implement the versioned generic policy schema with `mode: any`, non-empty
-      unique animal targets, per-class thresholds, and model/class-map hashes.
+      unique animal targets, per-class thresholds, and model/class-map hashes;
+      reject `car` and `empty` as wildlife targets.
 - [ ] Produce validation precision/recall/F2/false-fire/fire-rate results and score
       distributions.
 
@@ -283,8 +333,8 @@ report.
 Depends on: C3, C0.
 
 - [ ] Export FP32 ONNX with fixed input/output contract and metadata.
-- [ ] Pass E1 preprocessing parity against the reference C++ preprocessor.
-- [ ] Pass E2 PyTorch-vs-ORT FP32 parity.
+- [ ] Pass P1 preprocessing parity against the reference C++ preprocessor.
+- [ ] Pass P2 PyTorch-vs-ORT FP32 parity.
 - [ ] Pass initial ORT Python-vs-C++ fixture parity.
 - [ ] Save parity tolerances, raw comparisons, hashes, and failures if any.
 
@@ -314,9 +364,10 @@ Depends on: Gate C.
 - [ ] Build the fixed 1,024-image calibration manifest from training data only.
 - [ ] Generate MinMax, Entropy, and Percentile static INT8 candidates.
 - [ ] Inspect QDQ/QOperator coverage and remaining FP32 nodes.
+- [ ] Record the pre-registered MobileNetV2 PTQ risk before viewing results.
 - [ ] Run quantization debugging for material accuracy drops.
 - [ ] Calibrate candidate-specific bobcat policies on validation.
-- [ ] Pass E3/E4 quantized ORT/C++ validation for the selected M1 candidate.
+- [ ] Pass P3/P4 quantized ORT/C++ validation for the selected M1 candidate.
 
 **Output:** selected M1 model, policy, profile, metrics, and comparison row.
 
@@ -329,7 +380,7 @@ Depends on: Gate C, A3.
 - [ ] Search only the documented low learning-rate range on validation.
 - [ ] Export a genuinely quantized ONNX graph.
 - [ ] Inspect integer operator coverage/profile.
-- [ ] Calibrate policy and pass E3/E4.
+- [ ] Calibrate policy and pass P3/P4.
 
 **Output:** selected M2 model, policy, profile, metrics, and comparison row.
 
@@ -337,8 +388,8 @@ Depends on: Gate C, A3.
 
 Depends on: Gate C.
 
-- [ ] Adapt `hw1/src/structured.py` to 224x224 MobileNetV2, residual/depthwise
-      dependency groups, 16 outputs, and bobcat validation metrics.
+- [ ] Adapt `hw1/src/structured.py` to the frozen MobileNetV2 input, residual/
+      depthwise dependency groups, 16 outputs, and bobcat validation metrics.
 - [ ] Profile M0 parameters/MACs.
 - [ ] Produce sensitivity evidence for dependency groups.
 - [ ] Add pruning correctness tests.
@@ -363,24 +414,27 @@ Depends on: D3.
 Depends on: D4, D2.
 
 - [ ] Apply the validated QAT recipe to the selected M3 FP32 checkpoint.
-- [ ] Export, profile, calibrate, and pass E3/E4.
+- [ ] Export, profile, calibrate, and pass P3/P4.
 - [ ] Add M4 to the comparison table without assuming it is the winner.
 
 **Output:** M4 model, policy, profile, metrics, and comparison row.
 
-### D6 — Freeze final optimized model
+### D6 — Freeze deployable pre-Pi shortlist
 
 Depends on: D1, D2, D4, D5.
 
 - [ ] Reject any candidate failing correctness/export/parity gates.
 - [ ] Apply DESIGN §8.5 validation selection rules.
-- [ ] Use the E0-compatible ARM64 microbenchmark for pre-Pi latency evidence.
-- [ ] Write `results/model_selection/decision.md`, including rejected candidates.
-- [ ] Freeze selected model, policy, preprocessing, ORT config, class map, thread
-      candidates, and hashes before test labels are opened.
+- [ ] Use `gx10` latency only to detect float fallback/pathologies, never to rank
+      Cortex-A76 candidates.
+- [ ] Remove candidates dominated on validation bobcat F2, MACs, and model size.
+- [ ] Write `results/model_selection/pre_pi_shortlist.md`, including every
+      rejection and all non-dominated deployable candidates.
+- [ ] Freeze models, candidate-specific bobcat policies, preprocessing, class map,
+      and hashes for Pi validation; keep test labels sealed.
 
-**Gate D:** one final optimized candidate is frozen by validation evidence. The
-most complicated candidate does not win automatically.
+**Gate D:** M0 and the complete deployable optimized shortlist are frozen for Pi
+validation. No final optimized winner has been selected using `gx10` latency.
 
 ---
 
@@ -388,16 +442,19 @@ most complicated candidate does not win automatically.
 
 ### E1 — C++ project foundation
 
-Depends on: A3; may start before Gate D using M0.
+Depends on: A4; harden the smoke implementation using M0.
 
 - [ ] Replace the 145-line course smoke test with a C++17 application/library
       structure, tests, configuration, and CLI.
 - [ ] Implement RAII/error/logging conventions and deterministic JSON schemas.
 - [ ] Pin the ORT CPU EP build and compiler flags.
+- [ ] Prefer one proven official ONNX Runtime Linux AArch64 artifact for the clean
+      `gx10` target environment and Pi; fall back to pinned source build only if
+      P0 proves the artifact incompatible.
 
 ### E2 — Preprocessing
 
-Depends on: E1, C0.
+Depends on: E1, C0; smoke path is provisional until C1a freezes the input.
 
 - [ ] Implement correct reference preprocessing.
 - [ ] Implement fused/preallocated preprocessing.
@@ -413,8 +470,8 @@ Depends on: E1, C4.
       each with its own threshold; Core combination semantics are `mode: any`.
 - [ ] Implement `SHUTTER_TRIGGER=0/1` output with selected scores and passing
       targets in the structured inference result.
-- [ ] Add single-target, multi-target, exact-boundary, empty/duplicate/unknown
-      target, unsupported-mode, wrong-model, class-map, and threshold-range tests.
+- [ ] Add single-target, multi-target, exact-boundary, `car`/`empty`/duplicate/
+      unknown target, unsupported-mode, wrong-model, class-map, and threshold tests.
 
 ### E4 — Dataset runner
 
@@ -422,6 +479,7 @@ Depends on: E2, E3.
 
 - [ ] Consume manifests deterministically.
 - [ ] Emit ordered JSONL scores, classes, decisions, errors, and stage timings.
+- [ ] Preserve complete label sets and match multi-label target-presence metrics.
 - [ ] Define corrupt/missing-image behavior.
 - [ ] Match Python validation outputs and confusion matrix.
 
@@ -435,42 +493,35 @@ Depends on: E4.
 - [ ] Capture available frequency/temperature/throttling signals and explicit
       `unavailable` values.
 - [ ] Validate output schemas and percentile calculations.
+- [ ] Report whether Pi p95 end-to-end meets the primary 200 ms / 5 FPS target
+      and the aspirational 100 ms / 10 FPS target; do not treat them as measured
+      until Phase F.
 
 ### E6 — Correctness and C++ optimization experiment
 
 Depends on: E5, Gate D.
 
-- [ ] Pass E1-E4 for M0 and the frozen optimized model.
+- [ ] Pass P1-P4 for M0 and every shortlisted optimized model.
 - [ ] Measure reference-vs-fused preprocessing with model/config held constant.
+- [ ] Compare full JPEG decode against reduced 1/2 and 1/4 decode; test 1/8 only
+      with explicit validation accuracy/decision-drift evidence.
+- [ ] Measure supported ORT graph levels, threads 1/2/4, memory arena on/off, and
+      stable CPU affinity if exposed; change one factor at a time.
+- [ ] Keep reduced decode only if validation bobcat metrics meet the predeclared
+      tolerance; it is not preprocessing parity.
 - [ ] Run Python-vs-C++ validation dataset parity.
 - [ ] On `gx10`, run all unit/integration/self-tests under both a clean native
       CPU-only build and the target-compatible ARM64 build.
 
 **Gate E6:** the C++ application is correct before performance claims are made.
 
-### E6a — Final-model target-policy catalog
-
-Depends on: D6, E3, E6.
-
-- [ ] Calibrate a threshold for each of the 15 animal classes on validation only.
-- [ ] Use the two-domain rule where both domains have positive support; otherwise
-      use the documented pooled-F2 fallback and flag the limitation.
-- [ ] Generate a final-model-bound threshold catalog with per-class support,
-      calibration status, metrics, and hashes.
-- [ ] Generate and validate `bobcat_coyote_v1.yaml` as the multi-target demo;
-      thresholds must come from the catalog, never placeholders.
-- [ ] Record combined validation trigger/false-fire metrics for the demo policy.
-
-**Output:** threshold catalog, primary bobcat policy, validated multi-target demo,
-and policy calibration evidence.
-
 ### E7 — Raspberry Pi deployment bundle
 
-Depends on: E6a.
+Depends on: E6.
 
-- [ ] Package C++ executable, required runtime/install instructions, M0 and final
-      ONNX models, policies, class map, validation benchmark manifest, sample
-      images, `install.sh`, `run_demo.sh`, and checksums.
+- [ ] Package C++ executable, required runtime/install instructions, M0 and every
+      shortlisted ONNX model/policy, class map, validation benchmark/parity subset,
+      sample images, `install.sh`, `run_demo.sh`, and checksums.
 - [ ] Generate bundle manifest with commit/model/policy hashes.
 - [ ] Test installation in a clean target-compatible container on `gx10` without
       access to the host training environment or unbundled artifacts.
@@ -513,9 +564,9 @@ only measurements produced on the rented Pi 5 count as target-hardware evidence.
 
 Depends on: F1.
 
-- [ ] Run validation benchmark for M0 and all deployable Core candidates.
-- [ ] Sweep threads 1/2/4.
-- [ ] Run ORT/C++ profiles and identify bottlenecks.
+- [ ] Run the same fixed validation benchmark for M0 and every shortlisted model.
+- [ ] Measure the bounded decode/preprocessing/ORT/thread/runtime matrix from E6.
+- [ ] Run ORT/C++ profiles and identify bottlenecks; do not open test labels.
 - [ ] Make only safe runtime fixes validated against parity tests.
 
 ### F3 — Day 3: repeat validation and freeze
@@ -523,19 +574,30 @@ Depends on: F1.
 Depends on: F2.
 
 - [ ] Repeat validation after any safe fix.
-- [ ] Freeze git commit, binary, models, policies, preprocessing mode, ORT options,
-      and thread count.
+- [ ] Select the final optimized model using validation accuracy, real Pi latency,
+      model size, and simplicity; write `final_decision.md`.
+- [ ] On `gx10`, train confirmation seeds 17/73 for the selected transformation
+      with frozen hyperparameters; these measure variability and do not replace
+      the seed-42 deployment artifact.
+- [ ] Calibrate a final-model threshold catalog for all 14 animals; flag classes
+      lacking support, generate the bobcat policy and validated
+      `bobcat_coyote_v1.yaml`, and record combined validation false-fire metrics.
+- [ ] Freeze git commit, binary, selected model, policies, preprocessing/decode
+      mode, ORT options, and thread count.
 - [ ] Archive freeze manifest before test evaluation.
 
 **Freeze gate:** no artifact or configuration changes after this point.
 
-### F4 — Day 4: final test and benchmark
+### F4 — Day 4: frozen full test and Pi benchmark
 
 Depends on: F3.
 
-- [ ] Run final cis-test and trans-test C++ evaluation.
+- [ ] On `gx10`, run full frozen cis-test and trans-test through the exact C++/ORT
+      model/policy/runtime artifacts; save frame and sequence-aware metrics.
 - [ ] Run full M0-vs-optimized Pi benchmark, at least 1,000 frames, three separate
       processes/repetitions as specified.
+- [ ] Run the fixed Pi parity subset and match decisions to the frozen gx10
+      reference; full test transfer to Pi is optional, not required.
 - [ ] Capture raw per-frame predictions/timings/system logs.
 - [ ] Copy artifacts off the Pi immediately.
 
@@ -543,15 +605,15 @@ Depends on: F3.
 
 Depends on: F4.
 
-- [ ] Repeat the frozen benchmark/evaluation without changes.
+- [ ] Repeat the frozen Pi benchmark/parity run without changes.
 - [ ] Compare runs and investigate only measurement anomalies, without tuning.
 - [ ] Back up every result, log, environment file, binary, and model.
 - [ ] Copy and checksum all raw Pi evidence back to `gx10`.
 - [ ] Verify result schemas and hashes before the trial expires.
 
 **Gate F:** baseline and optimized Pi evidence contains latency, FPS, RSS, CPU
-utilization, model size, available thermal/frequency data, accuracy, and raw
-repetitions under a frozen protocol.
+utilization, model size, available thermal/frequency data, parity, and raw
+repetitions under a frozen protocol; full frozen test accuracy exists from gx10.
 
 ---
 
@@ -571,8 +633,10 @@ Depends on: G1.
 
 - [ ] Complete and clean-run `notebooks/02_results_analysis.ipynb`.
 - [ ] Generate every table/figure required by DESIGN §17.
-- [ ] Compute sequence-bootstrap confidence intervals and per-location trans
-      recall.
+- [ ] Compute sequence-bootstrap metric/threshold intervals, support-aware macro
+      F1, official-vs-clean cis-val effects, and per-location trans recall.
+- [ ] Report multi-label exclusions for confusion/macro metrics and retain those
+      images in target-presence metrics.
 - [ ] Select representative failure cases without hiding negative results.
 
 ### G3 — Final report
@@ -622,14 +686,14 @@ This phase is locked until Gate G. It must not alter the frozen Core release.
 
 - [ ] Build GT-crop manifests using train boxes only.
 - [ ] Define and test multi-box/padding behavior.
-- [ ] Train a 15-animal-class crop teacher.
+- [ ] Train a 15-non-empty-class crop teacher (14 animals + `car`).
 
 ### S2 — fair control and KD
 
 - [ ] S0: reproduce Core FP32 student budget.
 - [ ] S1: crop augmentation without teacher.
 - [ ] S2: cross-view KD with identical student initialization/budget.
-- [ ] Apply KD only to non-empty samples and align 15 animal logits correctly.
+- [ ] Apply KD only to non-empty samples and align all 15 non-empty logits.
 
 ### S3 — decision
 
