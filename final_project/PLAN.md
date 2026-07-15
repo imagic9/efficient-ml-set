@@ -208,6 +208,36 @@ Depends on: A1.
 
 **Outputs:** lockfile(s), environment setup scripts, and environment JSON schema.
 
+**Findings so far (2026-07-15).** All pins live in `configs/env/pins.env`, the
+single source of truth both the Dockerfile and the setup scripts read.
+
+*ORT is not a compatibility risk.* The official aarch64 tarball needs at most
+`GLIBC_2.27` / `GLIBCXX_3.4.21` and links only standard system libraries — far
+below bookworm's 2.36. One identical ORT binary therefore serves the gx10
+container and the Pi, which is the cheapest de-risking available. Re-verify on any
+bump: it is a property of their build, not a promise.
+
+*Version alignment is a parity concern, not hygiene.* The first resolve produced
+Python ORT 1.27.0 against C++ 1.27.1, and Python OpenCV **5.0.0** against C++
+4.6.0. P3 compares ORT Python with ORT C++, and P1 compares the two preprocessing
+implementations — under a version split both gates would still pass or fail, but
+about the distance between two upstream releases rather than between our own two
+call sites. ORT is now 1.27.0 on both sides (PyPI publishes no 1.27.1 wheel;
+matching beats newer). OpenCV Python is pinned to the newest 4.x.
+
+*One gap is left open on purpose.* C++ OpenCV stays at bookworm's 4.6.0 because
+that is what the Pi can have, against Python's 4.13. Only the `INTER_LINEAR`
+resize could differ — decode, BGR→RGB, pad, scale and normalise are trivially
+defined. **P1 must quantify it**; if drift exceeds tolerance, the answer is to
+build a matching OpenCV in the container and bundle those `.so` to the Pi. Measure
+before deciding.
+
+*The training venv is isolated on purpose.* Not `~/efficientml/venv`, which sets
+`include-system-site-packages=true` and inherits ~5 GB from `~/.local`; a lockfile
+from there would describe an environment we neither control nor can reproduce.
+`setup_gx10.sh` asserts the isolation before installing and fails if CUDA is
+missing rather than silently training on CPU.
+
 ### A3 — P0 toolchain spike
 
 Depends on: A2.
