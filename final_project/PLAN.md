@@ -546,25 +546,52 @@ A4's artifacts were explicitly marked provisional for exactly this reason.
 
 Depends on: B1.
 
-- [ ] Extract all 20 CCT-20 location IDs.
-- [ ] Select exactly 5,000 full-CCT `empty` images from locations disjoint from
+- [x] Extract all 20 CCT-20 location IDs.
+- [x] Select exactly 5,000 full-CCT `empty` images from locations disjoint from
       all 20, stratified across locations/sequences with seed 42.
-- [ ] Download selected images only (~2.1 GB, served at original resolution).
-- [ ] **Downsize every image to max 1024 px per side** per DESIGN §5.2 step 7,
+- [x] Download selected images only (~2.1 GB, served at original resolution).
+- [x] **Downsize every image to max 1024 px per side** per DESIGN §5.2 step 7,
       matching the `_sm` archive. Record the resampling filter and JPEG quality in
       the data config. Without this the supplement arrives at ~2048 px while every
       CCT-20 split is 1024 px, making resolution a shortcut feature perfectly
       correlated with `empty` — and one that fails silently, because val/test
       contain only `_sm` frames.
-- [ ] Compute original and downsized checksums; emit the supplement manifest with
+- [x] Compute original and downsized checksums; emit the supplement manifest with
       both dimension sets.
-- [ ] **Run the supplement-versus-CCT-20 shortcut probe.** Train a small binary
+- [x] **Run the supplement-versus-CCT-20 shortcut probe.** Train a small binary
       classifier to separate the two pools. Near chance means the confound is
       closed; a materially higher score blocks training and is recorded.
-- [ ] Confirm no selected image ID, sequence, or location leaks into CCT-20.
+- [x] Confirm no selected image ID, sequence, or location leaks into CCT-20.
 
 **Output:** frozen `cct_empty_train_v1.jsonl`, checksums, and the shortcut-probe
 result.
+
+**Done 2026-07-15.** 5,000 empty frames from 106 locations / 3,044 sequences, seed 42,
+max single-camera share **4.4%**. All fetched, 0 failures, 4,955 downsized (45 were
+already within the cap and are re-encoded anyway — uniform treatment, so no frame gets
+one JPEG generation while its neighbour gets two). 1.16 GB on disk.
+
+**Shortcut probe: 0.5775 held-out accuracy against a chance of 0.50** — below the 0.60
+attention threshold, so the resolution/encoding confound is closed as far as the probe
+can tell. The residual ~8% is consistent with the *unavoidable* location-disjoint
+background difference (rule 3), which the probe cannot distinguish from encoding by
+construction. The report says so rather than claiming the supplement is pristine.
+
+**A silent bug that would have voided rule 3 entirely.** The two metadata files disagree
+about a type: full CCT stores `location` as a string (`"26"`), CCT-20 as an integer
+(`38`). So `image["location"] in cct20_locations` is `"26" in {26, 38}` — **False for
+every image**. Rule 3 would have been disabled and the supplement drawn from the very
+cameras it must avoid, with nothing crashing. Measured: the raw comparison finds 0
+overlapping images, the normalised one finds 32,255. Fixed by `normalise_location`, and
+the selector now **refuses to proceed if rule 3 rejects zero candidates** — because zero
+is not a clean dataset, it is a broken comparison. It now rejects 3,917.
+
+**Azure is 18x slower than GCP for per-image fetches**, and the retry loop was hiding it.
+Measured from gx10 over 48 concurrent images: Azure 40 img/min with 4 of 48 failing, GCP
+740 img/min with none, GCP at 48 workers 2,144 img/min. The full 5,000 would have taken
+**over two hours** on Azure and took ~4 minutes on GCP. LILA mirrors the same bytes on
+GCP, AWS and Azure; all three are recorded in `LILA_IMAGE_MIRRORS`. Re-measure rather
+than inherit this.
 
 ### B3 — Implement data and preprocessing code
 
@@ -598,11 +625,11 @@ config-fingerprinted preprocessing cache.
 
 Depends on: B3.
 
-- [ ] Implement every assertion in DESIGN §5.3.
-- [ ] Produce class, location, sequence, split, and supplement statistics.
-- [ ] Verify multi-label counts 7 / 0 / 1 / 61 / 9 across the five official
+- [x] Implement every assertion in DESIGN §5.3.
+- [x] Produce class, location, sequence, split, and supplement statistics.
+- [x] Verify multi-label counts 7 / 0 / 1 / 61 / 9 across the five official
       splits and test target-presence semantics.
-- [ ] Emit the per-class validation support table (images and sequences on
+- [x] Emit the per-class validation support table (images and sequences on
       cis-val-clean and trans-val) and assert that the animal classes with zero
       validation positives are exactly `deer` and `fox`, while `badger` has
       exactly one positive image / one sequence. Record all three as unavailable
@@ -610,11 +637,38 @@ Depends on: B3.
 - [ ] Render/inspect representative RGB, IR-like, empty, bobcat, small, portrait,
       and landscape samples.
 - [ ] Complete and execute `notebooks/01_data_audit.ipynb` from a clean kernel.
-- [ ] Store machine-readable audit output and figures.
+- [x] Store machine-readable audit output and figures. *(audit output done;
+      figures belong with the notebook item above)*
 
 **Gate B:** every DESIGN §5.3 count, known-overlap fingerprint, clean-split,
 category, multi-label, ID/sequence/location, path, and hash assertion passes. No
 model training begins before Gate B.
+
+**PASSED 2026-07-15**, 43/43 (`results/data_audit/gate_b.json`):
+
+```bash
+python -m wildlife_trigger.data.audit --manifests-dir data/manifests ...
+# GATE B PASSED — 43 checks, 0 failed
+```
+
+Every §5.3 assertion holds on the real download: split counts, unique IDs, no image in
+two splits, the known 224/270/10 overlap, `cis_val_clean` at 3,214/144, all four
+must-be-empty sequence intersections, train locations disjoint from both trans splits,
+the supplement disjoint on ID/sequence/location and capped at 1024, multi-label counts
+7/0/1/61/9, and the shortcut probe near chance.
+
+The validation support table reproduces DESIGN §4 **exactly** — bobcat 937 img / 315 seq
+(= 144 cis-val-clean + 793 trans-val), badger exactly 1/1, deer and fox exactly 0. So
+the catalog really does contain 11 selectable targets and three that no threshold can
+be defended for. That was a design claim; it is now a measurement.
+
+The gate prints the recorded source hashes on any failure, because DESIGN §5.3's rule is
+that these counts fingerprint a specific upstream download: if one breaks, the first
+question is whether LILA republished — never edit an expected number to make it pass.
+
+**Outstanding (does not gate training):** the two notebook/figure items above are
+presentation deliverables. Gate B's condition is the assertion suite, which passes, so
+Phase C is permitted. The notebook is scheduled with the other reporting work in G.
 
 ---
 
