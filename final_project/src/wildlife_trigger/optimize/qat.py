@@ -5,26 +5,49 @@ DESIGN §8.2 deliberately does not pre-select a QAT library: the tool is an *out
 of parity gate P0, not an input to it. This module implements the first candidate
 on that list — fake-quant modules we place ourselves, exported with
 `torch.onnx.export` — chosen first because the export semantics are then ours
-rather than a library's. If it yields a QDQ graph ORT executes as integer, P0 stops
-here and `pytorch-quantization` / `torchao` are never introduced.
+rather than a library's.
 
-Three decisions are load-bearing; each is the kind of thing that silently produces
-a float graph carrying rounded weights instead of a quantized one:
+## What P0 measured, and why this file looks the way it does
 
-1. **BatchNorm is folded into Conv before QAT, not after.** Fake-quantizing a
-   weight and *then* folding BN rescales that weight by gamma/sigma, moving it off
-   the quantization grid the scales describe — the exported model's QDQ scales
-   would be wrong in a way nothing downstream detects. Folding first makes the
-   weight that is quantized the weight that is deployed. DESIGN §8.2 already plans
-   to freeze BN statistics after stabilization; folding is that limit case, and it
-   means M2 must fine-tune in FP32 briefly *before* this stage rather than during.
-2. **Weights are per-channel symmetric, activations per-tensor affine.** That is
-   what ORT's S8S8 QDQ representation consumes (§8.1). Per-channel symmetric pins
-   weight zero-points at 0, which is what the ARM64 signed dot-product kernels
-   want.
-3. **Observers calibrate first, then freeze; only then does the STE train.**
-   Training against a scale that is still moving optimises the weights against a
-   grid that no longer exists by the time it is exported.
+The obvious construction — fake-quant on each convolution's *input* and weight,
+which is what `pytorch-quantization` and most TensorRT-oriented flows emit — was
+tried first and **failed**, on 2026-07-15, on gx10:
+
+    optimized graph: 45 FusedConv, 5 Conv, only 2 QLinearConv
+    float kernels executed: FusedConv x145, Conv x15, Gemm x3
+
+That is the exact failure DESIGN §8.2 warns about: a float graph carrying rounded
+weights. The cause is visible in the optimized graph rather than inferred. ORT
+matches `DQ -> Conv -> Q` to build a QLinearConv, and MobileNetV2's ReLU6 sits
+between the convolution and the next quantizer. ORT's float-level
+ConvActivationFusion reaches `Conv + Clip -> FusedConv` first, and a FusedConv can
+never match the QDQ rule afterwards.
+
+The lesson is worth more than the fix: **the QAT library is not the axis that
+matters — QDQ placement against ORT's fusion rules is.** Candidates 2 and 3
+(`pytorch-quantization`, `torchao`) place QDQ the same input-side way, because they
+target TensorRT, which fuses `DQ -> Conv -> ReLU` happily. Swapping library would
+have reproduced this failure with more dependencies.
+
+So this module quantizes **every tensor boundary on the output side**, which is the
+canonical QDQ form ORT consumes and the same shape ORT's own PTQ quantizer
+produces: input, each convolution output, each residual add, the pooled vector, and
+the classifier output.
+
+## The ReLU6 subtlety, and why it is exact rather than convenient
+
+To give ORT `DQ -> Conv -> Q`, ReLU6 must not sit between the convolution and its
+quantizer. It is *removed at export*, and this is exact, not an approximation:
+
+  - the quantizer observes post-ReLU6 activations, so its range is [0, m], m <= 6;
+  - a fake-quant over [0, m] already clamps its input to [0, m];
+  - so for any input, relu6-then-quantize and quantize-alone produce identical
+    output — both clamp to [0, m] on the same grid.
+
+ORT's PTQ quantizer performs precisely this removal, which is why the PTQ graph has
+no Clip nodes either. The argument is checked numerically by
+`verify_relu6_removal_is_exact` rather than trusted: an exactness claim that is only
+prose is how a silent accuracy regression enters.
 
 Usage (spike only):
     python -m wildlife_trigger.optimize.qat --output m2_qat.onnx --steps 20
@@ -38,12 +61,14 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.ao.quantization import FakeQuantize
 from torch.ao.quantization.observer import (
     MovingAverageMinMaxObserver,
     MovingAveragePerChannelMinMaxObserver,
 )
 from torch.nn.utils.fusion import fuse_conv_bn_eval
+from torchvision.models.mobilenetv2 import InvertedResidual
 
 from wildlife_trigger.models.export import P0_OPSET, export_onnx
 from wildlife_trigger.models.mobilenet import build_mobilenet_v2, example_input
@@ -65,8 +90,12 @@ def activation_fake_quant() -> FakeQuantize:
     )
 
 
-def weight_fake_quant(channels: int) -> FakeQuantize:
-    """Per-channel symmetric weight fake-quant over output channels (axis 0)."""
+def weight_fake_quant() -> FakeQuantize:
+    """Per-channel symmetric weight fake-quant over output channels (axis 0).
+
+    Symmetric pins every weight zero-point at 0, which is what ORT's S8S8
+    QLinearConv and the ARM64 signed dot-product kernels consume.
+    """
     return FakeQuantize(
         observer=MovingAveragePerChannelMinMaxObserver,
         quant_min=QMIN,
@@ -80,12 +109,19 @@ def weight_fake_quant(channels: int) -> FakeQuantize:
 def fold_conv_bn(model: nn.Module) -> int:
     """Fold every adjacent Conv2d->BatchNorm2d pair, in place. Returns the count.
 
-    Walks containers and rewrites the BatchNorm to Identity rather than deleting
-    it, so positional indexing into `nn.Sequential` — which MobileNetV2 relies on
-    throughout `features` — keeps working.
+    BatchNorm is folded *before* fake-quant is inserted, never after. Quantizing a
+    weight and then folding BN rescales that weight by gamma/sigma, moving it off
+    the grid its scale describes — the exported QDQ scales would be wrong in a way
+    nothing downstream detects. Folding first makes the weight that is quantized
+    the weight that is deployed.
 
-    The model must be in eval mode: `fuse_conv_bn_eval` folds the *running*
-    statistics, which is only the correct arithmetic when BN is not updating them.
+    DESIGN §8.2 already plans to freeze BN statistics after stabilization; folding
+    is that limit case, and it means M2 fine-tunes in FP32 briefly *before* this
+    stage rather than during it.
+
+    The BatchNorm becomes Identity rather than being deleted, so positional
+    indexing into `nn.Sequential` — which MobileNetV2 relies on throughout
+    `features` — keeps working.
     """
     if model.training:
         raise RuntimeError(
@@ -106,11 +142,13 @@ def fold_conv_bn(model: nn.Module) -> int:
     return folded
 
 
-class QuantizedConv2d(nn.Module):
-    """A Conv2d with QDQ on its input activation and on its weight.
+class QuantConv2d(nn.Module):
+    """Conv2d with a fake-quantized weight and a fake-quantized output.
 
-    Wrapping rather than subclassing keeps the original Conv2d — and therefore its
-    folded weight — intact and inspectable.
+    `has_relu6` records that a ReLU6 followed this convolution and has been
+    absorbed: it is applied during calibration and training, and dropped in export
+    mode so ORT sees `DQ -> Conv -> Q`. See the module docstring for why that is
+    exact.
 
     The bias is deliberately not fake-quantized. ORT derives the bias scale from
     input_scale * weight_scale and stores bias as INT32; a fake-quant here would
@@ -118,56 +156,150 @@ class QuantizedConv2d(nn.Module):
     something that does not happen.
     """
 
-    def __init__(self, conv: nn.Conv2d):
+    def __init__(self, conv: nn.Conv2d, has_relu6: bool):
         super().__init__()
         self.conv = conv
-        self.input_quant = activation_fake_quant()
-        self.weight_quant = weight_fake_quant(conv.out_channels)
+        self.has_relu6 = has_relu6
+        self.weight_quant = weight_fake_quant()
+        self.output_quant = activation_fake_quant()
+        self.export_mode = False
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.input_quant(x)
         weight = self.weight_quant(self.conv.weight)
-        return self.conv._conv_forward(x, weight, self.conv.bias)
+        y = self.conv._conv_forward(x, weight, self.conv.bias)
+        if self.has_relu6 and not self.export_mode:
+            y = F.relu6(y)
+        return self.output_quant(y)
 
 
-class QuantizedLinear(nn.Module):
-    """The Linear counterpart of QuantizedConv2d, for the classifier head."""
+class QuantLinear(nn.Module):
+    """The Linear counterpart of QuantConv2d, for the classifier head."""
 
     def __init__(self, linear: nn.Linear):
         super().__init__()
         self.linear = linear
+        self.weight_quant = weight_fake_quant()
+        self.output_quant = activation_fake_quant()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        weight = self.weight_quant(self.linear.weight)
+        return self.output_quant(F.linear(x, weight, self.linear.bias))
+
+
+class QuantResidual(nn.Module):
+    """An InvertedResidual whose skip-connection Add output is quantized.
+
+    Without this the Add runs in float between two integer regions, which ORT's
+    PTQ output shows is unnecessary: it produces QLinearAdd for all ten of them.
+    """
+
+    def __init__(self, block: InvertedResidual):
+        super().__init__()
+        self.block = block
+        self.output_quant = activation_fake_quant()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.output_quant(x + self.block.conv(x))
+
+
+class QuantMobileNetV2(nn.Module):
+    """MobileNetV2 with quantizers at the boundaries its forward() creates.
+
+    MobileNetV2.forward applies the pool and flatten *functionally*, so no module
+    replacement can reach those tensors. Restating the forward pass is the only way
+    to quantize the pooled vector — and ORT's PTQ result shows it pays: it yields
+    QLinearGlobalAveragePool rather than a float pool between integer regions.
+    """
+
+    def __init__(self, base: nn.Module):
+        super().__init__()
         self.input_quant = activation_fake_quant()
-        self.weight_quant = weight_fake_quant(linear.out_features)
+        self.features = base.features
+        self.pool_quant = activation_fake_quant()
+        self.classifier = base.classifier
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.input_quant(x)
-        weight = self.weight_quant(self.linear.weight)
-        return nn.functional.linear(x, weight, self.linear.bias)
+        x = self.features(x)
+        x = self.pool_quant(F.adaptive_avg_pool2d(x, (1, 1)))
+        x = torch.flatten(x, 1)
+        return self.classifier(x)
 
 
-def insert_fake_quant(model: nn.Module) -> int:
-    """Wrap every Conv2d and Linear in its quantized equivalent. Returns the count.
+def rewrite_convolutions(model: nn.Module) -> dict:
+    """Replace every Conv2d with QuantConv2d, absorbing any ReLU6 that follows.
 
-    Collecting the targets before mutating: replacing modules while iterating
-    `named_modules()` would descend into the wrappers just created and quantize
-    their inner Conv2d a second time.
+    Works on container children rather than on torchvision's class names: after BN
+    folding, `Conv2dNormActivation` is a Sequential of [Conv2d, Identity, ReLU6]
+    and a linear-bottleneck is [.., Conv2d, Identity]. Scanning children handles
+    both without depending on torchvision's internal class layout, which is not a
+    stable API.
+
+    The absorbed ReLU6 is replaced by Identity so `nn.Sequential`'s positional
+    indexing survives.
     """
+    converted = 0
+    absorbed = 0
+
+    for module in model.modules():
+        children = list(module.named_children())
+        for index, (name, child) in enumerate(children):
+            if not isinstance(child, nn.Conv2d):
+                continue
+
+            # Look past the Identity left by BN folding for a ReLU6.
+            relu_slot = None
+            for offset in (1, 2):
+                if index + offset >= len(children):
+                    break
+                next_name, next_child = children[index + offset]
+                if isinstance(next_child, nn.ReLU6):
+                    relu_slot = next_name
+                    break
+                if not isinstance(next_child, nn.Identity):
+                    break
+
+            setattr(module, name, QuantConv2d(child, has_relu6=relu_slot is not None))
+            converted += 1
+            if relu_slot is not None:
+                setattr(module, relu_slot, nn.Identity())
+                absorbed += 1
+
+    return {"convolutions_quantized": converted, "relu6_absorbed": absorbed}
+
+
+def rewrite_residuals(model: nn.Module) -> int:
+    """Wrap every skip-connected InvertedResidual so its Add output is quantized."""
     targets = [
         (name, module)
         for name, module in model.named_modules()
-        if isinstance(module, (nn.Conv2d, nn.Linear))
+        if isinstance(module, InvertedResidual) and module.use_res_connect
     ]
-
-    for name, module in targets:
+    for name, block in targets:
         parent_path, _, attribute = name.rpartition(".")
         parent = model.get_submodule(parent_path) if parent_path else model
-        wrapper = (
-            QuantizedConv2d(module)
-            if isinstance(module, nn.Conv2d)
-            else QuantizedLinear(module)
-        )
-        setattr(parent, attribute, wrapper)
+        setattr(parent, attribute, QuantResidual(block))
     return len(targets)
+
+
+def rewrite_classifier(model: nn.Module) -> int:
+    targets = [
+        (name, module)
+        for name, module in model.named_modules()
+        if isinstance(module, nn.Linear)
+    ]
+    for name, linear in targets:
+        parent_path, _, attribute = name.rpartition(".")
+        parent = model.get_submodule(parent_path) if parent_path else model
+        setattr(parent, attribute, QuantLinear(linear))
+    return len(targets)
+
+
+def set_export_mode(model: nn.Module, enabled: bool) -> None:
+    """Drop or restore the absorbed ReLU6 ops across every QuantConv2d."""
+    for module in model.modules():
+        if isinstance(module, QuantConv2d):
+            module.export_mode = enabled
 
 
 def set_observers(model: nn.Module, *, observe: bool, fake_quant: bool) -> None:
@@ -178,20 +310,64 @@ def set_observers(model: nn.Module, *, observe: bool, fake_quant: bool) -> None:
             module.fake_quant_enabled[0] = int(fake_quant)
 
 
+def synthetic_batch(batch_size: int, generator: torch.Generator) -> torch.Tensor:
+    return torch.randn(batch_size, 3, 224, 224, generator=generator)
+
+
 def calibrate(model: nn.Module, batches: int, batch_size: int, seed: int = 0) -> None:
     """Populate activation ranges before any training step.
 
-    Observers on, fake-quant off: the ranges should describe the FP32 activations
-    the network actually produces, not activations already distorted by a
-    fake-quant using the uninitialised scale it is trying to measure.
+    Observers on, fake-quant off: the ranges must describe the FP32 activations the
+    network actually produces, not activations already distorted by a fake-quant
+    using the uninitialised scale it is trying to measure.
     """
     set_observers(model, observe=True, fake_quant=False)
     generator = torch.Generator().manual_seed(seed)
     model.eval()
     with torch.inference_mode():
         for _ in range(batches):
-            model(torch.randn(batch_size, 3, 224, 224, generator=generator))
+            model(synthetic_batch(batch_size, generator))
     set_observers(model, observe=False, fake_quant=True)
+
+
+def verify_relu6_removal_is_exact(
+    model: nn.Module, batches: int = 4, batch_size: int = 4, seed: int = 7
+) -> dict:
+    """Check that export mode changes no output bit, and report the margin.
+
+    The equivalence argument (a quantizer over [0, m<=6] already clamps exactly as
+    ReLU6 does) is sound but rests on every absorbed ReLU6's observed range being
+    non-negative and at most 6. That is a property of the calibration data, so it
+    is measured here rather than asserted. A non-zero difference means some
+    quantizer's range does not bound its ReLU6, and the export is not equivalent.
+    """
+    generator = torch.Generator().manual_seed(seed)
+    model.eval()
+    worst = 0.0
+    with torch.inference_mode():
+        for _ in range(batches):
+            x = synthetic_batch(batch_size, generator)
+            set_export_mode(model, False)
+            reference = model(x)
+            set_export_mode(model, True)
+            exported = model(x)
+            worst = max(worst, float((reference - exported).abs().max()))
+    set_export_mode(model, False)
+
+    ranges = [
+        (float(m.output_quant.activation_post_process.min_val),
+         float(m.output_quant.activation_post_process.max_val))
+        for m in model.modules()
+        if isinstance(m, QuantConv2d) and m.has_relu6
+    ]
+    violations = [r for r in ranges if r[0] < 0.0 or r[1] > 6.0]
+
+    return {
+        "max_abs_difference": worst,
+        "exact": worst == 0.0 and not violations,
+        "absorbed_relu6_count": len(ranges),
+        "range_violations": violations,
+    }
 
 
 def train_steps(
@@ -203,11 +379,11 @@ def train_steps(
 ) -> list[float]:
     """Run the straight-through estimator for `steps` on synthetic data.
 
-    This is a toolchain proof, not training: the data is noise and the labels are
-    random, so the loss means nothing. What it establishes is that gradients
-    survive the fake-quant modules — a QAT path whose STE silently zeroed every
-    gradient would export a perfectly valid QDQ graph and only reveal itself as
-    unexplained accuracy loss weeks later, during M2.
+    A toolchain proof, not training: the data is noise and the labels are random,
+    so the loss means nothing. What it establishes is that gradients survive the
+    fake-quant modules — a QAT path whose STE silently zeroed every gradient would
+    export a perfectly valid QDQ graph and only reveal itself as unexplained
+    accuracy loss weeks later, during M2.
 
     The learning rate is DESIGN §8.2's lower bound (1e-5), so the exercise runs the
     same code path M2 will.
@@ -219,7 +395,7 @@ def train_steps(
 
     losses = []
     for _ in range(steps):
-        images = torch.randn(batch_size, 3, 224, 224, generator=generator)
+        images = synthetic_batch(batch_size, generator)
         labels = torch.randint(0, 1000, (batch_size,), generator=generator)
         optimizer.zero_grad(set_to_none=True)
         loss = criterion(model(images), labels)
@@ -233,15 +409,13 @@ def gradient_reaches_weights(model: nn.Module) -> dict:
     """Confirm the STE actually passes gradient to the wrapped conv weights.
 
     Reported as evidence rather than asserted silently: `fake_quantize_*` uses a
-    straight-through estimator, and if it were behaving as a hard round the
-    gradient would be exactly zero everywhere and QAT would be a no-op wearing the
-    right graph structure.
+    straight-through estimator, and if it behaved as a hard round the gradient
+    would be exactly zero everywhere — QAT would be a no-op wearing the right graph
+    structure.
     """
-    convs = [m for m in model.modules() if isinstance(m, QuantizedConv2d)]
+    convs = [m for m in model.modules() if isinstance(m, QuantConv2d)]
     with_grad = [c for c in convs if c.conv.weight.grad is not None]
-    nonzero = [
-        c for c in with_grad if float(c.conv.weight.grad.abs().sum()) > 0.0
-    ]
+    nonzero = [c for c in with_grad if float(c.conv.weight.grad.abs().sum()) > 0.0]
     return {
         "quantized_convs": len(convs),
         "convs_with_gradient": len(with_grad),
@@ -251,20 +425,30 @@ def gradient_reaches_weights(model: nn.Module) -> dict:
 
 
 def build_qat_model(pretrained: bool = True) -> tuple[nn.Module, dict]:
-    """FP32 MobileNetV2 -> BN folded -> fake-quant inserted."""
-    model = build_mobilenet_v2(pretrained=pretrained)
-    model.eval()
-    folded = fold_conv_bn(model)
-    remaining_bn = sum(1 for m in model.modules() if isinstance(m, nn.BatchNorm2d))
-    wrapped = insert_fake_quant(model)
+    """FP32 MobileNetV2 -> BN folded -> output-side QDQ inserted everywhere."""
+    base = build_mobilenet_v2(pretrained=pretrained)
+    base.eval()
 
+    folded = fold_conv_bn(base)
+    remaining_bn = sum(1 for m in base.modules() if isinstance(m, nn.BatchNorm2d))
     if remaining_bn:
         raise RuntimeError(
-            f"{remaining_bn} BatchNorm2d modules survived folding. Every one of "
-            "them would be constant-folded into a convolution *after* its weight "
-            "was fake-quantized, silently invalidating that weight's scale."
+            f"{remaining_bn} BatchNorm2d modules survived folding. Every one would "
+            "be constant-folded into a convolution *after* its weight was "
+            "fake-quantized, silently invalidating that weight's scale."
         )
-    return model, {"conv_bn_pairs_folded": folded, "modules_fake_quantized": wrapped}
+
+    residuals = rewrite_residuals(base)
+    convs = rewrite_convolutions(base)
+    linears = rewrite_classifier(base)
+    model = QuantMobileNetV2(base)
+
+    return model, {
+        "conv_bn_pairs_folded": folded,
+        "residual_adds_quantized": residuals,
+        "linears_quantized": linears,
+        **convs,
+    }
 
 
 def main() -> int:
@@ -278,29 +462,41 @@ def main() -> int:
     args = parser.parse_args()
 
     model, structure = build_qat_model(pretrained=True)
-    print(f"folded {structure['conv_bn_pairs_folded']} Conv+BN pairs, "
-          f"fake-quantized {structure['modules_fake_quantized']} modules")
+    print(f"structure: {structure}")
 
     calibrate(model, args.calibration_batches, args.batch_size)
+
+    equivalence = verify_relu6_removal_is_exact(model)
+    print(f"ReLU6 removal equivalence: {equivalence}")
+    if not equivalence["exact"]:
+        raise RuntimeError(
+            "dropping the absorbed ReLU6 ops changed the model's output "
+            f"({equivalence}). The export would not be equivalent to what was "
+            "trained; do not ship this artifact."
+        )
+
     losses = train_steps(model, args.steps, args.batch_size)
     ste = gradient_reaches_weights(model)
     print(f"STE gradient check: {ste}")
     if not ste["ste_passes_gradient"]:
         raise RuntimeError(
-            "the straight-through estimator did not deliver a non-zero gradient "
-            f"to every quantized convolution: {ste}. QAT would be a no-op."
+            "the straight-through estimator did not deliver a non-zero gradient to "
+            f"every quantized convolution: {ste}. QAT would be a no-op."
         )
 
-    description = export_onnx(
-        model,
-        args.output,
-        example_input(),
-        opset=args.opset,
-        dynamo=False,
-    )
+    set_export_mode(model, True)
+    try:
+        description = export_onnx(
+            model, args.output, example_input(), opset=args.opset, dynamo=False
+        )
+    finally:
+        set_export_mode(model, False)
+
     description["qat"] = {
         "candidate": "1 — direct QDQ fake-quant + torch.onnx.export (DESIGN §8.2)",
+        "placement": "output-side QDQ at every tensor boundary; ReLU6 absorbed",
         "structure": structure,
+        "relu6_removal_equivalence": equivalence,
         "ste_check": ste,
         "steps": args.steps,
         "loss_first": losses[0] if losses else None,
