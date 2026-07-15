@@ -1,0 +1,204 @@
+{
+  "label": "A0 project start \u2014 gx10 baseline before any implementation",
+  "captured_at_utc": "2026-07-15T16:46:10.184855+00:00",
+  "command_line": [
+    "python",
+    "scripts/capture_provenance.py",
+    "--output",
+    "results/provenance/project_start.json",
+    "--label",
+    "A0 project start \u2014 gx10 baseline before any implementation"
+  ],
+  "host": {
+    "hostname": "gx10",
+    "platform": "Linux-6.17.0-1018-nvidia-aarch64-with-glibc2.39",
+    "machine": "aarch64",
+    "os_release": {
+      "PRETTY_NAME": "\"Ubuntu 24.04.4 LTS\"",
+      "NAME": "\"Ubuntu\"",
+      "VERSION_ID": "\"24.04\"",
+      "VERSION": "\"24.04.4 LTS (Noble Numbat)\"",
+      "VERSION_CODENAME": "noble",
+      "ID": "ubuntu",
+      "ID_LIKE": "debian",
+      "HOME_URL": "\"https://www.ubuntu.com/\"",
+      "SUPPORT_URL": "\"https://help.ubuntu.com/\"",
+      "BUG_REPORT_URL": "\"https://bugs.launchpad.net/ubuntu/\"",
+      "PRIVACY_POLICY_URL": "\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"",
+      "UBUNTU_CODENAME": "noble",
+      "LOGO": "ubuntu-logo"
+    },
+    "kernel": "Linux gx10 6.17.0-1018-nvidia #18-Ubuntu SMP PREEMPT_DYNAMIC Tue May  5 21:28:33 UTC 2026 aarch64 aarch64 aarch64 GNU/Linux"
+  },
+  "cpu": {
+    "model_name": "Cortex-X925 + Cortex-A725",
+    "logical_cores": 20,
+    "features": [
+      "fp",
+      "asimd",
+      "evtstrm",
+      "aes",
+      "pmull",
+      "sha1",
+      "sha2",
+      "crc32",
+      "atomics",
+      "fphp",
+      "asimdhp",
+      "cpuid",
+      "asimdrdm",
+      "jscvt",
+      "fcma",
+      "lrcpc",
+      "dcpop",
+      "sha3",
+      "sm3",
+      "sm4",
+      "asimddp",
+      "sha512",
+      "sve",
+      "asimdfhm",
+      "dit",
+      "uscat",
+      "ilrcpc",
+      "flagm",
+      "sb",
+      "paca",
+      "pacg",
+      "dcpodp",
+      "sve2",
+      "sveaes",
+      "svepmull",
+      "svebitperm",
+      "svesha3",
+      "svesm4",
+      "flagm2",
+      "frint",
+      "svei8mm",
+      "svebf16",
+      "i8mm",
+      "bf16",
+      "dgh",
+      "bti",
+      "ecv",
+      "afp",
+      "wfxt"
+    ],
+    "notable_features": {
+      "asimddp": true,
+      "i8mm": true,
+      "sve": true,
+      "sve2": true,
+      "bf16": true
+    }
+  },
+  "memory": {
+    "memtotal_gib": 121.6,
+    "memfree_gib": 1.1,
+    "memavailable_gib": 34.7
+  },
+  "gpu": {
+    "gpus": [
+      {
+        "name": "NVIDIA GB10",
+        "driver_version": "580.142",
+        "memory.total": "[N/A]",
+        "memory.used": "[N/A]",
+        "compute_cap": "12.1",
+        "utilization.gpu": "0 %"
+      }
+    ],
+    "compute_apps": [
+      "2808, /usr/libexec/gnome-remote-desktop-daemon, 176 MiB",
+      "40969, VLLM::EngineCore, 48158 MiB",
+      "48789, VLLM::EngineCore, 7535 MiB",
+      "54757, VLLM::EngineCore, 2986 MiB",
+      "57976, VLLM::EngineCore, 5696 MiB",
+      "64076, VLLM::EngineCore, 3527 MiB"
+    ],
+    "cuda_toolkit": "nvcc: NVIDIA (R) Cuda compiler driver",
+    "cuda_home": "/usr/local/cuda-13.0"
+  },
+  "toolchain": {
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "gpp": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "cmake": "cmake version 3.28.3",
+    "glibc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.7) 2.39",
+    "git": "git version 2.43.0",
+    "docker": "Docker version 29.2.1, build a5c7197",
+    "persistent_jobs": {
+      "tmux": true,
+      "screen": true,
+      "systemd-run": true,
+      "nohup": true
+    }
+  },
+  "python": {
+    "executable": "/home/deploy/efficientml/venv/bin/python",
+    "version": "3.12.3",
+    "packages": {
+      "torch": "2.11.0",
+      "torchvision": "0.26.0",
+      "numpy": "2.4.4",
+      "onnx": null,
+      "onnxruntime": null,
+      "onnxruntime-gpu": null,
+      "torch-pruning": "1.6.1",
+      "opencv-python": null,
+      "opencv-python-headless": null,
+      "torchao": null,
+      "pytorch-quantization": null,
+      "pyyaml": "6.0.1",
+      "pillow": "10.2.0"
+    },
+    "torch": {
+      "version": "2.11.0+cu130",
+      "cuda_available": true,
+      "cuda_version": "13.0",
+      "device_name": "NVIDIA GB10",
+      "device_capability": [
+        12,
+        1
+      ]
+    }
+  },
+  "git": {
+    "repo_root": "/home/deploy/efficientml/efficient-ml-set",
+    "branch": "phase-a/repo-and-toolchain",
+    "commit": "45117a904e350cea0de1b3a3ac8f8425b7ccac9f",
+    "commit_short": "45117a9",
+    "remote": "https://github.com/imagic9/efficient-ml-set.git",
+    "dirty": false,
+    "dirty_files": []
+  },
+  "disk": {
+    "path": "/home/deploy/efficientml/efficient-ml-set",
+    "total_gib": 915.3,
+    "used_gib": 365.9,
+    "free_gib": 502.8
+  },
+  "other_workloads": {
+    "load_average": [
+      0.7666015625,
+      0.39013671875,
+      0.24560546875
+    ],
+    "docker_containers": [
+      "boreal_embedding|vllm/vllm-openai:cu130-nightly|Up 11 hours (healthy)",
+      "boreal_reranker|vllm/vllm-openai:cu130-nightly|Up 11 hours (healthy)",
+      "boreal_whisper|vllm/vllm-openai:cu130-nightly|Up 11 hours (healthy)",
+      "boreal_llm_small|vllm/vllm-openai:cu130-nightly|Up 11 hours (healthy)",
+      "boreal_llm|vllm/vllm-openai:cu130-nightly|Up 12 hours (healthy)",
+      "node-exporter|prom/node-exporter:v1.8.2|Up 12 hours",
+      "docker-ps-exporter|docker:27-cli|Up 12 hours",
+      "dcgm-exporter|nvcr.io/nvidia/k8s/dcgm-exporter:4.2.3-4.1.3-ubuntu22.04|Up 12 hours"
+    ]
+  },
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": null,
+    "OMP_NUM_THREADS": null,
+    "MKL_NUM_THREADS": null,
+    "PYTHONHASHSEED": null,
+    "VIRTUAL_ENV": null
+  }
+}
