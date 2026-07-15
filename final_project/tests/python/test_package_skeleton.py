@@ -72,6 +72,57 @@ def test_design_section_14_path_exists(relative_path: str) -> None:
     )
 
 
+def test_no_authored_file_is_silently_ignored() -> None:
+    """Catch the bug class where a bare directory rule swallows real source.
+
+    This has now bitten twice. A bare `data/` matched `src/wildlife_trigger/data/`
+    and `configs/data/`; a bare `env/` matched `configs/env/`, dropping the pinned
+    version manifests that the Dockerfile and setup scripts read. Both were silent:
+    `git add` simply skipped the files, and a clean clone would have failed far
+    later, in a place that pointed nowhere near the cause.
+
+    Rather than enumerate the paths we happen to remember, walk everything we
+    authored and assert git tracks it. Generated and vendored trees are excluded
+    by the prune list, so anything left is ours by construction.
+    """
+    import subprocess
+
+    prune = {
+        ".git", "build", "__pycache__", ".pytest_cache", ".ruff_cache",
+        "node_modules", ".venv", "venv", "Docker_VSCode",
+    }
+    authored_suffixes = {
+        ".py", ".cpp", ".hpp", ".c", ".h", ".txt", ".toml", ".yaml", ".yml",
+        ".json", ".sh", ".env", ".cff", ".md",
+    }
+
+    candidates: list[Path] = []
+    for path in PROJECT_ROOT.rglob("*"):
+        if not path.is_file():
+            continue
+        if prune & set(path.relative_to(PROJECT_ROOT).parts):
+            continue
+        if path.suffix not in authored_suffixes:
+            continue
+        candidates.append(path)
+
+    assert candidates, "found no authored files; the walk itself is broken"
+
+    ignored = subprocess.run(
+        ["git", "check-ignore", "--stdin"],
+        cwd=PROJECT_ROOT,
+        input="\n".join(str(p) for p in candidates),
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+
+    relative = sorted(str(Path(p).relative_to(PROJECT_ROOT)) for p in ignored)
+    assert not relative, (
+        "these authored files are ignored by .gitignore and would vanish from a "
+        f"clean clone: {relative}"
+    )
+
+
 def test_no_dataset_or_key_material_is_tracked() -> None:
     """Guard the two mistakes that are only noticed once they are public.
 

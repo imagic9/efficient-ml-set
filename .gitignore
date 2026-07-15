@@ -27,10 +27,14 @@ final_project/task/
 /final_project/data/cache/
 /hw*/data/
 
-# Environments
+# Environments.
+# Deliberately not a bare `env/`: that matches a directory named env at ANY
+# depth, which silently swallowed configs/env/ and its pinned version manifests.
+# Same class of bug as the old bare `data/` rule — see tests/python for the guard
+# that now catches it.
 venv/
 .venv/
-env/
+/env/
 
 # Python caches
 __pycache__/
