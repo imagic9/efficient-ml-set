@@ -606,6 +606,50 @@ Canonical preprocessing for a configured fixed `(width, height)`:
 The Python and C++ implementations must share golden fixtures and match within a
 documented tolerance.
 
+#### The training cache: steps 1-4 are computed once, offline
+
+Steps 1-4 are deterministic and depend only on the source pixels and the configured
+`(width, height)`. They are therefore precomputed once on `gx10` into a cache of
+letterboxed **uint8 `[H, W, 3]` RGB** arrays, and training reads that. Decoding
+57,864 JPEGs at 1024x747 on every epoch of every run — and DESIGN requires at least
+three training runs for the input-shape control alone, before M0-M4 — spends most
+of the wall clock in libjpeg while the GB10 waits.
+
+This is only sound because **the augmentation list below contains no random crop and
+no random resize**. Flip, jitter, grayscale and blur all operate on the final-size
+tensor, so caching the final letterbox destroys no augmentation entropy. Were a
+`RandomResizedCrop` ever added, this cache would silently freeze the crop and would
+have to go. That is the condition on which it rests; do not add such a transform
+without removing the cache.
+
+Four rules make the cache safe rather than merely fast:
+
+1. **Never re-encode as JPEG.** A second JPEG generation adds compression artifacts
+   the Pi will never see, because the Pi decodes the original camera frame exactly
+   once. Cache raw uint8; it is train/serve skew otherwise, in the direction that
+   flatters validation.
+2. **The cache must be produced by the same code path as steps 1-4**, not a
+   convenient equivalent. If the cache is built with a different resize than the C++
+   application performs, the model is trained on a distribution it never sees at
+   deployment, and P1/P3 parity would be measuring the wrong gap. The known
+   OpenCV 4.6-vs-4.13 `INTER_LINEAR` risk (§ pins) applies to the cache builder too.
+3. **Key the cache by shape.** The 224x224-versus-256x192 control needs both, so the
+   cache is per-shape and named accordingly. Building both is roughly an hour of CPU,
+   once.
+4. **Key the cache by a hash of the preprocessing config and the source manifest**,
+   and verify it on load. A cache that outlives the config that produced it trains on
+   stale pixels, and nothing downstream can detect that — it is not a crash, it is a
+   quietly wrong number.
+
+Sizing, for the record: 256x192x3 x 57,864 = **8.5 GB** (224x224: 8.7 GB). Both fit
+in gx10's RAM, so after the first epoch the cache lives in page cache and dataloading
+effectively disappears. The cache is a derived artifact: `data/cache/` is gitignored
+and it is rebuilt, never restored.
+
+This is a training-throughput decision and is independent of the reduced-decode
+latency candidate in §11, which concerns the Pi's inference path. Both follow from
+the same 256x192 geometry but neither depends on the other.
+
 Training-only augmentation, applied before normalization:
 
 - horizontal flip, probability 0.5;

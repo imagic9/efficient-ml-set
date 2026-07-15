@@ -470,9 +470,21 @@ Depends on: B1, B2.
 - [ ] Implement training-only photometric augmentation without animal-removing
       crops.
 - [ ] Make validation/test preprocessing deterministic.
+- [ ] Build the offline preprocessing cache (DESIGN §5.5): steps 1-4 computed once
+      into per-shape uint8 letterbox arrays, so training does not re-decode 57,864
+      JPEGs every epoch of every run. Sound only because the augmentation list has
+      no random crop/resize; the cache builder must call the *same* preprocessing
+      code path the C++ application uses, must not re-encode to JPEG, and must be
+      keyed by a hash of the preprocessing config plus source manifest and verify it
+      on load. A cache that outlives its config trains on stale pixels and nothing
+      downstream can detect it.
 - [ ] Add unit tests for manifests, labels, missing/corrupt files, and transforms.
+- [ ] Test that the cache builder and the on-the-fly path produce **identical**
+      tensors, and that a changed preprocessing config invalidates the cache rather
+      than being ignored.
 
-**Output:** tested Python data package and resolved data config.
+**Output:** tested Python data package, resolved data config, and a
+config-fingerprinted preprocessing cache.
 
 ### B4 — Data audit gate
 
