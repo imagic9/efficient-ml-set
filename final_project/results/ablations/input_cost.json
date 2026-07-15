@@ -1,0 +1,65 @@
+{
+  "num_classes": 16,
+  "rows": [
+    {
+      "input": "256x192",
+      "width": 256,
+      "height": 192,
+      "tensor_pixels": 49152,
+      "macs": 293402624,
+      "utilisation": {
+        "train": {
+          "images": 13553,
+          "distinct_geometries": 2,
+          "mean_real_pixels": 48001.4,
+          "tensor_pixels": 49152,
+          "mean_utilisation": 0.9766
+        },
+        "cis_val_clean": {
+          "images": 3214,
+          "distinct_geometries": 2,
+          "mean_real_pixels": 47910.2,
+          "tensor_pixels": 49152,
+          "mean_utilisation": 0.9747
+        },
+        "trans_val": {
+          "images": 1725,
+          "distinct_geometries": 1,
+          "mean_real_pixels": 47872.0,
+          "tensor_pixels": 49152,
+          "mean_utilisation": 0.974
+        }
+      }
+    },
+    {
+      "input": "224x224",
+      "width": 224,
+      "height": 224,
+      "tensor_pixels": 50176,
+      "macs": 299514752,
+      "utilisation": {
+        "train": {
+          "images": 13553,
+          "distinct_geometries": 2,
+          "mean_real_pixels": 36625.2,
+          "tensor_pixels": 50176,
+          "mean_utilisation": 0.7299
+        },
+        "cis_val_clean": {
+          "images": 3214,
+          "distinct_geometries": 2,
+          "mean_real_pixels": 36545.5,
+          "tensor_pixels": 50176,
+          "mean_utilisation": 0.7283
+        },
+        "trans_val": {
+          "images": 1725,
+          "distinct_geometries": 1,
+          "mean_real_pixels": 36512.0,
+          "tensor_pixels": 50176,
+          "mean_utilisation": 0.7277
+        }
+      }
+    }
+  ]
+}

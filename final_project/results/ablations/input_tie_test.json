@@ -1,0 +1,34 @@
+{
+  "arm_a": "c1a_empty5k_16out_256x192",
+  "arm_b": "c1a_empty5k_16out_224x224",
+  "threshold": 0.5,
+  "replicates": 10000,
+  "seed": 42,
+  "resampling_unit": "sequence",
+  "sequences": {
+    "cis_val_clean": 1197,
+    "trans_val": 589
+  },
+  "observed": {
+    "c1a_empty5k_16out_256x192": 0.428,
+    "c1a_empty5k_16out_224x224": 0.3926,
+    "difference_b_minus_a": -0.0354
+  },
+  "difference_ci95": [
+    -0.0824,
+    0.0143
+  ],
+  "difference_mean": -0.0356,
+  "probability_b_beats_a": 0.0755,
+  "arm_a_ci95": [
+    0.3676,
+    0.4828
+  ],
+  "arm_b_ci95": [
+    0.3399,
+    0.4373
+  ],
+  "tied": true,
+  "interpretation": "The 95% CI of the paired difference spans zero: the validation data cannot distinguish these arms. PLAN C1a's tie-break applies.",
+  "caveat": "Sampling uncertainty only. Each arm is a single seed, so this does not bound training noise; a rerun could land elsewhere within it."
+}

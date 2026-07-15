@@ -1,0 +1,257 @@
+{
+  "matched": {
+    "max_steps_identical": true,
+    "head_steps_identical": true,
+    "observed_max_steps": [
+      6000
+    ],
+    "observed_head_steps": [
+      1055
+    ],
+    "steps_consumed": {
+      "c1a_empty5k_16out_224x224": 6000,
+      "c1a_empty5k_16out_256x192": 4335,
+      "c1a_noempty_15out_256x192": 4220
+    },
+    "consumed_spread": 0.2967,
+    "an_arm_stopped_early": true,
+    "per_run": {
+      "c1a_empty5k_16out_224x224": {
+        "steps": 6000,
+        "max_steps": 6000,
+        "head_steps": 1055,
+        "steps_per_epoch": 289,
+        "effective_epochs": 20.76,
+        "images_seen": 384000,
+        "non_empty_images_seen": 280497,
+        "train_images": 18553
+      },
+      "c1a_empty5k_16out_256x192": {
+        "steps": 4335,
+        "max_steps": 6000,
+        "head_steps": 1055,
+        "steps_per_epoch": 289,
+        "effective_epochs": 15.0,
+        "images_seen": 277440,
+        "non_empty_images_seen": 202679,
+        "train_images": 18553
+      },
+      "c1a_noempty_15out_256x192": {
+        "steps": 4220,
+        "max_steps": 6000,
+        "head_steps": 1055,
+        "steps_per_epoch": 211,
+        "effective_epochs": 20.0,
+        "images_seen": 270080,
+        "non_empty_images_seen": 270080,
+        "train_images": 13553
+      }
+    },
+    "matched": true
+  },
+  "rows": [
+    {
+      "run": "c1a_empty5k_16out_256x192",
+      "classes": 16,
+      "input": "256x192",
+      "steps": 4335,
+      "effective_epochs": 15.0,
+      "images_seen": 277440,
+      "non_empty_seen": 202679,
+      "selection_score": 0.4279682890855457,
+      "cis_f2": 0.5874999999999999,
+      "trans_f2": 0.26843657817109146,
+      "cis_seq_recall": 0.6533333333333333,
+      "trans_seq_recall": 0.23144654088050315,
+      "cis_false_fire": 0.04234527687296417,
+      "trans_false_fire": 0.03862660944206009,
+      "best_epoch": 8,
+      "noise": {
+        "max_epoch_to_epoch_change": 0.0992,
+        "median_epoch_to_epoch_change": 0.0331,
+        "best": 0.428,
+        "epochs": 15
+      }
+    },
+    {
+      "run": "c1a_noempty_15out_256x192",
+      "classes": 15,
+      "input": "256x192",
+      "steps": 4220,
+      "effective_epochs": 20.0,
+      "images_seen": 270080,
+      "non_empty_seen": 270080,
+      "selection_score": 0.3928908504569435,
+      "cis_f2": 0.6028368794326241,
+      "trans_f2": 0.18294482148126287,
+      "cis_seq_recall": 0.7066666666666667,
+      "trans_seq_recall": 0.1559748427672956,
+      "cis_false_fire": 0.05472312703583062,
+      "trans_false_fire": 0.09978540772532189,
+      "best_epoch": 13,
+      "noise": {
+        "max_epoch_to_epoch_change": 0.1768,
+        "median_epoch_to_epoch_change": 0.0166,
+        "best": 0.3929,
+        "epochs": 20
+      }
+    },
+    {
+      "run": "c1a_empty5k_16out_224x224",
+      "classes": 16,
+      "input": "224x224",
+      "steps": 6000,
+      "effective_epochs": 20.76,
+      "images_seen": 384000,
+      "non_empty_seen": 280497,
+      "selection_score": 0.3925911935534174,
+      "cis_f2": 0.6498829039812647,
+      "trans_f2": 0.13529948312557008,
+      "cis_seq_recall": 0.7666666666666666,
+      "trans_seq_recall": 0.11194968553459118,
+      "cis_false_fire": 0.05439739413680782,
+      "trans_false_fire": 0.030042918454935622,
+      "best_epoch": 17,
+      "noise": {
+        "max_epoch_to_epoch_change": 0.0848,
+        "median_epoch_to_epoch_change": 0.0207,
+        "best": 0.3926,
+        "epochs": 21
+      }
+    }
+  ],
+  "winner": "c1a_empty5k_16out_256x192",
+  "input_cost": {
+    "num_classes": 16,
+    "rows": [
+      {
+        "input": "256x192",
+        "width": 256,
+        "height": 192,
+        "tensor_pixels": 49152,
+        "macs": 293402624,
+        "utilisation": {
+          "train": {
+            "images": 13553,
+            "distinct_geometries": 2,
+            "mean_real_pixels": 48001.4,
+            "tensor_pixels": 49152,
+            "mean_utilisation": 0.9766
+          },
+          "cis_val_clean": {
+            "images": 3214,
+            "distinct_geometries": 2,
+            "mean_real_pixels": 47910.2,
+            "tensor_pixels": 49152,
+            "mean_utilisation": 0.9747
+          },
+          "trans_val": {
+            "images": 1725,
+            "distinct_geometries": 1,
+            "mean_real_pixels": 47872.0,
+            "tensor_pixels": 49152,
+            "mean_utilisation": 0.974
+          }
+        }
+      },
+      {
+        "input": "224x224",
+        "width": 224,
+        "height": 224,
+        "tensor_pixels": 50176,
+        "macs": 299514752,
+        "utilisation": {
+          "train": {
+            "images": 13553,
+            "distinct_geometries": 2,
+            "mean_real_pixels": 36625.2,
+            "tensor_pixels": 50176,
+            "mean_utilisation": 0.7299
+          },
+          "cis_val_clean": {
+            "images": 3214,
+            "distinct_geometries": 2,
+            "mean_real_pixels": 36545.5,
+            "tensor_pixels": 50176,
+            "mean_utilisation": 0.7283
+          },
+          "trans_val": {
+            "images": 1725,
+            "distinct_geometries": 1,
+            "mean_real_pixels": 36512.0,
+            "tensor_pixels": 50176,
+            "mean_utilisation": 0.7277
+          }
+        }
+      }
+    ]
+  },
+  "tie_test_input": {
+    "arm_a": "c1a_empty5k_16out_256x192",
+    "arm_b": "c1a_empty5k_16out_224x224",
+    "threshold": 0.5,
+    "replicates": 10000,
+    "seed": 42,
+    "resampling_unit": "sequence",
+    "sequences": {
+      "cis_val_clean": 1197,
+      "trans_val": 589
+    },
+    "observed": {
+      "c1a_empty5k_16out_256x192": 0.428,
+      "c1a_empty5k_16out_224x224": 0.3926,
+      "difference_b_minus_a": -0.0354
+    },
+    "difference_ci95": [
+      -0.0824,
+      0.0143
+    ],
+    "difference_mean": -0.0356,
+    "probability_b_beats_a": 0.0755,
+    "arm_a_ci95": [
+      0.3676,
+      0.4828
+    ],
+    "arm_b_ci95": [
+      0.3399,
+      0.4373
+    ],
+    "tied": true,
+    "interpretation": "The 95% CI of the paired difference spans zero: the validation data cannot distinguish these arms. PLAN C1a's tie-break applies.",
+    "caveat": "Sampling uncertainty only. Each arm is a single seed, so this does not bound training noise; a rerun could land elsewhere within it."
+  },
+  "tie_test_head": {
+    "arm_a": "c1a_noempty_15out_256x192",
+    "arm_b": "c1a_empty5k_16out_256x192",
+    "threshold": 0.5,
+    "replicates": 10000,
+    "seed": 42,
+    "resampling_unit": "sequence",
+    "sequences": {
+      "cis_val_clean": 1197,
+      "trans_val": 589
+    },
+    "observed": {
+      "c1a_noempty_15out_256x192": 0.3929,
+      "c1a_empty5k_16out_256x192": 0.428,
+      "difference_b_minus_a": 0.0351
+    },
+    "difference_ci95": [
+      -0.0095,
+      0.0792
+    ],
+    "difference_mean": 0.0351,
+    "probability_b_beats_a": 0.9389,
+    "arm_a_ci95": [
+      0.3387,
+      0.4419
+    ],
+    "arm_b_ci95": [
+      0.3676,
+      0.4828
+    ],
+    "tied": true,
+    "interpretation": "The 95% CI of the paired difference spans zero: the validation data cannot distinguish these arms. PLAN C1a's tie-break applies.",
+    "caveat": "Sampling uncertainty only. Each arm is a single seed, so this does not bound training noise; a rerun could land elsewhere within it."
+  }
+}
