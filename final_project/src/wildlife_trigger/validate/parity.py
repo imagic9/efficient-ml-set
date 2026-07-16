@@ -31,8 +31,10 @@ weights, different convolution arithmetic. The corrected guard, per the DESIGN
 
 - weight identity is proven by the checkpoint hash chain (unchanged);
 - where CUDA is available, the npz value is reproduced **under its own regime**
-  (CUDA, cuDNN TF32 on, the recorded batch size) to <= 1e-4 on the
-  worst-gapped sample of fixtures;
+  (CUDA, the recorded batch size, and the cuDNN regime the npz itself records —
+  TF32-on for legacy dumps that predate the key, TF32-off for every dump since
+  the DESIGN §6.3 amendment of 2026-07-16) to <= 1e-4 on the worst-gapped
+  sample of fixtures;
 - the torch-CPU vs npz gap is *reported* per fixture — it is the measured
   calibration-vs-deployment numeric gap, the number issue #30 is about — and
   is not gated.
@@ -90,6 +92,21 @@ def npz_probabilities(run_dir: Path, bobcat: int) -> dict[str, float]:
         for image_id, probability in zip(data[f"{domain}/image_ids"], probabilities):
             lookup[str(image_id)] = float(probability)
     return lookup
+
+
+def npz_cudnn_tf32(run_dir: Path) -> bool:
+    """The cuDNN regime the npz was scored under, read from the file itself.
+
+    Since the DESIGN §6.3 amendment (2026-07-16, issue #30) `dump_predictions`
+    writes true-FP32 scores and records `cudnn_tf32: False`. Legacy dumps predate
+    the key and ran under torch 2.11's default — TF32 on — so that is the answer
+    when the key is absent. Reproducing a file under a regime it was not written
+    with would re-open exactly the mis-specification the P2 guard was corrected for.
+    """
+    data = np.load(run_dir / "predictions.npz", allow_pickle=False)
+    if "cudnn_tf32" in data:
+        return bool(data["cudnn_tf32"])
+    return True
 
 
 def compare_fixture(
@@ -168,14 +185,17 @@ def verify_npz_regime(
     bobcat: int,
     batch_size: int,
     sample: int = NPZ_REGIME_SAMPLE,
+    cudnn_tf32: bool = True,
 ) -> dict:
     """Reproduce the committed npz values under their own numeric regime.
 
-    CUDA, cuDNN TF32 on, the recorded batch size — the conditions
-    `dump_predictions` actually ran under (issue #30). The sample is the
-    worst-gapped fixtures, because those are precisely the ones a wrong-weights
-    explanation would have to account for: if TF32 batching explains even them,
-    the identity question is closed behaviourally as well as cryptographically.
+    CUDA, the recorded batch size, and the cuDNN regime the npz itself records —
+    the conditions `dump_predictions` actually ran under (issue #30). Legacy npz
+    files carry no regime key and default to TF32-on, torch 2.11's default at the
+    time they were written. The sample is the worst-gapped fixtures, because those
+    are precisely the ones a wrong-weights explanation would have to account for:
+    if the regime explains even them, the identity question is closed
+    behaviourally as well as cryptographically.
     """
     if not torch.cuda.is_available():
         return {
@@ -186,7 +206,7 @@ def verify_npz_regime(
     ranked = sorted(results, key=lambda r: -r["npz_probability_gap"])[:sample]
     saved_tf32 = torch.backends.cudnn.allow_tf32
     cuda_model = model.cuda()
-    torch.backends.cudnn.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = cudnn_tf32
     try:
         checks = []
         for row in ranked:
@@ -211,7 +231,7 @@ def verify_npz_regime(
 
     return {
         "status": "ran",
-        "regime": f"cuda, cudnn_tf32=on, batch={batch_size}",
+        "regime": f"cuda, cudnn_tf32={'on' if cudnn_tf32 else 'off'}, batch={batch_size}",
         "max_abs_allowed": NPZ_REGIME_MAX_ABS,
         "sample": len(checks),
         "worst_regime_gap": max(c["regime_gap"] for c in checks),
@@ -275,6 +295,7 @@ def main() -> int:
         npz_lookup,
         class_names.index("bobcat"),
         batch_size=history["config"]["batch_size"],
+        cudnn_tf32=npz_cudnn_tf32(args.run),
     )
     npz_gaps = sorted(r["npz_probability_gap"] for r in results)
     report = {

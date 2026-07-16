@@ -837,6 +837,34 @@ classes and an explicit null-threshold status for `badger`, `deer`, and `fox`.
 These secondary thresholds do not affect model selection or replace the bobcat
 evaluation.
 
+#### Amendment 2026-07-16 — calibration inputs are scored in the deployment regime (issue #30)
+
+P2's consistency guard caught `predictions.npz` carrying scores the deployed
+device never produces: torch 2.11 defaults cuDNN convolutions to TF32, so the
+committed seed-42 npz holds TF32 batch-64 outputs, while the exported ONNX (and
+torch-CPU) compute true FP32 — up to 7.25e-3 apart exactly in the near-threshold
+band a calibration searches. C3's threshold survives it (the rule's bootstrap CI
+is two orders wider than this noise, and every replicate agreed on the verdict),
+but the deployed device compares *FP32* scores against that threshold. From C5
+on, the scores a calibration reads must come from the arithmetic that ships:
+
+- `validate.dump_predictions` disables TF32 (`torch.backends.cudnn.allow_tf32`
+  and `torch.backends.cuda.matmul.allow_tf32` both off) before scoring, and
+  records the regime inside the npz (`cudnn_tf32`), so every future npz is
+  self-describing;
+- P2's regime reproduction reads that key and verifies the npz **under its own
+  recorded regime** — legacy dumps predate the key and are read as TF32-on,
+  which is what they ran under;
+- D-phase candidates (M1-M4) should calibrate from their own deployable
+  artifact's outputs (ORT / the quantized graph) once P4's dataset runner
+  exists; `dump_predictions` with TF32 off is the floor, not the preference;
+- the committed seed-42 `predictions.npz`, C3's calibration and every artifact
+  derived from them stay untouched: they are the record of the decision as it
+  was made, and issue #30 is the reading instruction — do not quote the npz
+  probabilities as the deployed model's exact scores;
+- cross-seed comparisons (issue #18) read the in-training history, where all
+  three seeds share one regime, so the comparison stays internally consistent.
+
 ### 6.4 Primary accuracy metrics
 
 Report separately for cis-test and trans-test:

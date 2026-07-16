@@ -1,0 +1,22 @@
+# C5 confirmation seed (DESIGN §7.2: "confirmation seeds 17 and 73 for baseline and
+# final"). Identical to configs/train/m0_fp32.yaml in everything but run_name, seed and
+# phase — the recipe is frozen, and issue #18's question (is M0's trans gap the recipe
+# or seed 42?) is only answerable if nothing else moves.
+run_name: m0_fp32_seed73
+seed: 73
+phase: C5           # names the run id and results/training/c5/<run_id>/
+
+width: 256          # Core input, frozen by C1a (results/ablations/data_input_decision.md)
+height: 192         # 256x192 over 224x224: +31.1% real pixels at -2.0% MACs
+
+head_epochs: 5      # phase A: head only, backbone frozen
+max_epochs: 30      # phase B: full fine-tune, early-stopped
+batch_size: 64
+head_lr: 0.001
+full_lr: 0.0003
+weight_decay: 0.0001
+early_stopping_patience: 6
+amp: true           # allowed on gx10; never on Pi inference
+workers: 8
+
+exclude_empty_class: false
