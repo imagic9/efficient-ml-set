@@ -91,14 +91,21 @@ def test_no_authored_file_is_silently_ignored() -> None:
     prune = {
         ".git", "build", "__pycache__", ".pytest_cache", ".ruff_cache",
         "node_modules", ".venv", "venv", "Docker_VSCode",
-        # Generated or downloaded trees, added as Phase B produced them. Pruning must
-        # stay narrow or this test stops doing its job: it catches a .gitignore rule
-        # that drops something we AUTHORED, so anything not pruned must be ours.
+        # Generated or downloaded trees, added as the phases produced them. Pruning
+        # must stay narrow or this test stops doing its job: it catches a .gitignore
+        # rule that drops something we AUTHORED, so anything not pruned must be ours.
         #   raw/     — the LILA archives and their extraction (data/raw)
         #   cache/   — the preprocessing cache (data/cache), rebuilt by data.cache
         #   images/  — fetched supplement frames (data/images)
         #   bundle/  — staged deployment bundles, rebuilt by scripts/build_bundle.sh
         "raw", "cache", "images", "bundle",
+        # C4's parity intermediates (results/parity/*/{p1,ort}): dump-tensor
+        # letterbox JSONs, ort_probe logits and profiling scratch, raw infer output.
+        # Rebuilt by scripts/run_c4_parity.sh; the committed evidence is the
+        # comparators' p1_preprocess.json / p_ort_cpp.json beside them. Named "p1"/
+        # "ort" only under results/parity via the walk below being directory-name
+        # based; nothing authored lives in directories with these names.
+        "p1", "ort",
     }
 
     # Generated files sitting inside authored directories, which the prune list cannot
