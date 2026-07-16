@@ -87,17 +87,23 @@ def test_score_shift_does_not_move_ap_but_moves_f2() -> None:
     )
 
 
-def test_selection_score_primary_is_mean_ap_and_says_so() -> None:
-    """The dict names its own primary: old histories carry F2 under the same key."""
+def test_selection_score_primary_is_f2_after_the_verdict_and_says_so() -> None:
+    """The primary is F2@0.5 again — the AP amendment was reverted by its own test.
+
+    The dict names its own primary because the histories written during the amendment's
+    one day carry AP means under the same `primary` key, and a bare number cannot say
+    which rule produced it.
+    """
     score = M.selection_score(
-        cis={"average_precision": 0.6, "sequence_balanced_recall": 0.75},
-        trans={"average_precision": 0.2, "sequence_balanced_recall": 0.25},
+        cis={"frame_f2": 0.6, "sequence_balanced_recall": 0.75, "average_precision": 0.9},
+        trans={"frame_f2": 0.2, "sequence_balanced_recall": 0.25, "average_precision": 0.9},
         macro_f1=0.44,
     )
-    assert score["primary"] == pytest.approx(0.4)
+    assert score["primary"] == pytest.approx(0.4), "F2 mean, not the AP mean of 0.9"
     assert score["primary_metric"] == M.PRIMARY_METRIC
+    assert "f2" in M.PRIMARY_METRIC, "the verdict reverted the primary to F2"
     assert M.selection_key(score) == pytest.approx((0.4, 0.5, 0.44)), (
-        "tie-breaks unchanged by the amendment: recall first, macro F1 second"
+        "tie-breaks unchanged throughout: recall first, macro F1 second"
     )
 
 

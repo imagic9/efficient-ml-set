@@ -864,6 +864,14 @@ under it:**
   ([#19](https://github.com/imagic9/efficient-ml-set/issues/19)): epoch 12 has M0's best
   cis F2 (0.6558) and lost to epoch 11 only because trans fell 0.1054 → 0.0373. C3
   recalibrates that threshold anyway.
+  *Resolved 2026-07-16, same day:* an AP primary was proposed, pre-registered with its
+  own acceptance test (DESIGN §7.2 amendment), measured on a deterministic M0 re-run —
+  and **reverted by that test**: AP's epoch-to-epoch jitter was 0.968x F2's against a
+  required ≤ 0.5x. What survived: AP's per-checkpoint bootstrap CI is ~4.5x tighter, so
+  AP is now recorded per epoch as a reported metric, and every history names its
+  `primary_metric`. The F2-selected epoch-11 M0 stays the baseline; the re-run directory
+  (`c2_m0_fp32_seed42_20260716T132313Z`) is retained as the verdict's evidence, not a
+  baseline. See DESIGN §7.2's amendment + verdict for the full record.
 
 **Unblocked.** [#10](https://github.com/imagic9/efficient-ml-set/issues/10) took option
 1: `train.py` writes through `runs.RunContext`, so a run is

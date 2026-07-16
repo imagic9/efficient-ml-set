@@ -901,10 +901,12 @@ Default recipe; all deviations must be recorded in the run config:
 - cosine learning-rate decay;
 - mixed precision allowed on gx10, never on Pi inference;
 - early stopping patience: 6 epochs;
-- checkpoint selection score: mean of cis-val-clean and trans-val **bobcat average
-  precision** (see the 2026-07-16 amendment below; originally mean bobcat F2 at a
-  fixed 0.5 threshold), with sequence-balanced bobcat recall used as the first
-  tie-break and support-aware macro F1 as the second;
+- checkpoint selection score: mean of cis-val-clean and trans-val bobcat F2 at a
+  fixed 0.5 threshold, with sequence-balanced bobcat recall used as the first
+  tie-break and support-aware macro F1 as the second. (An AP alternative was
+  proposed, measured and reverted by its own pre-registered test on the same day —
+  the amendment and its verdict below are the record. Bobcat AP remains recorded
+  per epoch as a reported metric.);
 - save last and best checkpoints plus full optimizer/scheduler state.
 
 Do not tune on overall accuracy alone.
@@ -944,6 +946,40 @@ existing `predictions.npz` belong to F2-selected checkpoints, and AP could have
 frozen a different epoch of any arm, moving false-fire and the tie test with it.
 The original F2-era artifacts remain committed as the record of the decision as
 it was made.
+
+#### Verdict 2026-07-16 — the amendment is REVERTED by its own test
+
+Measured by `validate.ap_stability` on the re-run seed-42 M0
+(`c2_m0_fp32_seed42_20260716T132313Z`, whose per-epoch F2 trajectory matches the
+baseline run epoch for epoch, so both scores were read off identical weights):
+
+- **Criterion 1 failed, decisively.** The AP score's relative epoch-to-epoch
+  change was 0.0535 against the F2 score's 0.0553 — a ratio of **0.968**, against
+  the required ≤ 0.5. The amendment's diagnosis over-indexed on trans F2 alone:
+  averaging the jittery trans component with the smooth cis component already
+  damps the F2 *score*, while AP carries swings of its own from the low-score
+  region a fixed threshold never reads (cis AP fell 0.61 → 0.49 between adjacent
+  epochs). Epoch-to-epoch movement also includes real model change, which no
+  metric should be expected to smooth away — a flaw in the criterion's design
+  that is noted here and did not decide the outcome, since the measured ratio
+  missed the bar by a factor of two, not at the margin.
+- **Criterion 2 passed, strongly**: at the frozen checkpoint, trans AP's
+  seq_id-bootstrap relative CI half-width was 0.105 against trans F2@0.5's 0.470
+  — ~4.5x tighter. This is a true and useful fact about *reporting* a
+  checkpoint, not about *selecting* one, and it is why AP stays recorded per
+  epoch and belongs in the report's uncertainty tables.
+
+Both criteria were required. The primary therefore **remains mean bobcat F2 at
+the fixed 0.5 yardstick**; the C1a re-runs were stopped once the verdict was in
+(the M0 re-run had already produced the deciding evidence); the F2-selected M0
+(`c2_m0_fp32_seed42_20260716T061203Z`, best epoch 11) remains the baseline. The
+re-run M0 directory is retained as the evidence for this verdict, and is not a
+baseline.
+
+A future re-proposal must bring a criterion that separates measurement noise
+from genuine model movement — for example, bootstrap CI width of the *score*
+across epochs, or agreement of the selected epoch under resampling — and must be
+registered, like this one, before the runs it judges.
 
 ### 7.3 Baseline artifacts
 

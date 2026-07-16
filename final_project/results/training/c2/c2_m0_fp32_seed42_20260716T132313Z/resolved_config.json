@@ -1,0 +1,37 @@
+{
+  "run_id": "c2_m0_fp32_seed42_20260716T132313Z",
+  "phase": "C2",
+  "started_at_utc": "2026-07-16T13:23:13.577233+00:00",
+  "command_line": [
+    "/home/deploy/efficientml/efficient-ml-set/final_project/src/wildlife_trigger/train.py",
+    "--config",
+    "configs/train/m0_fp32.yaml"
+  ],
+  "config": {
+    "run_name": "m0_fp32_seed42",
+    "seed": 42,
+    "phase": "C2",
+    "manifests_dir": "data/manifests",
+    "images_dir": "data/raw/extracted/eccv_18_all_images_sm",
+    "supplement_manifest": "data/manifests/cct_empty_train_v1.jsonl",
+    "supplement_dir": "data/images/empty_supplement",
+    "cache_dir": "data/cache",
+    "classes_config": "configs/data/classes.yaml",
+    "width": 256,
+    "height": 192,
+    "head_epochs": 5,
+    "max_epochs": 30,
+    "batch_size": 64,
+    "head_lr": 0.001,
+    "full_lr": 0.0003,
+    "weight_decay": 0.0001,
+    "early_stopping_patience": 6,
+    "amp": true,
+    "workers": 8,
+    "pretrained": true,
+    "max_steps": null,
+    "head_steps": null,
+    "exclude_empty_class": false,
+    "output_dir": "results/training"
+  }
+}
