@@ -297,7 +297,7 @@ python -m wildlife_trigger.train --config configs/train/m0_fp32.yaml
 python -m wildlife_trigger.optimize.ptq --config configs/optimize/m1_ptq.yaml
 python -m wildlife_trigger.optimize.qat --config configs/optimize/m2_qat.yaml
 python -m wildlife_trigger.optimize.prune --config configs/optimize/m3_prune.yaml
-python -m wildlife_trigger.export --run-id RUN_ID
+python -m wildlife_trigger.export --run results/training/c2/RUN_ID --policy artifacts/policies/bobcat_v1.json
 python -m wildlife_trigger.validate.parity --run-id RUN_ID
 python -m wildlife_trigger.evaluate --run-id RUN_ID --split val
 python -m wildlife_trigger.calibrate --run results/training/c2/RUN_ID --target bobcat
