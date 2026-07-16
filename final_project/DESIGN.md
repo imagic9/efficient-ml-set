@@ -1314,6 +1314,24 @@ PyTorch and ORT FP32 must match on a fixed validation fixture set:
 > **logits max abs ≤ 1e-4, identical argmax** on the shared `.bin` tensors, and
 > after the re-bind, identical decisions through the real CLI under the same
 > 1e-4 threshold carve-out.
+>
+> **Verdict on the consistency guard (2026-07-16, same day — the guard's
+> original form FAILED and was mis-specified, not merely tight.** First run:
+> 53/200 fixtures over the 1e-3 line, worst gap 7.25e-3, median 6.0e-5, with
+> logits parity and top-1/decision parity clean. Diagnosis (issue #30):
+> `predictions.npz` holds the checkpoint's output under **cuDNN TF32 at the
+> loader's batch size** — torch 2.11's default — while the exported graph and
+> torch-CPU produce true-FP32 values; with TF32 off, CUDA batch-1, batch-64 and
+> CPU agree to 6 d.p., and with TF32 on, batch 64 reproduces the npz value
+> exactly. Same weights, different convolution arithmetic: the guard compared
+> across numeric regimes. Corrected specification: (a) weight identity stays
+> proven by the checkpoint hash chain; (b) the npz is reproduced **under its own
+> regime** (CUDA, cuDNN TF32 on, the recorded batch size) to ≤ 1e-4 on a sample
+> of fixtures, where CUDA is available; (c) the torch-CPU↔npz gap is *reported*
+> per fixture — it is the measured calibration-vs-deployment numeric gap — and
+> no longer gated. The original failure stays in this record because a
+> registered gate was changed after measurement, and that is only honest if the
+> measurement that forced it is quotable.)
 
 ### P3 — quantized-model validation
 
