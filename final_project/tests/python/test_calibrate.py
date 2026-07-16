@@ -243,6 +243,30 @@ class TestGuards:
             run_calibrate(tmp_path, run_dir, target="badger")
 
 
+class TestRunIdentity:
+    def test_run_summary_id_wins_over_the_shared_human_name(self, tmp_path) -> None:
+        """Two M0 directories already exist, both named m0_fp32_seed42 — the
+        baseline and issue #19's reverted re-run. A calibration filed under the
+        shared name could belong to either; under the run_id it belongs to one."""
+        run_dir = write_run(tmp_path, clean_domain(), clean_domain())
+        (run_dir / "run_summary.json").write_text(
+            json.dumps({"run_id": "c2_test_run_20260716T000000Z"})
+        )
+        result = run_calibrate(tmp_path, run_dir)
+        assert result["run_id"] == "c2_test_run_20260716T000000Z"
+        assert result["run_name"] == "test_run"
+        assert (
+            tmp_path / "results" / "c2_test_run_20260716T000000Z" / "calibration.json"
+        ).exists()
+
+    def test_flat_runs_without_a_summary_fall_back_to_the_name(self, tmp_path) -> None:
+        """The C1a directories predate RunContext and carry no run_summary.json;
+        they keep the identity they have rather than being refused."""
+        run_dir = write_run(tmp_path, clean_domain(), clean_domain())
+        result = run_calibrate(tmp_path, run_dir)
+        assert result["run_id"] == "test_run"
+
+
 class TestProvenance:
     def test_the_record_names_everything_the_numbers_depend_on(self, tmp_path) -> None:
         run_dir = write_run(tmp_path, clean_domain(), clean_domain())

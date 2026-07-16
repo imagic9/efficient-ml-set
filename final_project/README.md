@@ -16,7 +16,8 @@ repository may describe it as the primary rule being met.
 | Gate B (data acquisition, splits, audit) | **passes**, 43/43 |
 | C0/C1/C1a (fixtures, training engine, input decision) | **done** |
 | C2 (train M0 seed 42) | **done** — bobcat F2 0.6272 cis / 0.1054 trans |
-| C3 (calibrate the operating point) | next |
+| C3 (calibrate the operating point) | **done** — `recall_floor_infeasible`: ships threshold 0.5381 inside the fire budget, but the 90% recall floor is out of reach (trans 7.9%); **not a pass** |
+| C4 (export and parity) | next |
 | Phases D, E, F, G | not started |
 
 The Core input is **frozen at 256x192** and the head contract at **16 outputs with a

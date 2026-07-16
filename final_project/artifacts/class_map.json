@@ -1,0 +1,41 @@
+{
+  "animal_classes": [
+    "opossum",
+    "raccoon",
+    "squirrel",
+    "bobcat",
+    "skunk",
+    "dog",
+    "coyote",
+    "rabbit",
+    "bird",
+    "cat",
+    "badger",
+    "deer",
+    "fox",
+    "rodent"
+  ],
+  "classes": [
+    "opossum",
+    "raccoon",
+    "squirrel",
+    "bobcat",
+    "skunk",
+    "dog",
+    "coyote",
+    "rabbit",
+    "bird",
+    "cat",
+    "badger",
+    "empty",
+    "car",
+    "deer",
+    "fox",
+    "rodent"
+  ],
+  "non_selectable_classes": [
+    "empty",
+    "car"
+  ],
+  "schema_version": 1
+}
