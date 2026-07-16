@@ -15,10 +15,10 @@
     "input": "256x192"
   },
   "inputs": {
-    "predictions_npz_sha256": "6a0feec87830914185637a8a9dc8c78adda040047bb332a75cea6c7e0f5d6b7e",
+    "predictions_npz_sha256": "20caff491cbbd257fdce63e280f91291229caaabf61be6b7493c543f205017dd",
     "model": {
       "path": "results/optimize/m2_qat/lr1e-5/model.onnx",
-      "sha256": "fbeb979ecf34791139447390e707780b1ec2d42acc8f7ebe59b4bd66a4ddc0d7"
+      "sha256": "cbb8393e88717128bab295f2e86cbe4dba9d4b83876b0bc75af601343e362f44"
     },
     "manifests": {
       "cis_val_clean": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",

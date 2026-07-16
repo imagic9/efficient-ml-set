@@ -6,20 +6,20 @@
     "op_types": {
       "Add": 10,
       "Conv": 52,
-      "DequantizeLinear": 119,
+      "DequantizeLinear": 182,
       "Flatten": 1,
       "Gemm": 1,
       "GlobalAveragePool": 1,
-      "Identity": 116,
-      "QuantizeLinear": 119
+      "QuantizeLinear": 66
     },
-    "node_count": 419,
+    "node_count": 313,
     "domains": {
-      "ai.onnx": 419
+      "ai.onnx": 313
     },
     "initializer_dtypes": {
-      "float": 191,
-      "int8": 37
+      "float": 138,
+      "int32": 53,
+      "int8": 90
     }
   },
   "optimized_graph": {
@@ -46,7 +46,7 @@
   },
   "optimized_graph_path": "results/optimize/m2_qat/lr3e-5/m2_qat_lr3e-5.optimized.onnx",
   "execution": {
-    "profile": "results/optimize/m2_qat/lr3e-5/m2_qat_lr3e-5.profile_2026-07-17_00-05-44_526.json",
+    "profile": "results/optimize/m2_qat/lr3e-5/m2_qat_lr3e-5.profile_2026-07-17_00-33-19_920.json",
     "executed_ops": {
       "DequantizeLinear": {
         "float": 2,

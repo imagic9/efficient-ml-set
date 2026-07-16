@@ -5,8 +5,8 @@
   "yardstick_threshold": 0.5,
   "model": {
     "path": "results/optimize/m2_qat/lr5e-5/model.onnx",
-    "sha256": "f6d5ea835e183b626310cd5b5fe59ec09b7490523574e06852993269f0dc19d4",
-    "bytes": 9096154
+    "sha256": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+    "bytes": 2536267
   },
   "regime": {
     "runtime": "onnxruntime 1.27.0",
@@ -93,6 +93,6 @@
   },
   "predictions_npz": {
     "path": "results/optimize/m2_qat/lr5e-5/predictions.npz",
-    "sha256": "a77219a9ce8ddb1b3d59bd35d13c27370841190e21f4a4ab17b5af03527de474"
+    "sha256": "df2845a6809a12dd3ef5666afe058a821c4167951b66e6fb1fe704dc4918d89e"
   }
 }

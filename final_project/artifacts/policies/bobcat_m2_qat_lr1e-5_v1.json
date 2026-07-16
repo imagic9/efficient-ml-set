@@ -49,7 +49,7 @@
     "binding": "model_sha256 names the quantized ONNX directly: the calibration scores are that artifact's own ORT outputs (optimize.evaluate_onnx), so there is no checkpoint\u2192ONNX re-bind step. P3 attaches its parity report after it passes.",
     "kind": "onnx"
   },
-  "model_sha256": "fbeb979ecf34791139447390e707780b1ec2d42acc8f7ebe59b4bd66a4ddc0d7",
+  "model_sha256": "cbb8393e88717128bab295f2e86cbe4dba9d4b83876b0bc75af601343e362f44",
   "policy_id": "bobcat_m2_qat_lr1e-5_v1",
   "schema_version": 1,
   "targets": [

@@ -34,14 +34,41 @@
   },
   "qdq_scalar_fix": {
     "input": "results/optimize/m2_qat/lr3e-5/model.raw.onnx",
-    "output": "results/optimize/m2_qat/lr3e-5/model.onnx",
+    "output": "results/optimize/m2_qat/lr3e-5/model.fakequant.onnx",
     "scalarized_tensors": 56,
     "per_channel_tensors_left_alone": 66
   },
+  "weight_fold": {
+    "tool": "wildlife_trigger.optimize.fold_qdq",
+    "source_bytes": 9096016,
+    "folded_bytes": 2536369,
+    "initializer_dtypes": {
+      "float": 138,
+      "int32": 53,
+      "int8": 90
+    },
+    "pruned_unused_opset_domains": [
+      "ai.onnx.ml",
+      "ai.onnx.preview.training",
+      "ai.onnx.training",
+      "com.microsoft",
+      "com.microsoft.experimental",
+      "com.microsoft.nchwc",
+      "org.pytorch.aten"
+    ],
+    "opset": {
+      "": 17
+    },
+    "equivalence": {
+      "probes": 8,
+      "worst_abs_diff": 0.0,
+      "exact": true
+    }
+  },
   "model": {
     "path": "results/optimize/m2_qat/lr3e-5/model.onnx",
-    "sha256": "7dfa18aa2c2bcff778f3f8042bd525f2c5f009d3149b864bc12d42cf5b3df389",
-    "size_bytes": 9096016,
+    "sha256": "2bf36d9625bc2a50c473fe7df7a728ccd7cc9071b40eb84cf4dc438ad31c90ac",
+    "size_bytes": 2536369,
     "ir_version": 8,
     "producer": "pytorch 2.11.0",
     "opset_import": {
@@ -69,16 +96,15 @@
         ]
       }
     ],
-    "node_count": 419,
+    "node_count": 313,
     "op_types": {
       "Add": 10,
       "Conv": 52,
-      "DequantizeLinear": 119,
+      "DequantizeLinear": 182,
       "Flatten": 1,
       "Gemm": 1,
       "GlobalAveragePool": 1,
-      "Identity": 116,
-      "QuantizeLinear": 119
+      "QuantizeLinear": 66
     },
     "quantization": {
       "format": "QDQ",
