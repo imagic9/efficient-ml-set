@@ -276,7 +276,9 @@ def run(config: TrainConfig) -> dict:
     output.mkdir(parents=True, exist_ok=True)
 
     history = []
-    best = {"score": -1.0, "epoch": -1}
+    # The whole score vector, not its first component: `is_better_checkpoint` needs the
+    # tie-breaks to be able to break a tie. None until phase B offers the first one.
+    best: dict = {"score": None, "epoch": -1}
     step = 0
     images_seen = 0
     non_empty_seen = 0
@@ -365,11 +367,11 @@ def run(config: TrainConfig) -> dict:
             flush=True,
         )
 
-        if score["primary"] > best["score"] and phase == "B":
+        if phase == "B" and M.is_better_checkpoint(score, best["score"]):
             # Phase A checkpoints are never selected: the backbone has not moved, so a
             # head-only model that happens to score well early would be chosen over a
             # properly fine-tuned one and the run's whole phase B would be discarded.
-            best = {"score": score["primary"], "epoch": epoch}
+            best = {"score": score, "epoch": epoch}
             torch.save(
                 {
                     "model": model.state_dict(),
@@ -384,6 +386,9 @@ def run(config: TrainConfig) -> dict:
                 output / "best.pt",
             )
 
+        # Patience runs from the last epoch that won under the full rule, so an epoch
+        # that ties on F2 and improves a tie-break counts as progress here exactly as it
+        # does above. One comparator, one definition of "better".
         if epoch - best["epoch"] >= config.early_stopping_patience and phase == "B":
             print(f"early stopping: no improvement for {config.early_stopping_patience} epochs")
             break
@@ -399,7 +404,15 @@ def run(config: TrainConfig) -> dict:
         "class_names": class_names,
         "class_weights": weights.cpu().tolist(),
         "best_epoch": best["epoch"],
-        "best_score": best["score"],
+        "best_score": best["score"]["primary"] if best["score"] else None,
+        # The vector the checkpoint actually won on, so the selection can be re-checked
+        # against DESIGN §7.2 without re-deriving it from the history.
+        "best_selection_score": best["score"],
+        "selection_rule": {
+            "order": list(M.SELECTION_ORDER),
+            "final_tiebreak": "earliest epoch",
+            "phase_b_only": True,
+        },
         # DESIGN §5.2 requires all four for the ablation to be interpretable.
         "budget": {
             "steps": step,
@@ -419,7 +432,7 @@ def run(config: TrainConfig) -> dict:
         "device": str(device),
     }
     (output / "history.json").write_text(json.dumps(summary, indent=2) + "\n")
-    print(f"\nbest epoch {best['epoch']} score {best['score']:.4f} -> {output}")
+    print(f"\nbest epoch {best['epoch']} score {summary['best_score']} -> {output}")
     return summary
 
 
