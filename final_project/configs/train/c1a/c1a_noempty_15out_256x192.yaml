@@ -1,0 +1,27 @@
+# C1a arm, re-run under the amended DESIGN 7.2 checkpoint rule (issue #19).
+# Values are byte-for-byte the arm's original recorded config (see the committed
+# results/ablations/c1a_noempty_15out_256x192/history.json) plus one field added since: phase, which
+# places the run under results/ablations/c1a/<run_id>/. The 6000/1055 step budget
+# is the C1a comparison budget and exists only here -- never for M0.
+run_name: c1a_noempty_15out_256x192
+seed: 42
+phase: C1a
+
+width: 256
+height: 192
+exclude_empty_class: true
+
+head_epochs: 5
+max_epochs: 30
+batch_size: 64
+head_lr: 0.001
+full_lr: 0.0003
+weight_decay: 0.0001
+early_stopping_patience: 6
+amp: true
+workers: 8
+
+max_steps: 6000     # step-matched comparison budget (DESIGN 5.2)
+head_steps: 1055
+
+output_dir: results/ablations

@@ -249,9 +249,11 @@ def main() -> int:
     lines += [
         "## Results",
         "",
-        "Selection score is mean bobcat F2 across cis-val-clean and trans-val at a fixed",
-        "0.5 threshold (DESIGN §7.2). C3 calibrates the real operating point; this is a",
-        "constant yardstick for comparing candidates, not an operating point.",
+        "Selection score is mean bobcat average precision across cis-val-clean and",
+        "trans-val (DESIGN §7.2 as amended 2026-07-16, issue #19) — threshold-free, so",
+        "it reads the ranking rather than one line through it. The F2/recall/false-fire",
+        "columns are reported at the fixed 0.5 yardstick for continuity; C3 calibrates",
+        "the real operating point.",
         "",
         "| run | outputs | input | steps | eff. epochs | non-empty seen | score | cis F2 | trans F2 | cis seq-recall | trans seq-recall | cis false-fire | trans false-fire |",
         "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -353,13 +355,13 @@ def main() -> int:
             if tie_head["tied"]:
                 lines += [
                     "**The score gap alone does not establish this arm.** The interval "
-                    "spans zero, so on bobcat F2 the validation data cannot separate "
-                    "the two heads, and the ranking of the point estimates is not by "
-                    "itself evidence. What survives is the false-fire effect above: it "
-                    "is large, it is on both domains, and it is the effect the "
-                    "supplement was added to produce. The contract is selected on that "
-                    "and on DESIGN §5.2's stated purpose for the supplement — not on "
-                    f"the {a['selection_score'] - b['selection_score']:.4f} of F2.",
+                    "spans zero, so on the selection score the validation data cannot "
+                    "separate the two heads, and the ranking of the point estimates is "
+                    "not by itself evidence. What survives is the false-fire effect "
+                    "above: it is large, it is on both domains, and it is the effect "
+                    "the supplement was added to produce. The contract is selected on "
+                    "that and on DESIGN §5.2's stated purpose for the supplement — not "
+                    f"on the {a['selection_score'] - b['selection_score']:.4f} of score.",
                     "",
                 ]
             else:
