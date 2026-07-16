@@ -1,0 +1,91 @@
+{
+  "tool": "wildlife_trigger.optimize.qat_train",
+  "design": "8.2",
+  "candidate_id": "d2_m2_qat_lr3e-5",
+  "model_id": "M2-candidate",
+  "kind": "int8_qat",
+  "method": "lr3e-5",
+  "lr": 3e-05,
+  "source_run_id": "c2_m0_fp32_seed42_20260716T061203Z",
+  "source_checkpoint": {
+    "path": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/best.pt",
+    "sha256": "42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074",
+    "epoch": 11,
+    "run_id": "c2_m0_fp32_seed42_20260716T061203Z"
+  },
+  "qat_run_id": "d2_m2_qat_lr3e-5_20260716T205738Z",
+  "best_epoch": 3,
+  "calibration": {
+    "manifest": "data/manifests/calibration_1024.jsonl",
+    "sha256": "9fab904c6eb3a5501011fdd3277b3ee98655a906d6301da44364ef35d8a863c4",
+    "images": 1024,
+    "order": "observer warm-up, manifest order; observed through epoch 1"
+  },
+  "input": {
+    "width": 256,
+    "height": 192
+  },
+  "qat_structure": {
+    "conv_bn_pairs_folded": 52,
+    "residual_adds_quantized": 10,
+    "linears_quantized": 1,
+    "convolutions_quantized": 52,
+    "relu6_absorbed": 35
+  },
+  "qdq_scalar_fix": {
+    "input": "results/optimize/m2_qat/lr3e-5/model.raw.onnx",
+    "output": "results/optimize/m2_qat/lr3e-5/model.onnx",
+    "scalarized_tensors": 56,
+    "per_channel_tensors_left_alone": 66
+  },
+  "model": {
+    "path": "results/optimize/m2_qat/lr3e-5/model.onnx",
+    "sha256": "7dfa18aa2c2bcff778f3f8042bd525f2c5f009d3149b864bc12d42cf5b3df389",
+    "size_bytes": 9096016,
+    "ir_version": 8,
+    "producer": "pytorch 2.11.0",
+    "opset_import": {
+      "": 17
+    },
+    "inputs": [
+      {
+        "name": "input",
+        "dtype": "FLOAT",
+        "shape": [
+          1,
+          3,
+          192,
+          256
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "logits",
+        "dtype": "FLOAT",
+        "shape": [
+          1,
+          16
+        ]
+      }
+    ],
+    "node_count": 419,
+    "op_types": {
+      "Add": 10,
+      "Conv": 52,
+      "DequantizeLinear": 119,
+      "Flatten": 1,
+      "Gemm": 1,
+      "GlobalAveragePool": 1,
+      "Identity": 116,
+      "QuantizeLinear": 119
+    },
+    "quantization": {
+      "format": "QDQ",
+      "scheme": "S8S8",
+      "per_channel": true,
+      "calibration_method": "qat_lr3e-5"
+    }
+  },
+  "integer_execution": true
+}

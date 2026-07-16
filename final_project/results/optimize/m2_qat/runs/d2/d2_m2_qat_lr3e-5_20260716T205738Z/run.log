@@ -1,0 +1,3 @@
+2026-07-16T20:57:39Z WARNING wildlife_trigger.runs: working tree is DIRTY at b94ed5b; this run is not reproducible from a commit alone (1 uncommitted file(s) outside results/optimize/m2_qat/runs): ?? final_project/results/optimize/m2_qat/lr1e-5/
+2026-07-16T20:57:39Z INFO    wildlife_trigger.runs: run d2_m2_qat_lr3e-5_20260716T205738Z started in results/optimize/m2_qat/runs/d2/d2_m2_qat_lr3e-5_20260716T205738Z
+2026-07-16T21:05:44Z INFO    wildlife_trigger.runs: run d2_m2_qat_lr3e-5_20260716T205738Z completed in 485.7s

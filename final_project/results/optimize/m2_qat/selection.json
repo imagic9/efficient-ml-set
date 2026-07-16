@@ -1,0 +1,104 @@
+{
+  "tool": "wildlife_trigger.optimize.select_ptq",
+  "preregistration": "results/optimize/m1_ptq/preregistration.md",
+  "rule": {
+    "eligibility": "integer_execution == true",
+    "ranking": [
+      "primary",
+      "tiebreak_1_sequence_balanced_recall",
+      "tiebreak_2_macro_f1",
+      "smaller_onnx_bytes"
+    ]
+  },
+  "selected": {
+    "method": "lr5e-5",
+    "candidate_id": "d2_m2_qat_lr5e-5",
+    "model_sha256": "f6d5ea835e183b626310cd5b5fe59ec09b7490523574e06852993269f0dc19d4",
+    "directory": "results/optimize/m2_qat/lr5e-5"
+  },
+  "ranking": [
+    {
+      "method": "lr5e-5",
+      "primary": 0.3832218031865149,
+      "tiebreak_1_sequence_balanced_recall": 0.43176100628930814,
+      "tiebreak_2_macro_f1": 0.4514142564842911,
+      "bytes": 9096154,
+      "cis_f2": 0.6498829039812647,
+      "trans_f2": 0.11656070239176508,
+      "operating_point": {
+        "threshold": 0.650390088558197,
+        "status": "recall_floor_infeasible",
+        "primary_rule_met": false
+      }
+    },
+    {
+      "method": "lr1e-5",
+      "primary": 0.3704353483894602,
+      "tiebreak_1_sequence_balanced_recall": 0.42295597484276726,
+      "tiebreak_2_macro_f1": 0.44771143913614936,
+      "bytes": 9096062,
+      "cis_f2": 0.6445993031358885,
+      "trans_f2": 0.0962713936430318,
+      "operating_point": {
+        "threshold": 0.6440096497535706,
+        "status": "recall_floor_infeasible",
+        "primary_rule_met": false
+      }
+    },
+    {
+      "method": "lr3e-5",
+      "primary": 0.3628011621211634,
+      "tiebreak_1_sequence_balanced_recall": 0.4044025157232704,
+      "tiebreak_2_macro_f1": 0.4431565388510472,
+      "bytes": 9096016,
+      "cis_f2": 0.6339712918660287,
+      "trans_f2": 0.0916310323762981,
+      "operating_point": {
+        "threshold": 0.530990719795227,
+        "status": "recall_floor_infeasible",
+        "primary_rule_met": false
+      }
+    }
+  ],
+  "excluded": [],
+  "material_drop": {
+    "rule": "primary < 0.95 x reference, or a domain F2 down > 10% relative (preregistration \u00a74)",
+    "reference_primary": 0.36670109155378394,
+    "candidate_primary": 0.3832218031865149,
+    "primary_ratio": 1.0450522564924185,
+    "primary_triggered": false,
+    "per_domain": {
+      "cis_val_clean": {
+        "reference_f2": 0.6279620853080569,
+        "candidate_f2": 0.6498829039812647,
+        "relative_drop": -0.03490786973620266,
+        "triggered": false
+      },
+      "trans_val": {
+        "reference_f2": 0.105440097799511,
+        "candidate_f2": 0.11656070239176508,
+        "relative_drop": -0.10546845862566774,
+        "triggered": false
+      }
+    },
+    "quantization_debugging_required": false
+  },
+  "qoperator": {
+    "rule": "QOperator is generated only if S8S8 QDQ coverage on the ARM64 host shows float Conv/Gemm/MatMul surviving optimization (preregistration \u00a75)",
+    "qdq_float_fallback_methods": [],
+    "warranted": false
+  },
+  "reference": {
+    "label": "d1_m0_fp32_ort_reference",
+    "selection_score": {
+      "primary": 0.36670109155378394,
+      "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+      "tiebreak_1_sequence_balanced_recall": 0.41006289308176097,
+      "tiebreak_2_macro_f1": 0.4220455018092038
+    },
+    "domains": {
+      "cis_val_clean": 0.6279620853080569,
+      "trans_val": 0.105440097799511
+    }
+  }
+}

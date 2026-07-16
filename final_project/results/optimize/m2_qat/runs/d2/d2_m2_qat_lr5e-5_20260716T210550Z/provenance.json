@@ -1,0 +1,165 @@
+{
+  "label": "run d2_m2_qat_lr5e-5_20260716T210550Z",
+  "captured_at_utc": "2026-07-16T21:05:50.331643+00:00",
+  "host": {
+    "hostname": "gx10"
+  },
+  "cpu": {
+    "model_name": "Cortex-X925 + Cortex-A725",
+    "logical_cores": 20,
+    "features": [
+      "fp",
+      "asimd",
+      "evtstrm",
+      "aes",
+      "pmull",
+      "sha1",
+      "sha2",
+      "crc32",
+      "atomics",
+      "fphp",
+      "asimdhp",
+      "cpuid",
+      "asimdrdm",
+      "jscvt",
+      "fcma",
+      "lrcpc",
+      "dcpop",
+      "sha3",
+      "sm3",
+      "sm4",
+      "asimddp",
+      "sha512",
+      "sve",
+      "asimdfhm",
+      "dit",
+      "uscat",
+      "ilrcpc",
+      "flagm",
+      "sb",
+      "paca",
+      "pacg",
+      "dcpodp",
+      "sve2",
+      "sveaes",
+      "svepmull",
+      "svebitperm",
+      "svesha3",
+      "svesm4",
+      "flagm2",
+      "frint",
+      "svei8mm",
+      "svebf16",
+      "i8mm",
+      "bf16",
+      "dgh",
+      "bti",
+      "ecv",
+      "afp",
+      "wfxt"
+    ],
+    "notable_features": {
+      "asimddp": true,
+      "i8mm": true,
+      "sve": true,
+      "sve2": true,
+      "bf16": true
+    }
+  },
+  "memory": {
+    "memtotal_gib": 121.6,
+    "memfree_gib": 60.3,
+    "memavailable_gib": 117.0
+  },
+  "gpu": {
+    "gpus": [
+      {
+        "name": "NVIDIA GB10",
+        "driver_version": "580.142",
+        "memory.total": "[N/A]",
+        "memory.used": "[N/A]",
+        "compute_cap": "12.1",
+        "utilization.gpu": "0 %"
+      }
+    ],
+    "compute_apps": [
+      "2808, /usr/libexec/gnome-remote-desktop-daemon, 176 MiB"
+    ],
+    "cuda_toolkit": "nvcc: NVIDIA (R) Cuda compiler driver",
+    "cuda_home": "/usr/local/cuda-13.0"
+  },
+  "toolchain": {
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "gpp": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "cmake": "cmake version 3.28.3",
+    "glibc": "ldd (Ubuntu GLIBC 2.39-0ubuntu8.7) 2.39",
+    "git": "git version 2.43.0",
+    "docker": "Docker version 29.2.1, build a5c7197",
+    "persistent_jobs": {
+      "tmux": true,
+      "screen": true,
+      "systemd-run": true,
+      "nohup": true
+    }
+  },
+  "python": {
+    "executable": "/home/deploy/venvs/wildlife_trigger/bin/python",
+    "version": "3.12.3",
+    "packages": {
+      "torch": "2.11.0+cu130",
+      "torchvision": "0.26.0+cu130",
+      "numpy": "2.4.4",
+      "onnx": "1.22.0",
+      "onnxruntime": "1.27.0",
+      "onnxruntime-gpu": null,
+      "torch-pruning": "1.6.1",
+      "opencv-python": null,
+      "opencv-python-headless": "4.13.0.92",
+      "torchao": null,
+      "pytorch-quantization": null,
+      "pyyaml": "6.0.3",
+      "pillow": "12.2.0"
+    },
+    "torch": {
+      "version": "2.11.0+cu130",
+      "cuda_available": true,
+      "cuda_version": "13.0",
+      "device_name": "NVIDIA GB10",
+      "device_capability": [
+        12,
+        1
+      ]
+    }
+  },
+  "git": {
+    "repo_root": "/home/deploy/efficientml/efficient-ml-set",
+    "queried_from": "/home/deploy/efficientml/efficient-ml-set/final_project",
+    "branch": "d2-m2-evidence",
+    "commit": "b94ed5b9b241bf86b23501bae3c8fcda2f96d973",
+    "commit_short": "b94ed5b",
+    "remote": "github-efficientml:imagic9/efficient-ml-set.git",
+    "dirty": true,
+    "dirty_files": [
+      "?? final_project/results/optimize/m2_qat/lr1e-5/",
+      "?? final_project/results/optimize/m2_qat/lr3e-5/",
+      "?? final_project/results/optimize/m2_qat/runs/"
+    ],
+    "uncommitted_code": [
+      "?? final_project/results/optimize/m2_qat/lr1e-5/",
+      "?? final_project/results/optimize/m2_qat/lr3e-5/"
+    ],
+    "reproducible_from_commit": false
+  },
+  "other_workloads": {
+    "load_average": [
+      2.39990234375,
+      2.49658203125,
+      2.77294921875
+    ],
+    "docker_containers": [
+      "node-exporter|prom/node-exporter:v1.8.2|Up 40 hours",
+      "docker-ps-exporter|docker:27-cli|Up 40 hours",
+      "dcgm-exporter|nvcr.io/nvidia/k8s/dcgm-exporter:4.2.3-4.1.3-ubuntu22.04|Up 40 hours"
+    ]
+  }
+}
