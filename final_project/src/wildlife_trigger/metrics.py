@@ -102,6 +102,72 @@ def target_presence_metrics(
     }
 
 
+# DESIGN §6.3's registered length strata for positive sequences. Reported, never used
+# to select anything: the threshold rule must not exclude or down-weight short visits.
+LENGTH_STRATA = (("1-2", 1, 2), ("3-5", 3, 5), (">5", 6, None))
+
+
+def positive_sequence_length_report(
+    scores: np.ndarray,
+    present: np.ndarray,
+    seq_ids: list[str],
+    threshold: float,
+) -> dict:
+    """Recall by visit length, so a metric averaged over visits cannot hide the short ones.
+
+    A sequence's *length* here is its number of positive frames — a 13-frame burst
+    where the bobcat crosses one frame is a one-frame visit, and one frame is all the
+    trigger gets. Sequence-balanced recall already weights that visit equally with a
+    20-frame one; this report shows what that equal weight is averaging: how the model
+    does on `1-2`, `3-5` and `>5`-frame visits separately, with the support counts that
+    say which strata carry enough sequences to mean anything.
+
+    Registered as reporting only (DESIGN §6.3): the strata must never feed back into
+    the threshold rule, because excluding or down-weighting short sequences is how a
+    trigger silently ignores exactly the visits it exists to catch.
+    """
+    fired = np.asarray(scores) >= threshold
+    positives = np.asarray(present) > 0
+
+    per_sequence: dict[str, list[bool]] = defaultdict(list)
+    for index in np.flatnonzero(positives):
+        per_sequence[seq_ids[index]].append(bool(fired[index]))
+
+    lengths = sorted(len(hits) for hits in per_sequence.values())
+    distribution = {str(length): lengths.count(length) for length in dict.fromkeys(lengths)}
+
+    strata = {}
+    for label, low, high in LENGTH_STRATA:
+        members = [
+            hits
+            for hits in per_sequence.values()
+            if low <= len(hits) and (high is None or len(hits) <= high)
+        ]
+        if not members:
+            # "Where supported": a stratum with no sequences reports its emptiness,
+            # not a zero that would read as catastrophic recall.
+            strata[label] = {"sequences": 0, "supported": False}
+            continue
+        caught = sum(sum(hits) for hits in members)
+        total = sum(len(hits) for hits in members)
+        strata[label] = {
+            "sequences": len(members),
+            "supported": True,
+            "positive_frames": total,
+            "frame_recall": caught / total,
+            "sequence_balanced_recall": float(np.mean([np.mean(h) for h in members])),
+            "event_capture_rate": sum(1 for h in members if any(h)) / len(members),
+        }
+
+    return {
+        "threshold": float(threshold),
+        "length_definition": "positive frames per positive sequence",
+        "positive_sequences": len(per_sequence),
+        "length_distribution": distribution,
+        "strata": strata,
+    }
+
+
 def average_precision(scores: np.ndarray, present: np.ndarray) -> float:
     """Bobcat AP: area under the precision-recall curve, threshold-free.
 
@@ -370,6 +436,214 @@ def select_threshold(
         # DESIGN §6.3 step 5: a constrained result must be readable as a position on a
         # curve, not inferable from a verdict.
         "recall_false_fire_curve": curve,
+    }
+
+
+def _prepare_domain_for_rule(
+    scores: np.ndarray, present: np.ndarray, seq_ids: list[str]
+) -> dict:
+    """Sort orders and per-frame weights that make the §6.3 rule a few cumsums.
+
+    Everything here is threshold-free and replicate-free, so it is computed once.
+    The three quantities the rule reads — sequence-balanced recall, false-fire rate,
+    frame F2 — are all sums of per-frame weights over `score >= t`, i.e. suffix sums
+    over score-sorted frames, evaluated at every candidate with one `searchsorted`.
+    """
+    scores = np.asarray(scores, dtype=float)
+    positives = np.asarray(present) > 0
+    _, seq_index = np.unique(np.asarray(seq_ids), return_inverse=True)
+    sequences = seq_index.max() + 1 if len(seq_index) else 0
+
+    positive_frames = np.flatnonzero(positives)
+    positives_per_seq = np.bincount(seq_index[positive_frames], minlength=sequences)
+    # Sequence-balanced recall = mean over positive sequences of within-sequence
+    # recall = sum over positive frames of [score >= t] / (positives in its sequence),
+    # divided by the number of positive sequences. The division is a per-frame weight.
+    frame_weight = np.zeros(len(scores))
+    frame_weight[positive_frames] = 1.0 / positives_per_seq[seq_index[positive_frames]]
+
+    positive_order = positive_frames[np.argsort(scores[positive_frames], kind="stable")]
+    negative_frames = np.flatnonzero(~positives)
+    negative_order = negative_frames[np.argsort(scores[negative_frames], kind="stable")]
+
+    return {
+        "scores": scores,
+        "seq_index": seq_index,
+        "sequences": sequences,
+        "positive_sequences": positives_per_seq > 0,
+        "recall_weight": frame_weight,
+        "positive_order": positive_order,
+        "positive_sorted": scores[positive_order],
+        "negative_order": negative_order,
+        "negative_sorted": scores[negative_order],
+    }
+
+
+def _suffix_sums(sorted_scores: np.ndarray, weights: np.ndarray, at: np.ndarray) -> np.ndarray:
+    """Sum of `weights` over entries with score >= each threshold in `at`."""
+    prefix = np.concatenate([[0.0], np.cumsum(weights)])
+    return prefix[-1] - prefix[np.searchsorted(sorted_scores, at, side="left")]
+
+
+def _rule_verdict(
+    prepared: list[dict],
+    multiplicities: list[np.ndarray],
+    candidates: np.ndarray,
+    min_sequence_recall: float,
+    max_false_fire_rate: float,
+) -> tuple[float, str]:
+    """DESIGN §6.3's decision — threshold and status — on one (re)sampled dataset.
+
+    The same three branches as `select_threshold`, including its tie behaviour:
+    largest candidate meeting the floor; among the fallback's F2 ties the *smallest*
+    threshold (`max()` over ascending rows keeps the first maximum); the largest
+    candidate when nothing is admissible. `test_threshold_bootstrap` holds the two
+    implementations equal on randomized data — if they drift, that test is the alarm.
+    """
+    worst_recall = None
+    worst_false_fire = None
+    f2_total = None
+    for pre, m in zip(prepared, multiplicities):
+        frame_m = m[pre["seq_index"]].astype(float)
+        drawn_positive_sequences = float(m[pre["positive_sequences"]].sum())
+
+        recall_w = (frame_m * pre["recall_weight"])[pre["positive_order"]]
+        positive_m = frame_m[pre["positive_order"]]
+        negative_m = frame_m[pre["negative_order"]]
+
+        caught = _suffix_sums(pre["positive_sorted"], recall_w, candidates)
+        true_positive = _suffix_sums(pre["positive_sorted"], positive_m, candidates)
+        false_positive = _suffix_sums(pre["negative_sorted"], negative_m, candidates)
+        total_positive = positive_m.sum()
+        total_negative = negative_m.sum()
+
+        recall_seq = (
+            caught / drawn_positive_sequences
+            if drawn_positive_sequences
+            else np.zeros_like(candidates)
+        )
+        false_fire = (
+            false_positive / total_negative if total_negative else np.zeros_like(candidates)
+        )
+        fired = true_positive + false_positive
+        precision = np.divide(
+            true_positive, fired, out=np.zeros_like(fired), where=fired > 0
+        )
+        frame_recall = (
+            true_positive / total_positive if total_positive else np.zeros_like(candidates)
+        )
+        denominator = 4.0 * precision + frame_recall
+        f2 = np.divide(
+            5.0 * precision * frame_recall,
+            denominator,
+            out=np.zeros_like(denominator),
+            where=denominator > 0,
+        )
+
+        worst_recall = recall_seq if worst_recall is None else np.minimum(worst_recall, recall_seq)
+        worst_false_fire = (
+            false_fire if worst_false_fire is None else np.maximum(worst_false_fire, false_fire)
+        )
+        f2_total = f2 if f2_total is None else f2_total + f2
+
+    admissible = worst_false_fire <= max_false_fire_rate
+    meeting = admissible & (worst_recall >= min_sequence_recall)
+    if meeting.any():
+        return float(candidates[np.flatnonzero(meeting)[-1]]), "primary_rule_met"
+    if admissible.any():
+        mean_f2 = np.where(admissible, f2_total / len(prepared), -np.inf)
+        return float(candidates[int(np.argmax(mean_f2))]), "recall_floor_infeasible"
+    return float(candidates[-1]), "fire_budget_infeasible"
+
+
+def select_threshold_point(
+    scores_by_domain: dict[str, tuple[np.ndarray, np.ndarray, list[str]]],
+    min_sequence_recall: float = 0.90,
+    max_false_fire_rate: float = MAX_FALSE_FIRE_RATE,
+) -> tuple[float, str]:
+    """`select_threshold`'s verdict alone — (threshold, status) — via the fast path.
+
+    Exists for `bootstrap_threshold_selection`, which re-runs the rule a thousand
+    times and cannot afford the full per-candidate metric dictionaries. Callers that
+    use both MUST cross-check the two on the full data (the calibration tool does);
+    a disagreement means the implementations have drifted and neither number ships.
+    """
+    prepared = [
+        _prepare_domain_for_rule(scores, present, seqs)
+        for scores, present, seqs in scores_by_domain.values()
+    ]
+    ones = [np.ones(pre["sequences"], dtype=float) for pre in prepared]
+    candidates = np.unique(np.concatenate([pre["scores"] for pre in prepared]))
+    return _rule_verdict(
+        prepared, ones, candidates, min_sequence_recall, max_false_fire_rate
+    )
+
+
+def bootstrap_threshold_selection(
+    scores_by_domain: dict[str, tuple[np.ndarray, np.ndarray, list[str]]],
+    min_sequence_recall: float = 0.90,
+    max_false_fire_rate: float = MAX_FALSE_FIRE_RATE,
+    replicates: int = 1000,
+    seed: int = 42,
+) -> dict:
+    """DESIGN §6.3 step 7: how stable is the *selected threshold* under resampling?
+
+    Each replicate resamples complete `seq_id` clusters within each validation domain
+    independently, then re-runs the whole rule — candidate search over the scores the
+    replicate actually contains, fire budget, recall floor, F2 fallback — and records
+    the threshold and status that rule run produced. Bootstrapping the rule rather
+    than a metric at a fixed threshold is the point: the deliverable is the operating
+    point, so the uncertainty that matters is the operating point's.
+
+    The deployed threshold still comes from the full cleaned validation data
+    (`select_threshold`); this distribution is evidence about that choice, never a
+    replacement for it.
+    """
+    rng = np.random.default_rng(seed)
+    prepared = [
+        _prepare_domain_for_rule(scores, present, seqs)
+        for scores, present, seqs in scores_by_domain.values()
+    ]
+
+    thresholds = []
+    statuses: dict[str, int] = {}
+    for _ in range(replicates):
+        multiplicities = [
+            np.bincount(
+                rng.integers(0, pre["sequences"], pre["sequences"]),
+                minlength=pre["sequences"],
+            )
+            for pre in prepared
+        ]
+        # The rule searches observed scores, so a replicate's candidates are the
+        # scores of the sequences it drew — not the full data's grid.
+        candidates = np.unique(
+            np.concatenate(
+                [
+                    pre["scores"][m[pre["seq_index"]] > 0]
+                    for pre, m in zip(prepared, multiplicities)
+                ]
+            )
+        )
+        threshold, status = _rule_verdict(
+            prepared, multiplicities, candidates, min_sequence_recall, max_false_fire_rate
+        )
+        thresholds.append(threshold)
+        statuses[status] = statuses.get(status, 0) + 1
+
+    point_threshold, point_status = select_threshold_point(
+        scores_by_domain, min_sequence_recall, max_false_fire_rate
+    )
+    return {
+        "point_estimate": {"threshold": point_threshold, "status": point_status},
+        "thresholds": thresholds,
+        "statuses": statuses,
+        "ci95_low": float(np.percentile(thresholds, 2.5)),
+        "ci95_high": float(np.percentile(thresholds, 97.5)),
+        "median": float(np.percentile(thresholds, 50)),
+        "replicates": replicates,
+        "seed": seed,
+        "resampled": "complete seq_id clusters within each domain; rule re-run per replicate",
     }
 
 
