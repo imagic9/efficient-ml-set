@@ -51,6 +51,7 @@ from ..models.export import describe, export_onnx
 from ..models.mobilenet import build_mobilenet_v2, example_input
 from ..train import build_datasets, evaluate, score_of
 from ..validate import ort_coverage
+from .fold_qdq import fold_qdq_weights
 from .qat import (
     build_qat_model,
     set_export_mode,
@@ -373,6 +374,7 @@ def export_candidate(
     candidate_dir = Path(config.output_root) / label
     candidate_dir.mkdir(parents=True, exist_ok=True)
     raw_export = candidate_dir / "model.raw.onnx"
+    fakequant_path = candidate_dir / "model.fakequant.onnx"
     model_path = candidate_dir / "model.onnx"
 
     set_export_mode(model, True)
@@ -384,7 +386,16 @@ def export_candidate(
         )
     finally:
         set_export_mode(model, False)
-    scalar_fix = scalarize_per_tensor_qdq(raw_export, model_path)
+    scalar_fix = scalarize_per_tensor_qdq(raw_export, fakequant_path)
+
+    # DESIGN §8.2: a real INT8 graph, not a float graph carrying rounded
+    # weights. The fake-quant export stores FP32 weights behind Q/DQ (9.1 MB on
+    # the first M2 run); the fold turns them into INT8 initializers, proves
+    # bitwise equivalence, and is what ships. The fakequant intermediate stays
+    # on disk (gitignored) so the difference remains inspectable.
+    fold = fold_qdq_weights(
+        fakequant_path, model_path, (1, 3, config.height, config.width)
+    )
 
     description = describe(model_path)
     coverage = ort_coverage.analyse(model_path, candidate_dir, f"m2_qat_{label}")
@@ -411,6 +422,7 @@ def export_candidate(
         "input": {"width": config.width, "height": config.height},
         "qat_structure": structure,
         "qdq_scalar_fix": scalar_fix,
+        "weight_fold": fold,
         "model": {
             **description,
             "quantization": {
@@ -431,13 +443,57 @@ def export_candidate(
     return candidate
 
 
+def reexport_arm(config: QatConfig, run_dir: Path) -> dict:
+    """Re-run only the export path over a completed arm's best checkpoint.
+
+    Exists for export-representation fixes (like the weight fold): the
+    training is untouched — the history is read back, its recorded best epoch
+    is what gets exported, and a run whose history disagrees with its best.pt
+    is refused exactly as during training.
+    """
+    history = json.loads((run_dir / "history.json").read_text())
+    if history["config"]["lr"] != history["lr"]:
+        raise RuntimeError(f"{run_dir} history is inconsistent about its lr")
+
+    class _Ctx:
+        best_checkpoint_path = run_dir / "best.pt"
+        run_id = history["run_id"]
+
+    return export_candidate(
+        config,
+        _Ctx,
+        arm_label(history["lr"]),
+        history["lr"],
+        {"epoch": history["best_epoch"], "score": history["best_selection_score"]},
+        history["class_names"],
+        history["initialized_from"],
+        history["observer_calibration"],
+        history["qat_structure"],
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", required=True, type=Path)
-    parser.add_argument("--lr", required=True, type=float)
+    parser.add_argument("--lr", type=float)
+    parser.add_argument(
+        "--export-only",
+        type=Path,
+        metavar="RUN_DIR",
+        help="skip training; re-export the best checkpoint of this completed "
+        "arm run through the current export path (weight fold included)",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
+    if args.export_only:
+        candidate = reexport_arm(config, args.export_only)
+        print(f"re-exported {candidate['candidate_id']} "
+              f"(best epoch {candidate['best_epoch']})")
+        return 0
+
+    if args.lr is None:
+        parser.error("--lr is required unless --export-only is given")
     result = train_arm(config, args.lr)
     print(
         f"arm {arm_label(args.lr)}: best epoch {result['best_epoch']}, "

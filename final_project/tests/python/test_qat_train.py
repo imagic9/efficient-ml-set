@@ -186,6 +186,35 @@ class TestEndToEnd:
         assert (candidate_dir / "coverage.json").exists()
         assert candidate["model"]["sha256"] == sha256_file(candidate_dir / "model.onnx")
 
+    def test_shipped_artifact_is_a_real_int8_graph(self, world, result):
+        """DESIGN §8.2: INT8 initializers on disk, proven bitwise-equal."""
+        root, _ = world
+        candidate_dir = root / "out" / "lr1e-5"
+        candidate = json.loads((candidate_dir / "candidate.json").read_text())
+        fold = candidate["weight_fold"]
+        assert fold["folded_bytes"] < fold["source_bytes"]
+        assert "int8" in fold["initializer_dtypes"]
+        assert fold["equivalence"]["exact"] is True
+        assert set(fold["opset"]) <= {"", "ai.onnx"}
+        # The fakequant intermediate stays beside it, inspectable.
+        assert (candidate_dir / "model.fakequant.onnx").exists()
+        assert (
+            (candidate_dir / "model.onnx").stat().st_size
+            < (candidate_dir / "model.fakequant.onnx").stat().st_size
+        )
+
+    def test_export_only_reproduces_the_candidate(self, world, result):
+        root, config = world
+        run_dir = root / "out" / "runs" / "d2" / result["run_id"]
+        before = sha256_file(root / "out" / "lr1e-5" / "model.onnx")
+        candidate = qt.reexport_arm(config, run_dir)
+        assert candidate["candidate_id"] == "d2_m2_qat_lr1e-5"
+        assert candidate["best_epoch"] == result["best_epoch"]
+        after = sha256_file(root / "out" / "lr1e-5" / "model.onnx")
+        # Same checkpoint, same path, same bytes: the export is a function of
+        # the weights, not of when it ran.
+        assert after == before
+
     def test_exported_graph_executes_as_integer(self, world, result):
         root, _ = world
         coverage = json.loads((root / "out" / "lr1e-5" / "coverage.json").read_text())
