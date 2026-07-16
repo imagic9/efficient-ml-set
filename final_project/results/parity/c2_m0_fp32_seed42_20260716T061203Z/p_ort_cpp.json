@@ -1,0 +1,149 @@
+{
+  "gate": "initial ORT python-vs-C++ parity (DESIGN 10, registered 2026-07-16)",
+  "run_id": "c2_m0_fp32_seed42_20260716T061203Z",
+  "onnx_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+  "policy_id": "bobcat_v1",
+  "ort_version_python": "1.27.0",
+  "tolerances": {
+    "logits_max_abs": 0.0001,
+    "decision_carve_out": 0.0001
+  },
+  "logits_layer": {
+    "fixtures": 10,
+    "worst_max_abs": 9.5367431640625e-06,
+    "results": [
+      {
+        "fixture": "5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 4.76837158203125e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 8.106231689453125e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "585c02ec-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 3.814697265625e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "586e2db9-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 7.62939453125e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "5883ea9d-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 8.58306884765625e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "58995b28-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 9.5367431640625e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "58adc360-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 7.62939453125e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "58c34c6f-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 9.5367431640625e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "58d7a1e4-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 7.62939453125e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "58e93a4e-23d2-11e8-a6a3-ec086b02610b",
+        "logits_max_abs": 9.5367431640625e-06,
+        "argmax_match": true,
+        "passed": true,
+        "failures": []
+      }
+    ]
+  },
+  "decision_layer": {
+    "fixtures": 4,
+    "worst_max_abs": 8.106231689453125e-06,
+    "results": [
+      {
+        "fixture": "infer_5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+        "image": "data/raw/extracted/eccv_18_all_images_sm/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+        "logits_max_abs": 4.76837158203125e-06,
+        "cpp_shutter_trigger": false,
+        "python_shutter_trigger": false,
+        "python_bobcat_probability": 2.5813897082116455e-06,
+        "within_threshold_tolerance": false,
+        "policy_id": "bobcat_v1",
+        "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "infer_5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+        "image": "data/raw/extracted/eccv_18_all_images_sm/5858bfc0-23d2-11e8-a6a3-ec086b02610b.jpg",
+        "logits_max_abs": 8.106231689453125e-06,
+        "cpp_shutter_trigger": false,
+        "python_shutter_trigger": false,
+        "python_bobcat_probability": 7.227996684378013e-05,
+        "within_threshold_tolerance": false,
+        "policy_id": "bobcat_v1",
+        "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "infer_585c02ec-23d2-11e8-a6a3-ec086b02610b",
+        "image": "data/raw/extracted/eccv_18_all_images_sm/585c02ec-23d2-11e8-a6a3-ec086b02610b.jpg",
+        "logits_max_abs": 3.814697265625e-06,
+        "cpp_shutter_trigger": false,
+        "python_shutter_trigger": false,
+        "python_bobcat_probability": 5.362138381315162e-06,
+        "within_threshold_tolerance": false,
+        "policy_id": "bobcat_v1",
+        "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+        "passed": true,
+        "failures": []
+      },
+      {
+        "fixture": "infer_frame_1024x747",
+        "image": "tests/fixtures/frame_1024x747.jpg",
+        "logits_max_abs": 5.245208740234375e-06,
+        "cpp_shutter_trigger": false,
+        "python_shutter_trigger": false,
+        "python_bobcat_probability": 0.028827449306845665,
+        "within_threshold_tolerance": false,
+        "policy_id": "bobcat_v1",
+        "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+        "passed": true,
+        "failures": []
+      }
+    ]
+  },
+  "verdict": {
+    "passed": true,
+    "failed_fixtures": []
+  }
+}
