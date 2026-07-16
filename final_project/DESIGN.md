@@ -761,17 +761,65 @@ positive-sequence length distribution, recall for length strata `1-2`, `3-5`, an
 at least one trigger / all positive sequences. Sequence-cluster bootstrap intervals
 remain the uncertainty measure.
 
+#### The fire budget — the product limit the recall floor is spent inside
+
+A threshold is **admissible** only if its **false-fire rate — false triggers /
+non-bobcat frames — is at most 5% on each of cis-val-clean and trans-val**. This
+is a product decision, registered here before C3 calibrates anything, and it is
+not negotiable against the recall floor: a threshold outside the budget is not an
+operating point this device may ship, whatever recall it buys.
+
+Why a limit exists at all: the device spends a shutter actuation, a frame of
+storage and a slice of battery every time it fires, and the entire product claim
+is that it spends them on bobcats. Recall alone cannot express that. A rule that
+constrains only recall is satisfied by a trigger that photographs everything,
+because photographing everything catches every bobcat.
+
+Why 5%: at cis-val-clean's realistic mix — 144 bobcat frames against 3,070
+negatives, a camera that mostly watches an empty clearing — a 5% false-fire rate
+means the camera wastes roughly one frame per frame it keeps. That is the point
+where a photographer reviewing the take is looking at their subject rather than
+at grass, and it is the honest reading of "emits a shutter signal when the target
+animal is present" (§1). 10% would make two thirds of the take junk; 3% would buy
+precision the product does not need by discarding recall it does need. The C1a
+arms sit at 3.9-4.3% false-fire at threshold 0.5 unprompted, so the budget admits
+the region a working model already operates in and excludes only the region where
+the trigger stops discriminating.
+
+Why **false-fire rate** and not fire rate: false-fire is conditioned on the
+negatives, so it means the same thing in both domains. A fire-rate ceiling would
+be unmeetable on trans-val, where 46% of frames genuinely hold a bobcat and
+firing on them is the device working correctly — the device would be penalised
+for its own successes.
+
+The budget replaces the old `non_trivial` qualifier and is strictly stronger:
+that guard rejected only a threshold firing on *literally every* frame, so 78%
+cleared it.
+
 Primary rule:
 
-1. Search all unique bobcat scores.
-2. Choose the largest threshold for which sequence-balanced bobcat recall is at
-   least 90% on both cis-val-clean and trans-val.
-3. If no non-trivial threshold meets both constraints, choose the threshold
-   maximizing the mean frame-level F2 across cis-val-clean and trans-val and
-   record which sequence-balanced recall constraint was not met.
-4. Save the threshold, calibration metrics, score distribution, and dataset hash
+1. Search all unique bobcat scores; keep the admissible ones.
+2. Choose the largest admissible threshold for which sequence-balanced bobcat
+   recall is at least 90% on both cis-val-clean and trans-val. Report the primary
+   rule as satisfied only here.
+3. If no admissible threshold reaches the recall floor, the model does not meet
+   the primary rule and must not be reported as meeting it. Record status
+   `recall_floor_infeasible`, choose the admissible threshold maximizing mean
+   frame-level F2 as the shipped operating point, and record the
+   sequence-balanced recall each domain actually reached. Maximizing F2 is safe
+   only inside the budget: on trans-val, where 46% of frames are positive, mean
+   F2 is maximized by firing on everything, so the fallback needs the ceiling
+   more than the primary rule does.
+4. If no admissible threshold exists at all, record status
+   `fire_budget_infeasible`, take the largest observed score as the threshold,
+   and name no operating point. The device cannot ship a trigger that exceeds its
+   own fire budget.
+5. Publish the recall/false-fire trade-off curve over the searched thresholds
+   with every calibration, so a constrained result is visible as a position on a
+   curve rather than as a verdict. A hollow pass must be readable, not inferable.
+6. Save the threshold, calibration metrics, score distribution, and dataset hash
    to `artifacts/policies/bobcat_v1.json`.
-5. Bootstrap complete `seq_id` clusters within each validation domain and save the
+7. Bootstrap complete `seq_id` clusters within each validation domain and save the
    95% interval/distribution of the selected threshold. The deployed point
    threshold still comes from the full cleaned validation data, not a bootstrap
    replicate.
@@ -796,7 +844,9 @@ Report separately for cis-test and trans-test:
 - bobcat recall — primary product metric;
 - bobcat precision;
 - bobcat F2;
-- false-fire rate = false triggers / non-bobcat frames;
+- false-fire rate = false triggers / non-bobcat frames — reported here, and
+  *constrained* by §6.3's 5% fire budget, which is what makes the recall floor
+  mean something;
 - fire rate = all triggers / all frames;
 - per-class support, recall, precision, and F1 for every class with positives;
 - event capture rate and positive-sequence recall by the registered length strata;
@@ -1726,6 +1776,7 @@ All plots include units, sample counts, split, model ID, and commit/run ID.
 | Empty supplement introduces background/domain bias | Keep it ID/sequence/location-disjoint, deterministic, identical across models, and run the matched no-empty ablation |
 | Multi-label annotations make softmax metrics ambiguous | Store all labels, exclude seven multi-label train images from CE, include presence in target metrics, exclude them from single-label confusion/macro F1 |
 | Trans bobcat recall is poor | Report honestly; do not train on trans-test. Stretch KD is allowed only after Core completion |
+| The 90% recall floor is unreachable inside the 5% fire budget | Pre-registered outcome, not a failure. C3 records `recall_floor_infeasible`, ships the best admissible F2 threshold, publishes the recall/false-fire curve, and never reports a constrained fallback as a satisfied rule. Measured on the C1a arms, the floor needs a 67.6% false-fire rate, so expect this branch |
 | 224-square letterbox wastes useful pixels | Resolve the pre-registered 224x224-vs-256x192 control before M0 |
 | PTQ loses accuracy on depthwise MobileNetV2 | This is pre-registered; use QAT/quantization debugging and keep PTQ as a negative result if necessary |
 | QAT export/runtime path is unstable | P0 before training; pin compatible versions; fail early rather than improvise during Pi trial |
