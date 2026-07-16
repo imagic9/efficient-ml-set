@@ -150,7 +150,12 @@ class WildlifeDataset(Dataset):
         self.augment = Augmentation(seed) if train else None
         self.overrides = image_root_overrides or {}
 
+        self.manifest = Path(manifest)
         self.pixels = None
+        # Always defined, so "this dataset decoded its own JPEGs" is an answerable
+        # question rather than an AttributeError. A run has to record which cache it
+        # read (DESIGN §9.2), including when the answer is "none".
+        self.cache_meta = None
         if cache_root is not None:
             try:
                 self.pixels, self.cache_meta = open_cache(manifest, cache_root, config)

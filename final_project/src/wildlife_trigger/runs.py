@@ -4,6 +4,13 @@ Every phase from B onward writes through here, so DESIGN §9.2's requirement --
 that each run record its resolved config, git state, environment, seeds and
 hashes -- is satisfied by construction rather than by remembering to do it.
 
+That sentence was false for a month (issue #10): `train.py` produced all three
+C1a arms without importing this module, so the three run directories that decided
+the input contract hold no environment and no hashes at all. A guarantee only one
+caller has to remember is not a guarantee, which is the whole argument for this
+module existing. `train.py` now writes through here; the C1a directories stay as
+they are, and their provenance gap is what it is.
+
 Two properties matter more than convenience:
 
 *Persistence.* Long jobs on gx10 outlive the ssh session that started them. Logs
@@ -17,11 +24,13 @@ leaves a truncated file that fails to load -- which is exactly when you need it.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import logging
 import os
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -31,6 +40,12 @@ from wildlife_trigger import provenance
 LOGGER = logging.getLogger(__name__)
 
 _RUN_ID_TIME_FORMAT = "%Y%m%dT%H%M%SZ"
+
+# One name per artifact, project-wide. `train.py` wrote these before this module was
+# wired in, `dump_predictions` defaults to `best.pt`, and DESIGN/PLAN name them --
+# so the run directory keeps them and this module stops proposing a second spelling.
+BEST_CHECKPOINT = "best.pt"
+LAST_CHECKPOINT = "last.pt"
 
 
 def utc_now() -> dt.datetime:
@@ -42,6 +57,20 @@ def make_run_id(phase: str, name: str, when: dt.datetime | None = None) -> str:
     stamp = (when or utc_now()).strftime(_RUN_ID_TIME_FORMAT)
     safe = "".join(ch if ch.isalnum() or ch in "_-" else "_" for ch in name)
     return f"{phase.lower()}_{safe}_{stamp}"
+
+
+def sha256_file(path: Path) -> str:
+    """Hash a file's bytes, streamed.
+
+    Streamed because the files a run needs to fingerprint are not all small: a
+    checkpoint is ~9 MB and a preprocessing cache is 8.5 GB, and `read_bytes()` on
+    the latter would ask gx10 for the whole array at once.
+    """
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def atomic_write_json(path: Path, payload: Any) -> None:
@@ -92,15 +121,46 @@ class RunContext:
 
     @property
     def checkpoint_path(self) -> Path:
-        return self.run_dir / "checkpoint_last.pt"
+        return self.run_dir / LAST_CHECKPOINT
 
     @property
     def best_checkpoint_path(self) -> Path:
-        return self.run_dir / "checkpoint_best.pt"
+        return self.run_dir / BEST_CHECKPOINT
 
     def artifact(self, relative: str) -> Path:
         path = self.run_dir / relative
         path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def record_hashes(
+        self, files: Mapping[str, Path | str | None], **extra: Any
+    ) -> Path:
+        """Fingerprint what this run read and wrote (DESIGN §9.2).
+
+        Merged into `hashes.json` rather than overwriting it, because the inputs are
+        known before the first step and the outputs only after the last: a run that
+        dies at epoch 25 should still be able to say which manifests it trained on.
+
+        A `None` path is recorded as null, not dropped. "This run had no empty
+        supplement" is a fact about the run; an absent key is indistinguishable from
+        nobody having looked.
+        """
+        path = self.run_dir / "hashes.json"
+        payload = json.loads(path.read_text()) if path.exists() else {}
+
+        for label, target in files.items():
+            if target is None:
+                payload[label] = None
+                continue
+            target = Path(target)
+            payload[label] = {
+                "path": str(target),
+                "sha256": sha256_file(target),
+                "bytes": target.stat().st_size,
+            }
+        payload.update(extra)
+
+        atomic_write_json(path, payload)
         return path
 
     # -- setup ----------------------------------------------------------------
@@ -220,7 +280,7 @@ def find_resumable(results_root: Path, phase: str, name: str) -> Path | None:
         reverse=True,
     )
     for candidate in candidates:
-        if (candidate / "checkpoint_last.pt").exists():
+        if (candidate / LAST_CHECKPOINT).exists():
             return candidate
     return None
 

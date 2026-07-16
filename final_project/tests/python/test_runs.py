@@ -7,6 +7,7 @@ survives a kill mid-write, and that a resumable run can be found again.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -15,17 +16,7 @@ import pytest
 
 from wildlife_trigger import runs
 
-
-@pytest.fixture(autouse=True)
-def _isolate_logging():
-    """RunContext attaches handlers to the root logger; do not leak them."""
-    root = logging.getLogger()
-    before = list(root.handlers)
-    yield
-    for handler in list(root.handlers):
-        if handler not in before:
-            handler.close()
-            root.removeHandler(handler)
+# The root-logger cleanup RunContext needs lives in conftest.py, autouse for every test.
 
 
 def test_run_id_is_safe_as_a_directory_name() -> None:
@@ -144,16 +135,67 @@ def test_find_resumable_picks_the_newest_with_a_checkpoint(tmp_path: Path) -> No
     newer = phase / "c2_m0_20260202T000000Z"
     older.mkdir(parents=True)
     newer.mkdir(parents=True)
-    runs.save_checkpoint(older / "checkpoint_last.pt", {"epoch": 1})
+    runs.save_checkpoint(older / "last.pt", {"epoch": 1})
 
     found = runs.find_resumable(tmp_path, "C2", "m0")
     assert found == older, "a run without a checkpoint is not resumable"
 
-    runs.save_checkpoint(newer / "checkpoint_last.pt", {"epoch": 5})
+    runs.save_checkpoint(newer / "last.pt", {"epoch": 5})
     assert runs.find_resumable(tmp_path, "C2", "m0") == newer, "newest wins"
 
     assert runs.find_resumable(tmp_path, "C2", "nonexistent") is None
     assert runs.find_resumable(tmp_path, "ZZ", "m0") is None
+
+
+def test_sha256_file_is_the_file_and_streams_it(tmp_path: Path) -> None:
+    """Streamed, because a preprocessing cache is 8.5 GB and read_bytes() is not."""
+    blob = tmp_path / "pixels.npy"
+    payload = b"x" * ((1 << 20) + 7)  # crosses the 1 MiB block boundary, unevenly
+    blob.write_bytes(payload)
+
+    assert runs.sha256_file(blob) == hashlib.sha256(payload).hexdigest()
+
+
+def test_record_hashes_merges_inputs_recorded_before_outputs_exist(tmp_path: Path) -> None:
+    """A run hashes what it read at the start and what it wrote at the end.
+
+    Overwriting on the second call would leave a run that died mid-training unable to
+    say what it trained on, which is the case the record is most needed for.
+    """
+    ctx = runs.RunContext.create(
+        phase="A2", name="hashes", config={}, results_root=tmp_path
+    )
+    manifest = tmp_path / "train.jsonl"
+    manifest.write_text('{"image_id": "a"}\n')
+
+    ctx.record_hashes({"manifest:train": manifest}, caches={"train": None})
+    checkpoint = tmp_path / "best.pt"
+    checkpoint.write_bytes(b"weights")
+    ctx.record_hashes({"checkpoint:best": checkpoint})
+
+    payload = json.loads((ctx.run_dir / "hashes.json").read_text())
+    assert payload["manifest:train"]["sha256"] == runs.sha256_file(manifest), (
+        "the input hash must survive the output pass"
+    )
+    assert payload["manifest:train"]["bytes"] == manifest.stat().st_size
+    assert payload["checkpoint:best"]["sha256"] == runs.sha256_file(checkpoint)
+    assert payload["caches"] == {"train": None}
+
+
+def test_record_hashes_writes_null_for_an_absent_input(tmp_path: Path) -> None:
+    """DESIGN §5.2's no-empty arm has no supplement, and that is a recorded fact.
+
+    Dropping the key would make "this run had no supplement" look identical to "nobody
+    recorded whether it did".
+    """
+    ctx = runs.RunContext.create(
+        phase="A2", name="null", config={}, results_root=tmp_path
+    )
+    ctx.record_hashes({"manifest:empty_supplement": None})
+
+    payload = json.loads((ctx.run_dir / "hashes.json").read_text())
+    assert "manifest:empty_supplement" in payload
+    assert payload["manifest:empty_supplement"] is None
 
 
 def test_dirty_tree_is_warned_about(tmp_path: Path, caplog) -> None:

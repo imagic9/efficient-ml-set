@@ -4,6 +4,7 @@
 # passed on a command line, so the run's config file explains the run.
 run_name: m0_fp32_seed42
 seed: 42
+phase: C2           # names the run id and results/training/c2/<run_id>/
 
 width: 256          # Core input, frozen by C1a (results/ablations/data_input_decision.md)
 height: 192         # 256x192 over 224x224: +31.1% real pixels at -2.0% MACs

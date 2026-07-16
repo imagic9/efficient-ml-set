@@ -48,8 +48,11 @@ from pathlib import Path
 import numpy as np
 
 from wildlife_trigger.data.preprocess import PreprocessConfig, decode, letterbox_bgr
+from wildlife_trigger.runs import sha256_file
 
 CACHE_FORMAT_VERSION = 2
+
+__all__ = ["build", "cache_dir_for", "fingerprint", "open_cache", "sha256_file"]
 
 
 def fingerprint(config: PreprocessConfig, manifest_sha256: str) -> dict:
@@ -58,14 +61,6 @@ def fingerprint(config: PreprocessConfig, manifest_sha256: str) -> dict:
         "preprocess": config.fingerprint(),
         "manifest_sha256": manifest_sha256,
     }
-
-
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def cache_dir_for(cache_root: Path, manifest: Path, config: PreprocessConfig) -> Path:

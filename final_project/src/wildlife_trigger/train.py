@@ -22,6 +22,13 @@ ablation changes the training set from 13,546 to 18,546 images. Matching epochs 
 give the supplement arm 36.9% more optimizer steps and confound "empty data helps" with
 "this arm trained longer" (DESIGN §5.2).
 
+**Every run writes through `runs.RunContext`** (issue #10), so DESIGN §9.2's provenance
+and PLAN C2's third bullet are satisfied by construction: an immutable run id, the
+resolved config, the environment, the git state, a log that outlives the ssh session,
+and the hashes of every manifest, class map, cache and checkpoint the run touched. This
+is not paperwork. M0 is the baseline every optimized candidate is measured against, and
+a number whose inputs cannot be named afterwards cannot be defended.
+
 Usage:
     python -m wildlife_trigger.train --config configs/train/m0_fp32.yaml
 """
@@ -30,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -41,6 +49,7 @@ import yaml
 from torch.utils.data import DataLoader
 
 from wildlife_trigger import metrics as M
+from wildlife_trigger import runs
 from wildlife_trigger.data.dataset import (
     ConcatManifestDataset,
     WildlifeDataset,
@@ -52,11 +61,17 @@ from wildlife_trigger.models.mobilenet import build_mobilenet_v2
 
 TARGET_CLASS = "bobcat"
 
+LOGGER = logging.getLogger(__name__)
+
 
 @dataclass
 class TrainConfig:
     run_name: str
     seed: int = 42
+
+    # The phase this run belongs to. It names the run id and the directory under
+    # `output_dir`, so a result can be traced to the PLAN task that asked for it.
+    phase: str = "C2"
 
     # Data
     manifests_dir: str = "data/manifests"
@@ -81,6 +96,11 @@ class TrainConfig:
     amp: bool = True
     workers: int = 8
 
+    # DESIGN §7.1's ImageNet initialisation. False exists so the engine can be exercised
+    # without the torchvision download, and because §7.2 requires a deviation this large
+    # to be *recorded in the run config* rather than implied by a code path.
+    pretrained: bool = True
+
     # DESIGN §5.2: the ablation matches optimizer steps, not epochs. None = derive from
     # this run's own dataset size.
     #
@@ -95,6 +115,8 @@ class TrainConfig:
     # The no-empty arm trains a 15-output head on a training set with no `empty` frames.
     exclude_empty_class: bool = False
 
+    # Root for run directories, not the run directory itself: `RunContext` owns the
+    # layout below it (`<output_dir>/<phase>/<run_id>/`, DESIGN §14's results/training).
     output_dir: str = "results/training"
 
 
@@ -198,10 +220,41 @@ def score_of(results: dict) -> dict:
     )
 
 
+def cache_fingerprints(datasets: list[WildlifeDataset]) -> dict:
+    """Which pixels each split actually read.
+
+    `null` means the split decoded its own JPEGs because no cache was there. That is a
+    real difference between two runs of the same config and it belongs in the record:
+    the cache is a derived artifact, and its fingerprint is what ties this run's pixels
+    to a manifest and a preprocessing config (DESIGN §5.5).
+    """
+    return {
+        dataset.manifest.stem: (
+            None
+            if dataset.cache_meta is None
+            else {
+                "fingerprint": dataset.cache_meta["fingerprint"],
+                "image_id_order_sha256": dataset.cache_meta["image_id_order_sha256"],
+                "images": dataset.cache_meta["images"],
+            }
+        )
+        for dataset in datasets
+    }
+
+
 def run(config: TrainConfig) -> dict:
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
     device = resolve_device()
+
+    # First, before the data: a run that dies building datasets still has to be able to
+    # say which code and which machine it died on.
+    ctx = runs.RunContext.create(
+        phase=config.phase,
+        name=config.run_name,
+        config=asdict(config),
+        results_root=Path(config.output_dir),
+    )
 
     class_names = load_class_names(Path(config.classes_config))
     if config.exclude_empty_class:
@@ -213,6 +266,30 @@ def run(config: TrainConfig) -> dict:
     train_records = [r for part in data["train_parts"] for r in part.records]
     weights = class_weights(train_records, class_names).to(device)
 
+    # DESIGN §9.2's dataset hashes, recorded before the first optimizer step rather than
+    # after the last: this is what makes "which data was this trained on" answerable for
+    # a run that never finishes.
+    manifests = Path(config.manifests_dir)
+    ctx.record_hashes(
+        {
+            "manifest:train": manifests / "train.jsonl",
+            "manifest:cis_val_clean": manifests / "cis_val_clean.jsonl",
+            "manifest:trans_val": manifests / "trans_val.jsonl",
+            # Null for the no-empty arm, which is the point: DESIGN §5.2's control is
+            # visible in the hashes, not only in the config that requested it.
+            "manifest:empty_supplement": (
+                Path(config.supplement_manifest)
+                if config.supplement_manifest and not config.exclude_empty_class
+                else None
+            ),
+            "config:classes": Path(config.classes_config),
+        },
+        caches=cache_fingerprints(
+            [*data["train_parts"], *data["validation"].values()]
+        ),
+        class_names=class_names,
+    )
+
     # Surfaced, not buried: the no-empty arm legitimately sees `empty` in validation and
     # models it as "no animal present". Anything else appearing here is a bug.
     unmodelled = {
@@ -221,7 +298,7 @@ def run(config: TrainConfig) -> dict:
         if dataset.unmodelled_labels
     }
     if unmodelled:
-        print(f"labels present in data but not modelled by this head: {unmodelled}")
+        LOGGER.info("labels present in data but not modelled by this head: %s", unmodelled)
         unexpected = {
             name: [l for l in labels if l != "empty"] for name, labels in unmodelled.items()
         }
@@ -256,7 +333,9 @@ def run(config: TrainConfig) -> dict:
     }
     validation_loaders = {k: v for k, v in loaders.items() if k != "train"}
 
-    model = build_mobilenet_v2(num_classes=len(class_names), pretrained=True).to(device)
+    model = build_mobilenet_v2(
+        num_classes=len(class_names), pretrained=config.pretrained
+    ).to(device)
 
     # ignore_index=-1: the multi-class frames carry target -1 and are skipped by CE
     # while remaining in the dataset for target-presence evaluation (DESIGN B3).
@@ -272,8 +351,7 @@ def run(config: TrainConfig) -> dict:
             "never run and the backbone would never be fine-tuned."
         )
 
-    output = Path(config.output_dir) / config.run_name
-    output.mkdir(parents=True, exist_ok=True)
+    output = ctx.run_dir
 
     history = []
     # The whole score vector, not its first component: `is_better_checkpoint` needs the
@@ -297,6 +375,29 @@ def run(config: TrainConfig) -> dict:
             weight_decay=config.weight_decay,
         )
 
+    def checkpoint_state() -> dict:
+        """What DESIGN §7.2 means by "last and best plus full optimizer/scheduler state".
+
+        `last.pt` carries the same state as `best.pt` rather than a bare `state_dict`:
+        without the optimizer and scheduler it is not a resume point, and a resume point
+        is the only reason a last checkpoint exists at all.
+
+        The score here is the full DESIGN §7.2 vector, so `best.pt` can state what it
+        won on without being read against a history file.
+        """
+        return {
+            "run_id": ctx.run_id,
+            "model": model.state_dict(),
+            "optimiser": optimiser.state_dict(),
+            "scheduler": scheduler.state_dict() if scheduler else None,
+            "epoch": epoch,
+            "step": step,
+            "phase": phase,
+            "score": score,
+            "class_names": class_names,
+            "config": asdict(config),
+        }
+
     optimiser = set_phase("A")
     scheduler = None
     phase = "A"
@@ -316,7 +417,7 @@ def run(config: TrainConfig) -> dict:
                 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                     optimiser, T_max=max(1, max_steps - step)
                 )
-                print(f"  phase A -> B at step {step}", flush=True)
+                LOGGER.info("phase A -> B at step %d", step)
 
             images = batch["image"].to(device, non_blocking=True)
             targets = batch["target"].to(device, non_blocking=True)
@@ -358,13 +459,17 @@ def run(config: TrainConfig) -> dict:
             "elapsed_s": round(time.time() - started, 1),
         }
         history.append(entry)
-        print(
-            f"epoch {epoch:2d} [{phase}] step {step:5d}/{max_steps}  "
-            f"loss {entry['train_loss']:.4f}  "
-            f"bobcatF2 cis {entry['cis_val_clean']['frame_f2']:.4f} "
-            f"trans {entry['trans_val']['frame_f2']:.4f}  "
-            f"score {score['primary']:.4f}",
-            flush=True,
+        LOGGER.info(
+            "epoch %2d [%s] step %5d/%d  loss %.4f  bobcatF2 cis %.4f trans %.4f  "
+            "score %.4f",
+            epoch,
+            phase,
+            step,
+            max_steps,
+            entry["train_loss"],
+            entry["cis_val_clean"]["frame_f2"],
+            entry["trans_val"]["frame_f2"],
+            score["primary"],
         )
 
         if phase == "B" and M.is_better_checkpoint(score, best["score"]):
@@ -372,33 +477,25 @@ def run(config: TrainConfig) -> dict:
             # head-only model that happens to score well early would be chosen over a
             # properly fine-tuned one and the run's whole phase B would be discarded.
             best = {"score": score, "epoch": epoch}
-            torch.save(
-                {
-                    "model": model.state_dict(),
-                    "optimiser": optimiser.state_dict(),
-                    "scheduler": scheduler.state_dict() if scheduler else None,
-                    "epoch": epoch,
-                    "step": step,
-                    "score": score,
-                    "class_names": class_names,
-                    "config": asdict(config),
-                },
-                output / "best.pt",
-            )
+            runs.save_checkpoint(ctx.best_checkpoint_path, checkpoint_state())
 
         # Patience runs from the last epoch that won under the full rule, so an epoch
         # that ties on F2 and improves a tie-break counts as progress here exactly as it
         # does above. One comparator, one definition of "better".
         if epoch - best["epoch"] >= config.early_stopping_patience and phase == "B":
-            print(f"early stopping: no improvement for {config.early_stopping_patience} epochs")
+            LOGGER.info(
+                "early stopping: no improvement for %d epochs",
+                config.early_stopping_patience,
+            )
             break
         if step >= max_steps:
-            print(f"step budget reached: {step}/{max_steps}")
+            LOGGER.info("step budget reached: %d/%d", step, max_steps)
             break
 
-    torch.save({"model": model.state_dict(), "step": step}, output / "last.pt")
+    runs.save_checkpoint(ctx.checkpoint_path, checkpoint_state())
 
     summary = {
+        "run_id": ctx.run_id,
         "run_name": config.run_name,
         "config": asdict(config),
         "class_names": class_names,
@@ -432,7 +529,29 @@ def run(config: TrainConfig) -> dict:
         "device": str(device),
     }
     (output / "history.json").write_text(json.dumps(summary, indent=2) + "\n")
-    print(f"\nbest epoch {best['epoch']} score {summary['best_score']} -> {output}")
+
+    # After the checkpoints exist, so the hashes are of the files that were actually
+    # written. DESIGN §9.2's model hashes, and what C3's policy JSON binds itself to.
+    ctx.record_hashes(
+        {
+            "checkpoint:best": (
+                ctx.best_checkpoint_path if ctx.best_checkpoint_path.exists() else None
+            ),
+            "checkpoint:last": ctx.checkpoint_path,
+        }
+    )
+    ctx.finish(
+        status="completed",
+        best_epoch=best["epoch"],
+        best_score=summary["best_score"],
+        best_selection_score=best["score"],
+        selection_rule=summary["selection_rule"],
+        budget=summary["budget"],
+        device=str(device),
+    )
+    LOGGER.info(
+        "best epoch %s score %s -> %s", best["epoch"], summary["best_score"], output
+    )
     return summary
 
 
