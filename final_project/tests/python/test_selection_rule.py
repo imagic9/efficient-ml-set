@@ -30,15 +30,15 @@ def score(primary: float, recall: float, macro_f1: float) -> dict:
 def test_selection_order_matches_what_selection_score_produces() -> None:
     """The ladder is indexed by name; a rename must break here, not go silent."""
     produced = M.selection_score(
-        cis={"frame_f2": 0.5, "sequence_balanced_recall": 0.75},
-        trans={"frame_f2": 0.25, "sequence_balanced_recall": 0.25},
+        cis={"average_precision": 0.5, "sequence_balanced_recall": 0.75},
+        trans={"average_precision": 0.25, "sequence_balanced_recall": 0.25},
         macro_f1=0.44,
     )
     assert set(M.SELECTION_ORDER) <= set(produced), (
         "the comparator reads keys selection_score does not produce"
     )
     assert M.selection_key(produced) == pytest.approx((0.375, 0.5, 0.44))
-    assert M.SELECTION_ORDER[0] == "primary", "F2 is the primary, not a tie-break"
+    assert M.SELECTION_ORDER[0] == "primary", "AP is the primary, not a tie-break"
 
 
 def test_primary_decides_before_any_tiebreak() -> None:

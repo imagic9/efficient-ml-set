@@ -901,12 +901,49 @@ Default recipe; all deviations must be recorded in the run config:
 - cosine learning-rate decay;
 - mixed precision allowed on gx10, never on Pi inference;
 - early stopping patience: 6 epochs;
-- checkpoint selection score: mean of cis-val-clean and trans-val bobcat F2,
-  with sequence-balanced bobcat recall used as the first tie-break and
-  support-aware macro F1 as the second;
+- checkpoint selection score: mean of cis-val-clean and trans-val **bobcat average
+  precision** (see the 2026-07-16 amendment below; originally mean bobcat F2 at a
+  fixed 0.5 threshold), with sequence-balanced bobcat recall used as the first
+  tie-break and support-aware macro F1 as the second;
 - save last and best checkpoints plus full optimizer/scheduler state.
 
 Do not tune on overall accuracy alone.
+
+#### Amendment 2026-07-16 — the checkpoint score is threshold-free (issue #19)
+
+The original primary — mean bobcat F2 at a fixed 0.5 threshold — was decided by
+noise. On the first M0 run, trans-val F2 at 0.5 swung threefold between adjacent
+epochs (0.037 ↔ 0.109) while cis rose smoothly; the epoch holding the run's best
+cis F2 (0.6558) lost the selection because trans wobbled on one arbitrary line.
+And 0.5 is a line the deployed model never operates on: §6.3 calibrates the real
+threshold in C3 (0.538 for that run). Average precision integrates over every
+threshold, so it depends only on how the model ranks frames — which is the thing
+a checkpoint should be selected for and the thing C3's calibration consumes.
+
+**"AP is more stable" is a claim to be tested, not asserted.** Every run records
+both metrics per epoch, so the test runs on real trajectories. Registered before
+any AP-selected run was trained, on the re-run seed-42 M0:
+
+1. the mean absolute epoch-to-epoch change of the AP selection score across
+   phase-B epochs, relative to its phase-B mean, must be at most **half** that of
+   the F2@0.5 selection score on the same epochs;
+2. the `seq_id`-cluster bootstrap 95% CI half-width of trans-val AP at the
+   selected checkpoint, relative to its point estimate, must be **no wider** than
+   that of trans-val F2@0.5 at the same checkpoint.
+
+If either fails, the rule reverts to F2@0.5 and issue #19 closes as checked and
+not adopted. What AP does not fix is also registered: it removes the
+arbitrary-threshold noise, not the sequence-sampling noise — the `seq_id`
+bootstrap remains the uncertainty measure and the paired tie test remains the
+comparison instrument.
+
+Because the rule changes which epoch each run freezes, the seed-42 M0 **and all
+three C1a arms are re-trained under it** with epoch-level AP recorded, and the
+C1a data/input decision is re-derived rather than declared unaffected: the
+existing `predictions.npz` belong to F2-selected checkpoints, and AP could have
+frozen a different epoch of any arm, moving false-fire and the tie test with it.
+The original F2-era artifacts remain committed as the record of the decision as
+it was made.
 
 ### 7.3 Baseline artifacts
 

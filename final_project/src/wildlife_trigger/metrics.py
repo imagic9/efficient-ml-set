@@ -102,6 +102,43 @@ def target_presence_metrics(
     }
 
 
+def average_precision(scores: np.ndarray, present: np.ndarray) -> float:
+    """Bobcat AP: area under the precision-recall curve, threshold-free.
+
+    DESIGN §7.2 (amended 2026-07-16, issue #19) selects checkpoints on this instead of
+    F2 at a fixed 0.5. The fixed threshold was the noise: trans-val scores cluster low,
+    so at 0.5 the F2 is computed on the sparse tail where a handful of frames crossing
+    one arbitrary line swings the metric threefold between consecutive epochs — and C3
+    then calibrates the deployed threshold somewhere else entirely. AP integrates over
+    every threshold, so it depends only on how the model *ranks* frames.
+
+    Equal scores are one threshold. A tie cannot be split by any threshold, so it must
+    not be split by the metric either — the sweep advances over groups of equal scores,
+    which is the same convention as sklearn's `average_precision_score`.
+
+    No positives returns 0.0: for selection, a domain that cannot be scored must drag
+    the mean down, not crash the epoch.
+    """
+    positives = np.asarray(present) > 0
+    total_positives = int(positives.sum())
+    if total_positives == 0:
+        return 0.0
+
+    order = np.argsort(-np.asarray(scores), kind="stable")
+    sorted_scores = np.asarray(scores)[order]
+    sorted_positives = positives[order]
+
+    cumulative_tp = np.cumsum(sorted_positives)
+    # Last index of each equal-score group: precision/recall exist between distinct
+    # thresholds, not inside a tie.
+    boundaries = np.flatnonzero(np.diff(sorted_scores) != 0)
+    group_ends = np.r_[boundaries, len(sorted_scores) - 1]
+
+    precision = cumulative_tp[group_ends] / (group_ends + 1)
+    recall = cumulative_tp[group_ends] / total_positives
+    return float(np.sum(np.diff(np.r_[0.0, recall]) * precision))
+
+
 def per_class_metrics(
     probabilities: np.ndarray,
     present: np.ndarray,
@@ -357,18 +394,24 @@ def bootstrap_sequence_clusters(
         by_sequence[seq_id].append(index)
     sequences = list(by_sequence)
 
+    def value_of(rows: list[int]) -> float:
+        # `average_precision` is threshold-free, so it bypasses the threshold entirely
+        # rather than accepting one it would ignore.
+        if metric == "average_precision":
+            return average_precision(scores[rows], present[rows])
+        return target_presence_metrics(
+            scores[rows], present[rows], [seq_ids[i] for i in rows], threshold
+        )[metric]
+
     values = []
     for _ in range(replicates):
         drawn = rng.choice(len(sequences), size=len(sequences), replace=True)
         indices = [i for d in drawn for i in by_sequence[sequences[d]]]
-        sample = target_presence_metrics(
-            scores[indices], present[indices], [seq_ids[i] for i in indices], threshold
-        )
-        values.append(sample[metric])
+        values.append(value_of(indices))
 
     return {
         "metric": metric,
-        "point_estimate": target_presence_metrics(scores, present, seq_ids, threshold)[metric],
+        "point_estimate": value_of(list(range(len(scores)))),
         "ci95_low": float(np.percentile(values, 2.5)),
         "ci95_high": float(np.percentile(values, 97.5)),
         "replicates": replicates,
@@ -377,15 +420,22 @@ def bootstrap_sequence_clusters(
 
 
 def selection_score(cis: dict, trans: dict, macro_f1: float) -> dict:
-    """DESIGN §7.2's checkpoint selection score.
+    """DESIGN §7.2's checkpoint selection score (amended 2026-07-16, issue #19).
 
-    Mean bobcat F2 across the two validation domains, sequence-balanced recall as first
-    tie-break, support-aware macro F1 as second. Explicitly *not* overall accuracy:
-    `empty` dominates the corpus, so accuracy would select the model that is best at
-    predicting nothing happened.
+    Mean bobcat **average precision** across the two validation domains — threshold-free,
+    where the original mean F2 at a fixed 0.5 was decided by trans-val's noise at a
+    threshold C3 recalibrates anyway. Sequence-balanced recall stays as first tie-break,
+    support-aware macro F1 as second. Explicitly *not* overall accuracy: `empty`
+    dominates the corpus, so accuracy would select the model that is best at predicting
+    nothing happened.
+
+    `primary_metric` names what `primary` is, inside the artifact itself: histories
+    written before the amendment carry F2 means under the same key, and a reader of a
+    bare number cannot tell which rule produced it.
     """
     return {
-        "primary": (cis["frame_f2"] + trans["frame_f2"]) / 2,
+        "primary": (cis["average_precision"] + trans["average_precision"]) / 2,
+        "primary_metric": PRIMARY_METRIC,
         "tiebreak_1_sequence_balanced_recall": (
             cis["sequence_balanced_recall"] + trans["sequence_balanced_recall"]
         )
@@ -400,6 +450,9 @@ SELECTION_ORDER = (
     "tiebreak_1_sequence_balanced_recall",
     "tiebreak_2_macro_f1",
 )
+
+# What `primary` is. One definition, referenced wherever the rule describes itself.
+PRIMARY_METRIC = "mean_bobcat_average_precision"
 
 
 def selection_key(score: dict) -> tuple[float, ...]:

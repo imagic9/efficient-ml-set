@@ -10,8 +10,11 @@ Two things this engine refuses to do:
 
 **It does not select on accuracy.** `empty` dominates the corpus, so the most accurate
 model is the one best at predicting that nothing happened. The checkpoint score is mean
-bobcat F2 across cis-val-clean and trans-val, with sequence-balanced recall and
-support-aware macro F1 as tie-breaks (DESIGN §7.2).
+bobcat average precision across cis-val-clean and trans-val — threshold-free, per the
+2026-07-16 amendment to DESIGN §7.2 (issue #19) — with sequence-balanced recall and
+support-aware macro F1 as tie-breaks. F2 at 0.5 stays recorded per epoch, both because
+§6.4 reports it and because the amendment's stability test compares the two on the same
+trajectory.
 
 **It does not touch test.** Only train, cis-val-clean and trans-val are reachable from
 here (DESIGN §5.4). cis-test and trans-test are sealed until every model, threshold and
@@ -196,10 +199,19 @@ def evaluate(
         probabilities = np.concatenate(probabilities)
         present = np.concatenate(present)
 
+        target = M.target_presence_metrics(
+            probabilities[:, target_index], present[:, target_index], seq_ids, threshold
+        )
+        # Threshold-free, next to the thresholded metrics on purpose: the selection rule
+        # reads this (DESIGN §7.2 as amended, issue #19), and recording both per epoch is
+        # what lets the amendment's stability test be run on real trajectories instead of
+        # asserted.
+        target["average_precision"] = M.average_precision(
+            probabilities[:, target_index], present[:, target_index]
+        )
+
         results[domain] = {
-            "target": M.target_presence_metrics(
-                probabilities[:, target_index], present[:, target_index], seq_ids, threshold
-            ),
+            "target": target,
             "classes": M.per_class_metrics(probabilities, present, class_names, seq_ids),
             "_probabilities": probabilities,
             "_present": present,
@@ -460,13 +472,15 @@ def run(config: TrainConfig) -> dict:
         }
         history.append(entry)
         LOGGER.info(
-            "epoch %2d [%s] step %5d/%d  loss %.4f  bobcatF2 cis %.4f trans %.4f  "
-            "score %.4f",
+            "epoch %2d [%s] step %5d/%d  loss %.4f  bobcatAP cis %.4f trans %.4f  "
+            "F2@0.5 cis %.4f trans %.4f  score %.4f",
             epoch,
             phase,
             step,
             max_steps,
             entry["train_loss"],
+            entry["cis_val_clean"]["average_precision"],
+            entry["trans_val"]["average_precision"],
             entry["cis_val_clean"]["frame_f2"],
             entry["trans_val"]["frame_f2"],
             score["primary"],
@@ -507,6 +521,7 @@ def run(config: TrainConfig) -> dict:
         "best_selection_score": best["score"],
         "selection_rule": {
             "order": list(M.SELECTION_ORDER),
+            "primary_metric": M.PRIMARY_METRIC,
             "final_tiebreak": "earliest epoch",
             "phase_b_only": True,
         },
