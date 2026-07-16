@@ -45,14 +45,7 @@ PreprocessResult Preprocessor::from_file(const std::string &path) {
     return from_bgr(bgr);
 }
 
-PreprocessResult Preprocessor::from_bgr(const cv::Mat &bgr) {
-    if (bgr.empty()) {
-        throw std::runtime_error("preprocess: empty image");
-    }
-    if (bgr.type() != CV_8UC3) {
-        throw std::runtime_error("preprocess: expected 8-bit 3-channel BGR");
-    }
-
+LetterboxInfo Preprocessor::compute_letterbox(const cv::Mat &bgr) const {
     LetterboxInfo info;
     info.source_width = bgr.cols;
     info.source_height = bgr.rows;
@@ -77,15 +70,26 @@ PreprocessResult Preprocessor::from_bgr(const cv::Mat &bgr) {
     info.resized_width = std::min(info.resized_width, config_.width);
     info.resized_height = std::min(info.resized_height, config_.height);
 
+    // Step 4's offsets: centre, floor-divided, extra pixel on the far side.
+    info.pad_left = (config_.width - info.resized_width) / 2;
+    info.pad_top = (config_.height - info.resized_height) / 2;
+    return info;
+}
+
+PreprocessResult Preprocessor::from_bgr(const cv::Mat &bgr) {
+    if (bgr.empty()) {
+        throw std::runtime_error("preprocess: empty image");
+    }
+    if (bgr.type() != CV_8UC3) {
+        throw std::runtime_error("preprocess: expected 8-bit 3-channel BGR");
+    }
+
+    LetterboxInfo info = compute_letterbox(bgr);
+
     // INTER_LINEAR is the contract's interpolation and the one step whose
     // implementation could differ between OpenCV versions -- the named P1 risk.
     cv::resize(bgr, resized_, cv::Size(info.resized_width, info.resized_height), 0, 0,
                cv::INTER_LINEAR);
-
-    // Step 4: centre-pad. Computed as a left/top offset into a prefilled canvas
-    // rather than with copyMakeBorder, so the padded region is written once.
-    info.pad_left = (config_.width - info.resized_width) / 2;
-    info.pad_top = (config_.height - info.resized_height) / 2;
 
     canvas_.setTo(cv::Scalar(config_.pad_value, config_.pad_value, config_.pad_value));
     resized_.copyTo(canvas_(cv::Rect(info.pad_left, info.pad_top, info.resized_width,
@@ -119,6 +123,87 @@ PreprocessResult Preprocessor::from_bgr(const cv::Mat &bgr) {
         }
     }
 
+    return result;
+}
+
+PreprocessResult Preprocessor::from_file_reference(const std::string &path) const {
+    const cv::Mat bgr = cv::imread(path, cv::IMREAD_COLOR);
+    if (bgr.empty()) {
+        throw std::runtime_error(
+            "cannot decode image: " + path +
+            " (missing, truncated, or not an image). A corrupt frame must be an "
+            "explicit error, never a silently grey tensor.");
+    }
+    return from_bgr_reference(bgr);
+}
+
+PreprocessResult Preprocessor::from_bgr_reference(const cv::Mat &bgr) const {
+    // DESIGN §11's "correct reference implementation": every step is its own named
+    // OpenCV primitive, in the contract's order, with nothing shared with the fused
+    // path except the geometry arithmetic. Slow on purpose -- five allocations and
+    // five traversals -- because its job is to be *obviously* the spec, so that
+    // when P1 compares Python, reference and fused, a disagreement localises: all
+    // three agree = contract holds; fused alone differs = fusion bug; both C++
+    // differ from Python = cross-version resize gap (the named P1 risk).
+    if (bgr.empty()) {
+        throw std::runtime_error("preprocess: empty image");
+    }
+    if (bgr.type() != CV_8UC3) {
+        throw std::runtime_error("preprocess: expected 8-bit 3-channel BGR");
+    }
+
+    const LetterboxInfo info = compute_letterbox(bgr);
+
+    // Step 3: aspect-preserving INTER_LINEAR resize (still BGR).
+    cv::Mat resized;
+    cv::resize(bgr, resized, cv::Size(info.resized_width, info.resized_height), 0, 0,
+               cv::INTER_LINEAR);
+
+    // Step 4: centre-pad with copyMakeBorder, the primitive the fused path avoids.
+    // The far side carries the extra pixel when the difference is odd, exactly as
+    // the offset arithmetic produces it.
+    cv::Mat padded;
+    cv::copyMakeBorder(resized, padded, info.pad_top,
+                       config_.height - info.resized_height - info.pad_top,
+                       info.pad_left,
+                       config_.width - info.resized_width - info.pad_left,
+                       cv::BORDER_CONSTANT,
+                       cv::Scalar(config_.pad_value, config_.pad_value,
+                                  config_.pad_value));
+
+    // Step 2: BGR -> RGB, as its own pass over the padded canvas.
+    cv::Mat rgb;
+    cv::cvtColor(padded, rgb, cv::COLOR_BGR2RGB);
+
+    // Step 5: float32, divide by 255.
+    cv::Mat scaled;
+    rgb.convertTo(scaled, CV_32FC3, 1.0 / 255.0);
+
+    // Step 6: ImageNet normalisation, channel by channel.
+    cv::subtract(scaled,
+                 cv::Scalar(config_.mean[0], config_.mean[1], config_.mean[2]),
+                 scaled);
+    cv::divide(scaled,
+               cv::Scalar(config_.stddev[0], config_.stddev[1], config_.stddev[2]),
+               scaled);
+
+    // Step 7: HWC -> planar NCHW via split, the layout primitive.
+    std::vector<cv::Mat> planes(3);
+    cv::split(scaled, planes);
+
+    PreprocessResult result;
+    result.letterbox = info;
+    result.tensor.resize(static_cast<size_t>(3) * config_.height * config_.width);
+    const size_t plane = static_cast<size_t>(config_.height) * config_.width;
+    for (int c = 0; c < 3; ++c) {
+        // Each split plane is a freshly allocated CV_32FC1, hence continuous; the
+        // check is cheap and turns a silent layout assumption into an error.
+        if (!planes[c].isContinuous()) {
+            throw std::runtime_error("preprocess: split plane is not continuous");
+        }
+        std::copy(planes[c].ptr<float>(0), planes[c].ptr<float>(0) + plane,
+                  result.tensor.begin() + static_cast<long>(c) * plane);
+    }
     return result;
 }
 

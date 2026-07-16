@@ -93,9 +93,24 @@ class Preprocessor {
     // decode and tests can supply a synthetic frame.
     PreprocessResult from_bgr(const cv::Mat &bgr);
 
+    // The same contract, written as separate OpenCV primitives (cvtColor,
+    // copyMakeBorder, convertTo, subtract/divide, split) instead of the fused
+    // single pass above. This is DESIGN §11's "correct reference implementation":
+    // P1 compares Python-vs-reference and Python-vs-fused separately, so a fusion
+    // bug is distinguishable from a contract bug. Allocates per call on purpose --
+    // clarity is its job; the hot path is from_bgr's.
+    PreprocessResult from_bgr_reference(const cv::Mat &bgr) const;
+
+    // Steps 2-7 from a saved file through the reference path.
+    PreprocessResult from_file_reference(const std::string &path) const;
+
     const PreprocessConfig &config() const { return config_; }
 
   private:
+    // Step 3's arithmetic, shared by both implementations: the geometry is exactly
+    // defined, so two copies could only ever disagree by mistake.
+    LetterboxInfo compute_letterbox(const cv::Mat &bgr) const;
+
     PreprocessConfig config_;
 
     // Reused across calls. DESIGN §11 requires a reusable preallocated input buffer;

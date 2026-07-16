@@ -1259,6 +1259,29 @@ odd dimensions:
 
 This catches BGR/RGB, interpolation, padding, layout, and normalization bugs.
 
+> **Amendment (2026-07-16, C4) — the numeric gates, registered before the first
+> real comparison ran.** The real golden corpus is all landscape (1024x747 and
+> 1024x768 only), so a committed synthetic supplement
+> (`tests/fixtures/p1_supplement/`) provides the portrait, square, odd-dimension,
+> upscale and IR-like coverage this section demands; the goldens provide the real
+> frames. Gates, per fixture:
+>
+> - **geometry exact** — resized/pad integers are pure arithmetic on two ints;
+> - **pad region within 1e-6** of the normalised grey constant, all three
+>   implementations — pads never pass through the resize, so no version excuse
+>   applies (1e-6 rather than bit-exact because `convertTo(alpha=1/255)`
+>   multiplies by a reciprocal where the other paths divide);
+> - **C++ reference vs C++ fused: max abs ≤ 1e-6** — same OpenCV, same host;
+>   anything more is a fusion bug, never a version gap;
+> - **Python vs either C++ path: max abs ≤ 0.035, mean abs ≤ 2e-3.** One uint8
+>   LSB after /255 and the largest ImageNet std is (1/255)/0.225 ≈ 0.0174;
+>   INTER_LINEAR across OpenCV 4.6/4.13 may land ±1 LSB on interior pixels, so
+>   the gate admits 2 LSB peak and a mean an order below 1 LSB.
+>
+> If a measured gap exceeds these, the registered answer is pins.env's: build a
+> matching OpenCV in the container and bundle its `.so` to the Pi — never widen
+> the tolerance to fit the measurement.
+
 ### P2 — FP32 model parity
 
 PyTorch and ORT FP32 must match on a fixed validation fixture set:
@@ -1267,6 +1290,30 @@ PyTorch and ORT FP32 must match on a fixed validation fixture set:
 - identical top-1 class;
 - identical bobcat fire/no-fire decisions except samples explicitly identified as
   lying within the numeric tolerance of the threshold.
+
+> **Amendment (2026-07-16, C4) — the numeric gates, registered before the first
+> real comparison ran.** The fixture set is frozen in
+> `tests/fixtures/p2_fixtures.json`: every validation frame within 0.05 of the
+> calibrated threshold (the carve-out must be exercised, not hypothesised), the
+> top-20 bobcat-scored frames, and a seeded stride sample across classes and
+> domains to ~200 frames, selected from the committed baseline `predictions.npz`.
+> Gates:
+>
+> - **logits: max abs ≤ 5e-4** per fixture (FP32 MobileNetV2 on the identical
+>   input tensor; the expected gap is ~1e-5 and the gate leaves room for kernel
+>   reassociation, not for bugs);
+> - **top-1: identical on every fixture** — no carve-out;
+> - **bobcat fire/no-fire at the calibrated threshold: identical**, except
+>   fixtures whose torch probability lies within **1e-4** of the threshold;
+>   those are listed by image id in the report as within-tolerance-of-threshold;
+> - **consistency guard**: torch-CPU probability vs the committed
+>   `predictions.npz` (CUDA) probability within **1e-3** per fixture — proving
+>   the exported graph is the calibrated model end to end, not merely *a* model.
+>
+> ORT Python vs ORT C++ (same ORT 1.27.0 both sides, pinned for exactly this):
+> **logits max abs ≤ 1e-4, identical argmax** on the shared `.bin` tensors, and
+> after the re-bind, identical decisions through the real CLI under the same
+> 1e-4 threshold carve-out.
 
 ### P3 — quantized-model validation
 

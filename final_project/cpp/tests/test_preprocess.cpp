@@ -4,6 +4,7 @@
 // the whole frame survives, the padding is where it should be, the channels are RGB
 // and not BGR, and the normalisation is the one torchvision applied.
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
@@ -168,6 +169,74 @@ void test_corrupt_input_is_an_error() {
     std::puts("  PASS  an undecodable image raises rather than returning grey");
 }
 
+// A structured BGR frame with gradients for the resize to interpolate. Flat
+// colour would make reference-vs-fused trivially equal even if one of them
+// mangled the interpolation.
+cv::Mat structured_frame(int width, int height) {
+    cv::Mat bgr(height, width, CV_8UC3);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            auto &pixel = bgr.at<cv::Vec3b>(y, x);
+            pixel[0] = static_cast<uint8_t>((x * 255) / std::max(1, width - 1));
+            pixel[1] = static_cast<uint8_t>((y * 255) / std::max(1, height - 1));
+            pixel[2] = static_cast<uint8_t>(((x + y) * 127) / std::max(1, width + height - 2));
+        }
+    }
+    return bgr;
+}
+
+void test_reference_and_fused_agree() {
+    // DESIGN §11's reference implementation exists so that a P1 disagreement can be
+    // localised: same OpenCV, same host, so the two C++ paths must agree to float
+    // rounding -- anything beyond ~1 ULP of the arithmetic is a fusion bug, not a
+    // version gap. Geometries chosen to exercise every pad case, including the odd
+    // difference that puts the extra pixel on the far side and left-pads (portrait).
+    const auto config = config_256x192();
+    Preprocessor preprocessor(config);
+
+    const int geometries[][2] = {
+        {1024, 747},  // dominant CCT landscape: pad top/bottom, odd difference
+        {747, 1024},  // portrait: pad_left > 0, which no real CCT fixture exercises
+        {512, 512},   // square
+        {1023, 767},  // odd dimensions
+        {100, 80},    // tiny: upscale path
+        {256, 192},   // exact fit: no resize, no pad
+    };
+    for (const auto &geometry : geometries) {
+        const cv::Mat bgr = structured_frame(geometry[0], geometry[1]);
+        const PreprocessResult fused = preprocessor.from_bgr(bgr);
+        const PreprocessResult reference = preprocessor.from_bgr_reference(bgr);
+
+        assert(fused.tensor.size() == reference.tensor.size());
+        assert(fused.letterbox.resized_width == reference.letterbox.resized_width);
+        assert(fused.letterbox.resized_height == reference.letterbox.resized_height);
+        assert(fused.letterbox.pad_left == reference.letterbox.pad_left);
+        assert(fused.letterbox.pad_top == reference.letterbox.pad_top);
+
+        float max_abs = 0.0F;
+        for (size_t i = 0; i < fused.tensor.size(); ++i) {
+            max_abs = std::max(max_abs, std::abs(fused.tensor[i] - reference.tensor[i]));
+        }
+        // 1e-6 is the pre-registered same-host gate (DESIGN §10): both paths do
+        // /255 then (x-mean)/std in float32 on identical uint8 letterboxes.
+        assert(max_abs <= 1e-6F);
+    }
+    std::puts("  PASS  reference and fused paths agree to 1e-6 on every geometry");
+}
+
+void test_reference_rejects_what_fused_rejects() {
+    const auto config = config_256x192();
+    Preprocessor preprocessor(config);
+    bool threw = false;
+    try {
+        preprocessor.from_bgr_reference(cv::Mat());
+    } catch (const std::exception &) {
+        threw = true;
+    }
+    assert(threw);
+    std::puts("  PASS  the reference path refuses an empty image too");
+}
+
 }  // namespace
 
 int main() {
@@ -178,6 +247,8 @@ int main() {
     test_padding_uses_the_configured_grey();
     test_whole_frame_survives_no_crop();
     test_corrupt_input_is_an_error();
+    test_reference_and_fused_agree();
+    test_reference_rejects_what_fused_rejects();
     std::puts("all preprocessing tests passed");
     return 0;
 }
