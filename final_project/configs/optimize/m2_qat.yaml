@@ -1,0 +1,37 @@
+# M2 — INT8 QAT from the M0 checkpoint (DESIGN §8.2, PLAN D2).
+#
+# One invocation per learning-rate arm: the pre-registered arms are
+# 1e-5 / 3e-5 / 5e-5 (results/optimize/m2_qat/preregistration.md §3), passed
+# via --lr; everything else is frozen here. The hashes are the contract, as in
+# m1_ptq.yaml: the trainer refuses a source checkpoint or calibration manifest
+# whose bytes moved.
+
+source_run_id: c2_m0_fp32_seed42_20260716T061203Z
+source_checkpoint: results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/best.pt
+source_checkpoint_sha256: 42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074
+
+# The frozen D1 corpus, shared with M1 by registration: same scales' data.
+calibration_manifest: data/manifests/calibration_1024.jsonl
+calibration_manifest_sha256: 9fab904c6eb3a5501011fdd3277b3ee98655a906d6301da44364ef35d8a863c4
+
+# The frozen §7.2 data contract (identical to M0's training).
+manifests_dir: data/manifests
+images_dir: data/raw/extracted/eccv_18_all_images_sm
+supplement_manifest: data/manifests/cct_empty_train_v1.jsonl
+supplement_dir: data/images/empty_supplement
+cache_dir: data/cache
+classes_config: configs/data/classes.yaml
+width: 256
+height: 192
+
+# Preregistration §2: 6 epochs fixed, batch 64, AdamW wd 1e-4, AMP off (in the
+# trainer, not a switch), observers frozen after epoch 1, seed 42.
+seed: 42
+epochs: 6
+batch_size: 64
+weight_decay: 0.0001
+workers: 8
+observer_freeze_after_epoch: 1
+
+output_root: results/optimize/m2_qat
+phase: D2

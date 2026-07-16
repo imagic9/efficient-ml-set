@@ -106,6 +106,12 @@ def test_no_authored_file_is_silently_ignored() -> None:
         # "ort" only under results/parity via the walk below being directory-name
         # based; nothing authored lives in directories with these names.
         "p1", "ort",
+        # D-phase P3/P4 intermediates (results/optimize/*/*/{p3,p4,p3_coverage,
+        # p3_reevaluation}): ort_probe logits/scratch, raw infer JSONs, per-frame
+        # run-dataset JSONL, the P3 re-evaluation npz. Rebuilt by
+        # scripts/run_d1_p3p4.sh; the committed evidence is p3_quantized.json /
+        # p4_dataset_parity.json beside them.
+        "p3", "p4", "p3_coverage", "p3_reevaluation",
     }
 
     # Generated files sitting inside authored directories, which the prune list cannot

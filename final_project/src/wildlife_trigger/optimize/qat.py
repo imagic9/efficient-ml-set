@@ -360,11 +360,12 @@ def verify_relu6_removal_is_exact(
     quantizer's range does not bound its ReLU6, and the export is not equivalent.
     """
     generator = torch.Generator().manual_seed(seed)
+    device = next(model.parameters()).device
     model.eval()
     worst = 0.0
     with torch.inference_mode():
         for _ in range(batches):
-            x = synthetic_batch(batch_size, generator)
+            x = synthetic_batch(batch_size, generator).to(device)
             set_export_mode(model, False)
             reference = model(x)
             set_export_mode(model, True)
@@ -442,9 +443,18 @@ def gradient_reaches_weights(model: nn.Module) -> dict:
     }
 
 
-def build_qat_model(pretrained: bool = True) -> tuple[nn.Module, dict]:
-    """FP32 MobileNetV2 -> BN folded -> output-side QDQ inserted everywhere."""
-    base = build_mobilenet_v2(pretrained=pretrained)
+def build_qat_model(
+    pretrained: bool = True, base: nn.Module | None = None
+) -> tuple[nn.Module, dict]:
+    """FP32 MobileNetV2 -> BN folded -> output-side QDQ inserted everywhere.
+
+    `base` lets M2 hand over the M0 fine-tuned network (16 outputs, checkpoint
+    weights already loaded) instead of the ImageNet factory model the P0 spike
+    used — DESIGN §8.2's "initialize from M0, never from M1" is the caller's
+    responsibility, and the caller proves it by hash before building this.
+    """
+    if base is None:
+        base = build_mobilenet_v2(pretrained=pretrained)
     base.eval()
 
     folded = fold_conv_bn(base)
