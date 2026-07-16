@@ -98,12 +98,12 @@ class TestAggregation:
         invent the field."""
         run_dir = make_run(tmp_path, 42, [0.0, 0.1], best_epoch=1)
         history = json.loads((run_dir / "history.json").read_text())
-        history["history"][1]["trans_val"]["bobcat_ap"] = 0.5
+        history["history"][1]["trans_val"]["average_precision"] = 0.5
         (run_dir / "history.json").write_text(json.dumps(history))
 
         (summary,) = [V.summarise_run(run) for run in V.load_runs([run_dir])]
-        assert summary["at_best"]["trans_val"]["bobcat_ap"] == 0.5
-        assert "bobcat_ap" not in summary["at_best"]["cis_val_clean"]
+        assert summary["at_best"]["trans_val"]["average_precision"] == 0.5
+        assert "average_precision" not in summary["at_best"]["cis_val_clean"]
 
 
 class TestRefusals:

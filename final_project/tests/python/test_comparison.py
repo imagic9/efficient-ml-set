@@ -63,7 +63,7 @@ def world(tmp_path_factory):
                 "phase": "B",
                 "selection_score": {"primary": 0.1 * epoch},
                 "cis_val_clean": domain_metrics(0.1 * epoch),
-                "trans_val": {**domain_metrics(0.05 * epoch), "bobcat_ap": 0.4},
+                "trans_val": {**domain_metrics(0.05 * epoch), "average_precision": 0.4},
             }
             for epoch in range(5)
         ],
