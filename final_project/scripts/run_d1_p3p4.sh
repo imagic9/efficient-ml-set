@@ -13,9 +13,13 @@
 #           validate.p4_dataset_parity (ordered ids, labels, scores, decisions,
 #           confusion matrices).
 #
-# Usage:  scripts/run_d1_p3p4.sh p3 <method>
-#         scripts/run_d1_p3p4.sh p4 <method>
-#   e.g.  scripts/run_d1_p3p4.sh p3 percentile
+# Usage:  scripts/run_d1_p3p4.sh <p3|p4> <method> [candidate-root]
+#   e.g.  scripts/run_d1_p3p4.sh p3 percentile            # D1 (m1_ptq default)
+#         scripts/run_d1_p3p4.sh p4 lr3e-5 m2_qat         # D2 arms
+#
+# The candidate-root names both the directory under results/optimize/ and the
+# policy id (bobcat_<root>_<method>_v1) — the naming convention every D-phase
+# calibration uses, so one driver serves the whole ladder.
 
 set -euo pipefail
 
@@ -29,15 +33,16 @@ PYTHON="${VENV_PATH}/bin/python"
 BUILD_DIR="/work/build/d1"
 IN_CONTAINER=(docker run --rm -v "${PROJECT_ROOT}:/work" -w /work "${TARGET_IMAGE_TAG}")
 
-PHASE="${1:?usage: run_d1_p3p4.sh <p3|p4> <method>}"
-METHOD="${2:?usage: run_d1_p3p4.sh <p3|p4> <method>}"
+PHASE="${1:?usage: run_d1_p3p4.sh <p3|p4> <method> [candidate-root]}"
+METHOD="${2:?usage: run_d1_p3p4.sh <p3|p4> <method> [candidate-root]}"
+ROOT_NAME="${3:-m1_ptq}"
 
 # P1's canonical tensors came from the M0 run's parity evidence; they are
 # preprocessing artifacts (model-independent), which is why P3 may reuse them.
 P1_RUN_ID="c2_m0_fp32_seed42_20260716T061203Z"
 
-CANDIDATE="results/optimize/m1_ptq/${METHOD}"
-POLICY="artifacts/policies/bobcat_m1_ptq_${METHOD}_v1.json"
+CANDIDATE="results/optimize/${ROOT_NAME}/${METHOD}"
+POLICY="artifacts/policies/bobcat_${ROOT_NAME}_${METHOD}_v1.json"
 
 cd "${PROJECT_ROOT}"
 [[ -d "${CANDIDATE}" ]] || { echo "no candidate at ${CANDIDATE}" >&2; exit 2; }
