@@ -1,14 +1,22 @@
 # Wildlife Trigger — Efficient ML Final Project
 
-Status: **Phase A and Phase B complete (both gates pass). Phase C in progress — the FP32
-baseline M0 is the current work.**
+Status: **Phase A and Phase B complete (both gates pass). Phase C in progress — M0 is
+trained; calibrating its operating point is the current work.**
+
+**Trans-domain bobcat recall is poor and is reported as such**, per DESIGN §18's registered
+decision rule. M0 catches 86% of bobcat visits at cameras it has seen and 18% at the
+unseen one. No threshold reaches DESIGN §6.3's 90% recall floor inside the device's 5%
+false-fire budget, so C3 will record `recall_floor_infeasible` and ship the best operating
+point the budget allows. That is a measurement, not a failure — but nothing in this
+repository may describe it as the primary rule being met.
 
 | | |
 |---|---|
 | Gate A (toolchain, target, export/quantization contract) | **passes**, 45 checks |
 | Gate B (data acquisition, splits, audit) | **passes**, 43/43 |
 | C0/C1/C1a (fixtures, training engine, input decision) | **done** |
-| C2 (train M0 seed 42) | next |
+| C2 (train M0 seed 42) | **done** — bobcat F2 0.6272 cis / 0.1054 trans |
+| C3 (calibrate the operating point) | next |
 | Phases D, E, F, G | not started |
 
 The Core input is **frozen at 256x192** and the head contract at **16 outputs with a

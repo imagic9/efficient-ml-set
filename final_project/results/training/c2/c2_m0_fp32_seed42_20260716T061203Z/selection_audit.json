@@ -1,0 +1,23 @@
+{
+  "run": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z",
+  "rule": {
+    "order": [
+      "primary",
+      "tiebreak_1_sequence_balanced_recall",
+      "tiebreak_2_macro_f1"
+    ],
+    "final_tiebreak": "earliest epoch",
+    "phase_b_only": true
+  },
+  "selected_epoch": 11,
+  "rule_selects_epoch": 11,
+  "checkpoint_epoch": 11,
+  "winning_score": {
+    "primary": 0.3663295163553768,
+    "tiebreak_1_sequence_balanced_recall": 0.41006289308176097,
+    "tiebreak_2_macro_f1": 0.42203768236138495
+  },
+  "phase_b_epochs": 13,
+  "problems": [],
+  "agrees": true
+}
