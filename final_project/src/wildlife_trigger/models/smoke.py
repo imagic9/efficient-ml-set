@@ -35,7 +35,7 @@ import torch
 
 from wildlife_trigger.models.export import P0_OPSET, export_onnx
 from wildlife_trigger.models.mobilenet import (
-    INPUT_SHAPE_PROVISIONAL_CORE,
+    INPUT_SHAPE_CORE,
     build_mobilenet_v2,
     example_input,
 )
@@ -147,10 +147,10 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--opset", type=int, default=P0_OPSET)
     parser.add_argument(
-        "--width", type=int, default=INPUT_SHAPE_PROVISIONAL_CORE[3]
+        "--width", type=int, default=INPUT_SHAPE_CORE[3]
     )
     parser.add_argument(
-        "--height", type=int, default=INPUT_SHAPE_PROVISIONAL_CORE[2]
+        "--height", type=int, default=INPUT_SHAPE_CORE[2]
     )
     args = parser.parse_args()
 
@@ -158,11 +158,11 @@ def main() -> int:
     # is a wish. A3 already learned this the hard way with nn.Dropout.
     torch.manual_seed(args.seed)
 
-    # DESIGN §5.5's provisional Core input, NOT ImageNet's 224x224. The application
-    # defaults to 256x192, and A4's first run failed on exactly this mismatch: the
-    # model contract check refused a 224x224 model against a 256x192 preprocessor
-    # rather than letting the geometry disagree silently. Defaulting to the same
-    # source of truth is the fix; C1a may still replace it.
+    # The Core input, NOT ImageNet's 224x224. The application defaults to 256x192, and
+    # A4's first run failed on exactly this mismatch: the model contract check refused a
+    # 224x224 model against a 256x192 preprocessor rather than letting the geometry
+    # disagree silently. Defaulting to the same source of truth is the fix. C1a has since
+    # frozen that source of truth, so the two can no longer drift apart.
     shape = (1, 3, args.height, args.width)
 
     model = build_mobilenet_v2(num_classes=len(SMOKE_CLASSES), pretrained=True)
@@ -192,8 +192,9 @@ def main() -> int:
         "seed": args.seed,
         "input_shape": {
             "nchw": list(shape),
-            "note": "DESIGN §5.5 provisional Core input; C1a resolves 224x224 vs "
-            "256x192 on validation data and only the winner enters M0-M4.",
+            "note": "The Core input, frozen at 256x192 by C1a on 2026-07-16 "
+            "(results/ablations/data_input_decision.md). These smoke artifacts predate "
+            "that decision but happen to agree with it.",
         },
         "model": {
             "path": str(model_path),

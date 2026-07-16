@@ -18,20 +18,28 @@ import torch
 import torch.nn as nn
 from torchvision.models import MobileNet_V2_Weights, mobilenet_v2
 
-# ImageNet's own input geometry. DESIGN §5.5 may replace the project's with
-# 256x192; that control is not this module's to decide.
+# ImageNet's own input geometry. Kept because the pretrained weights come from it, and
+# because C1a measured against it rather than assuming — see below.
 INPUT_SHAPE_IMAGENET = (1, 3, 224, 224)
 
-# The provisional Core input from DESIGN §5.5, NCHW: 256 wide by 192 high. It is not
-# ImageNet's, and the difference is the whole point — a square letterbox spends 27% of
-# every inference on grey bars, where this spends 2.6%.
+# The Core input, NCHW: 256 wide by 192 high. **Frozen by C1a on 2026-07-16** —
+# results/ablations/data_input_decision.md — and no longer provisional. M0-M4 use this.
 #
-# "Provisional" is load-bearing: C1a resolves the pre-registered 224x224-versus-256x192
-# control on real validation data, and only the winner enters the M0-M4 contract.
-# MobileNetV2 accepts both: it is fully convolutional into a global average pool, and
+# It is not ImageNet's, and the difference is the whole point. The two are nearly the
+# same tensor (49,152 against 50,176 pixels, and 256x192 is the cheaper of the two) but
+# they are not the same amount of frame: CCT's dominant frame is 1024x747, so a square
+# letterbox spends 27% of every inference on grey bars where this spends 2.6%. Measured
+# over the real manifests, that is +31.1% real pixels at -2.0% MACs.
+#
+# The arms were statistically tied on bobcat F2, so the utilisation is what decided it,
+# together with DESIGN §5.5's deployment argument: the Pi's libjpeg scales the 1024-wide
+# frame by 1/4 during decode, landing exactly on 256, so the network input needs no
+# resize step at all.
+#
+# MobileNetV2 accepts either: it is fully convolutional into a global average pool, and
 # both dimensions stay divisible by 32, so its five downsampling stages produce a clean
 # 6x8 feature map here rather than a ragged one.
-INPUT_SHAPE_PROVISIONAL_CORE = (1, 3, 192, 256)
+INPUT_SHAPE_CORE = (1, 3, 192, 256)
 
 # torchvision's ImageNet normalisation, repeated in DESIGN §5.6 line 603. The C++
 # preprocessor must match these exactly or P1 parity fails.

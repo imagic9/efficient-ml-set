@@ -1,6 +1,20 @@
 # Wildlife Trigger — Efficient ML Final Project
 
-Status: **Core design approved; implementation not started.**
+Status: **Phase A and Phase B complete (both gates pass). Phase C in progress — the FP32
+baseline M0 is the current work.**
+
+| | |
+|---|---|
+| Gate A (toolchain, target, export/quantization contract) | **passes**, 45 checks |
+| Gate B (data acquisition, splits, audit) | **passes**, 43/43 |
+| C0/C1/C1a (fixtures, training engine, input decision) | **done** |
+| C2 (train M0 seed 42) | next |
+| Phases D, E, F, G | not started |
+
+The Core input is **frozen at 256x192** and the head contract at **16 outputs with a
+5,000-frame empty supplement** — decided by C1a on measured data, not assumed:
+`results/ablations/data_input_decision.md`. `PLAN.md` is the task tracker and is the
+authority on what is done; this table is a summary of it.
 
 Public repository: `REPO_URL`
 
@@ -69,8 +83,9 @@ Pi bundle, and raw evidence so the work can be reproduced and defended.
 Core is intentionally limited to one model and a lightweight configurable target
 policy:
 
-- full-frame MobileNetV2, width 1.0; provisional 256x192 input, frozen after a
-  matched 224x224 control;
+- full-frame MobileNetV2, width 1.0; **256x192 input, frozen by C1a** after the matched
+  224x224 control it required (the arms tied on the metric, and 256x192 carries +31.1%
+  real pixels at -2.0% MACs);
 - 16 outputs: 14 CCT-20 animal classes plus `car` and `empty`;
 - ImageNet-pretrained transfer learning;
 - generic `mode: any` target list with per-class thresholds;

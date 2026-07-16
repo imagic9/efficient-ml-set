@@ -557,9 +557,10 @@ multi-species recognition from a softmax model.
 The network must see the complete frame; do not use a center crop that can remove
 a small animal.
 
-The provisional Core input is **256x192 (width x height)**. This is nearly the
-same pixel budget as 224x224 but matches the dominant CCT aspect ratio much more
-closely. The dominant original CCT frame is 2048x1494 (91% of all images); the
+The Core input is **256x192 (width x height)** — proposed here, and **frozen by C1a on
+2026-07-16** against the alternative on real validation data
+(`results/ablations/data_input_decision.md`). This is nearly the same pixel budget as
+224x224 but matches the dominant CCT aspect ratio much more closely. The dominant original CCT frame is 2048x1494 (91% of all images); the
 `_sm` archive this pipeline consumes caps the long side at 1024, so the dominant
 frame we actually decode is **1024x747**. Measured on that frame:
 
@@ -573,12 +574,26 @@ downsizing leaves them unchanged and the comparison is unaffected — only the
 absolute scale factors double relative to the original frames. B0 must confirm the
 observed dimension distribution before this table is treated as measured.
 
+**Confirmed by B0 and C1a; this table is now measured, not predicted.** B0 found the
+dimension distribution as described. C1a then recomputed utilisation over every frame in
+the manifests rather than over the dominant frame alone (`validate.input_cost`), weighted
+by how often each source geometry actually occurs: **97.47% against 72.83%** on
+cis-val-clean, i.e. **+31.1% real pixels**. The per-frame figures in the table above
+reproduce exactly.
+
+One correction the check produced: the implementation of `pixel_utilisation` disagreed
+with this table, returning 97.9% for the dominant frame because its denominator was
+`resized + 2 * pad`, which falls a pixel short of the canvas when the padding splits
+unevenly (2 rows top, 3 bottom). **The table was right and the code was wrong**; both
+languages are fixed and the values here are asserted exactly by their tests.
+
 The square letterbox spends over a quarter of every inference on grey bars that
 carry no information. 256x192 buys **14% more linear resolution on the animal with
 2% fewer input pixels** and should reduce spatial MACs by approximately the same
-amount; exported-model MACs remain the authoritative compute measurement. Both
-dimensions stay divisible by 32, so MobileNetV2's five downsampling stages still
-produce a clean 8x6 feature map.
+amount; exported-model MACs remain the authoritative compute measurement.
+**Measured at C1a: 293,402,624 MACs against 224x224's 299,514,752 — -2.0%**, matching
+the prediction. Both dimensions stay divisible by 32, so MobileNetV2's five downsampling
+stages still produce a clean 8x6 feature map.
 
 256x192 also aligns with the JPEG decoder, which is a second and independent
 argument for it. Libjpeg can scale during decode at 1/2, 1/4, and 1/8 for close to
@@ -601,10 +616,20 @@ Canonical preprocessing for a configured fixed `(width, height)`:
 5. Convert to float32 and divide by 255.
 6. Normalize with ImageNet mean `(0.485, 0.456, 0.406)` and standard deviation
    `(0.229, 0.224, 0.225)`.
-7. Convert HWC RGB to contiguous NCHW; provisional shape is `[1, 3, 192, 256]`.
+7. Convert HWC RGB to contiguous NCHW; the shape is `[1, 3, 192, 256]` (frozen by C1a).
 
 The Python and C++ implementations must share golden fixtures and match within a
 documented tolerance.
+
+The fixtures exist: `tests/fixtures/golden_raw.json` (C0, the raw frames and their
+hashes) and `tests/fixtures/golden_tensors_256x192.json` (C1a, the canonical Python
+tensors at the frozen input). The tolerance is documented in the latter's `exactness`
+block, and it is not one tolerance but three: the **geometry** is integer arithmetic and
+must match exactly; the **uint8 letterbox** hash is exact for a given OpenCV; the
+**float32 tensor** may only be compared within a tolerance, because `INTER_LINEAR` and
+float arithmetic are not bit-identical across OpenCV builds, SIMD paths or architectures.
+**No test asserts the two implementations agree yet** — that is P1's job, and these are
+what it builds on.
 
 #### The training cache: steps 1-4 are computed once, offline
 
@@ -663,11 +688,16 @@ deterministic.
 
 #### Input-shape control before M0
 
+**Ran as C1a on 2026-07-16. Outcome: 256x192, 5k-empty, 16 outputs.** The procedure below
+is what was executed; the result and its reasoning are in
+`results/ablations/data_input_decision.md`, and the decisive detail is that the two
+candidates were **statistically tied** on the metric, so utilisation and MACs decided —
+which is why this section asked for them.
+
 Run the controls sequentially so they require three training runs, not a full 2x2
 factorial experiment:
 
-1. run both empty-supplement arms at provisional 256x192 and select the data/head
-   contract;
+1. run both empty-supplement arms at 256x192 and select the data/head contract;
 2. reuse the winning 256x192 run as the landscape reference;
 3. train one additional 224x224 run with that same winning data/head contract.
 
@@ -786,8 +816,8 @@ and per-location bobcat recall on trans-test. Multi-label images follow section
 ### 7.1 Architecture
 
 **MobileNetV2, width multiplier 1.0, ImageNet-pretrained.** Replace the classifier
-with a 16-output linear layer. The provisional fixed input is 256x192; the
-224x224-vs-256x192 control in section 5.5 freezes the final Core input before M0.
+with a 16-output linear layer. The fixed input is **256x192**: section 5.5's
+224x224-vs-256x192 control ran as C1a and froze it before M0, as required.
 
 Reasons:
 

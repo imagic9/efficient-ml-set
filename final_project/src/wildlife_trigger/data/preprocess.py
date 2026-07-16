@@ -36,7 +36,12 @@ import cv2
 import numpy as np
 
 # DESIGN §5.5 line 603, and cpp/include/wildlife_trigger/preprocess.hpp. Duplicated
-# across the language boundary by necessity; `test_preprocess_parity` asserts they agree.
+# across the language boundary by necessity.
+#
+# Nothing yet asserts the two copies agree — P1 is that comparison, and
+# `tests/fixtures/golden_tensors_256x192.json` is what it will be built from. Read the
+# `exactness` block there first: the geometry can be demanded exactly, the float tensors
+# only within a tolerance.
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
@@ -47,7 +52,12 @@ PAD_VALUE = 114
 
 @dataclass(frozen=True)
 class PreprocessConfig:
-    """The provisional Core input is 256x192 (DESIGN §5.5); C1a may replace it."""
+    """The Core input is 256x192, frozen by C1a on 2026-07-16 (DESIGN §5.5).
+
+    Width and height stay parameters rather than becoming constants: C1a needed to build
+    a 224x224 cache and train an arm against it to make the choice, and the same lever is
+    what a future re-open would need. The default is the decision.
+    """
 
     width: int = 256
     height: int = 192

@@ -5,8 +5,8 @@
 run_name: m0_fp32_seed42
 seed: 42
 
-width: 256          # DESIGN §5.5 provisional Core input; C1a resolves it
-height: 192
+width: 256          # Core input, frozen by C1a (results/ablations/data_input_decision.md)
+height: 192         # 256x192 over 224x224: +31.1% real pixels at -2.0% MACs
 
 head_epochs: 5      # phase A: head only, backbone frozen
 max_epochs: 30      # phase B: full fine-tune, early-stopped

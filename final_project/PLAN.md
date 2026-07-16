@@ -827,6 +827,39 @@ Depends on: C1a.
 
 **Output:** complete M0 seed-42 run directory.
 
+**BLOCKED pending a decision — do not start this before settling it.** The third bullet
+is not satisfiable by `train.py` as it stands: it saves history and the resolved config,
+but **no environment and no dataset/model hashes**. Every C1a run directory holds only
+`best.pt`, `history.json`, `last.pt`, `predictions.npz`.
+
+The machinery already exists and is being bypassed. `runs.py`'s `RunContext` writes
+`provenance.json` (CPU, GPU, toolchain, python, git, and a warning when the tree is
+dirty), checkpoints atomically and logs persistently. Its docstring says *"Every phase
+from B onward writes through here, so DESIGN §9.2's requirement … is satisfied by
+construction rather than by remembering to do it."* **`train.py` does not import it**, so
+that sentence is false today.
+
+Two ways to close it, and the choice is Vadym's:
+
+1. **Adopt `RunContext` in `train.py`.** Satisfies C2 by construction, brings resume and
+   persistent logging, makes the docstring true. But its `run_id` is timestamped
+   (`c2_m0_fp32_seed42_20260715T183000Z`), which changes the `output_dir/run_name` layout
+   the C1a results already use.
+2. **Add provenance to the existing layout**, reusing `provenance.collect_*` without the
+   `RunContext` lifecycle. Smaller and non-breaking, but leaves two ways of recording a
+   run and the docstring still overclaims.
+
+Recommendation: (1), accepting the mixed layout for the C1a ablations. M0 is the run every
+later phase compares against, and it is worth one decision to avoid re-running it.
+
+The third bullet's last clause is already covered: `validate.dump_predictions` writes the
+validation predictions and is what C3 will calibrate from.
+
+**Use DESIGN §7.2's recipe, not C1a's budget.** `configs/train/m0_fp32.yaml` *is* the
+frozen contract (256x192, `exclude_empty_class: false`), so run it with **no overrides** —
+5 head epochs, 30 max, early stopping. C1a's `max_steps=6000 head_steps=1055` existed only
+to match the arms against each other and must not leak into the baseline.
+
 ### C3 — Calibrate and evaluate validation operating point
 
 Depends on: C2.

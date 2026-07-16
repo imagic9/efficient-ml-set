@@ -18,9 +18,11 @@ So the selection is deliberately adversarial to the letterbox:
   - **an IR/greyscale-looking frame and a bobcat frame** — real content, so the fixture
     set is not all one camera pointed at a wall.
 
-Only the raw image hashes and their metadata are frozen here. **Tensor shapes stay
-provisional until C1a selects the input contract** (PLAN C0): freezing golden tensors at
-256x192 before that decision would either bless the answer or have to be redone.
+Only the raw image hashes and their metadata are frozen here. Tensor shapes were left to
+C1a (PLAN C0), because freezing golden tensors at 256x192 before that decision would
+either bless the answer or have to be redone. **C1a has since chosen 256x192**, and
+`validate.golden_tensors` freezes the tensors for these fixtures at that shape — it reads
+this file and re-checks every hash below before using the frame.
 
 Usage:
     python -m wildlife_trigger.validate.golden_fixtures --manifests-dir data/manifests \
@@ -154,9 +156,11 @@ def main() -> int:
             "development."
         ),
         "tensor_shapes": (
-            "PROVISIONAL — not frozen here. PLAN C0 defers golden tensors until C1a "
-            "selects the input contract (256x192 vs 224x224). Freezing them now would "
-            "either pre-empt that decision or have to be redone."
+            "Not frozen here, by design: PLAN C0 defers golden tensors until C1a selects "
+            "the input contract. C1a chose 256x192 on 2026-07-16 — the tensors for these "
+            "fixtures live in tests/fixtures/golden_tensors_256x192.json "
+            "(wildlife_trigger.validate.golden_tensors). This file stays the raw-frame "
+            "reference that one is derived from and re-verified against."
         ),
         "fixtures": entries,
     }
