@@ -81,6 +81,15 @@ onnxruntime_profile_*.json
 /final_project/results/parity/*/p1/
 /final_project/results/parity/*/ort/
 
+# D1 P3/P4 intermediates (ort_probe logits/scratch, raw infer JSONs, per-frame
+# run-dataset JSONL, the P3 re-evaluation). Reproducible by
+# scripts/run_d1_p3p4.sh; the committed evidence is p3_quantized.json /
+# p4_dataset_parity.json, which embed every gap, decision and verdict.
+/final_project/results/optimize/*/*/p3/
+/final_project/results/optimize/*/*/p4/
+/final_project/results/optimize/*/*/p3_reevaluation/
+/final_project/results/optimize/*/*/p3_coverage/
+
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being
 # swept up by `git add -A`.

@@ -51,6 +51,10 @@ struct CommonArgs {
     int iterations = 100;
     int width = 256;
     int height = 192;
+    std::string manifest;
+    std::string images_root;
+    std::string on_corrupt = "fail";
+    int limit = 0;
 };
 
 [[noreturn]] void usage(int exit_code) {
@@ -65,8 +69,17 @@ struct CommonArgs {
         << "  wildlife_trigger self-test --model M.onnx --class-map C.json \\\n"
         << "                         --policy P.json --image X.jpg\n"
         << "  wildlife_trigger dump-tensor --image X.jpg --output-bin T.bin \\\n"
-        << "                         [--preprocess fused|reference] [--output T.json]\n\n"
+        << "                         [--preprocess fused|reference] [--output T.json]\n"
+        << "  wildlife_trigger run-dataset --model M.onnx --class-map C.json \\\n"
+        << "                         --policy P.json --manifest VAL.jsonl \\\n"
+        << "                         --images-root DIR --output PRED.jsonl\n"
+        << "                         [--on-corrupt fail|skip] [--limit N]\n\n"
         << "options:\n"
+        << "  --manifest P           JSONL manifest, consumed in file order (run-dataset)\n"
+        << "  --images-root D        directory file_name entries resolve against\n"
+        << "  --on-corrupt M         fail (default) or skip: skipped frames are\n"
+        << "                         recorded as error lines, never silently dropped\n"
+        << "  --limit N              only the first N manifest records (0 = all)\n"
         << "  --output-bin P         raw float32 tensor destination (dump-tensor)\n"
         << "  --preprocess M         fused (the shipping path) or reference\n"
         << "                         (unfused OpenCV primitives; P1's third column)\n"
@@ -101,6 +114,10 @@ CommonArgs parse(int argc, char **argv) {
         else if (flag == "--threads") args.threads = std::stoi(value());
         else if (flag == "--warmup") args.warmup = std::stoi(value());
         else if (flag == "--iterations") args.iterations = std::stoi(value());
+        else if (flag == "--manifest") args.manifest = value();
+        else if (flag == "--images-root") args.images_root = value();
+        else if (flag == "--on-corrupt") args.on_corrupt = value();
+        else if (flag == "--limit") args.limit = std::stoi(value());
         else if (flag == "--width") args.width = std::stoi(value());
         else if (flag == "--height") args.height = std::stoi(value());
         else if (flag == "--help" || flag == "-h") usage(0);
@@ -423,6 +440,129 @@ int command_self_test(const CommonArgs &args) {
     return failures == 0 ? 0 : 1;
 }
 
+int command_run_dataset(const CommonArgs &args) {
+    // DatasetRunner -- DESIGN §11 component 4, the C++ half of gate P4. Consumes
+    // a manifest in file order (which is the order Python evaluation scored it
+    // in), writes one JSONL prediction line per frame, and never reorders,
+    // buffers, or drops silently: a skipped frame under --on-corrupt=skip is an
+    // explicit error line the comparator must look at, not an absence it could
+    // miss.
+    require(args.manifest, "--manifest");
+    require(args.images_root, "--images-root");
+    require(args.output, "--output");
+    if (args.on_corrupt != "fail" && args.on_corrupt != "skip") {
+        std::cerr << "--on-corrupt must be 'fail' or 'skip', got '"
+                  << args.on_corrupt << "'\n";
+        return 2;
+    }
+
+    Pipeline pipeline = build_pipeline(args, false);
+
+    std::ifstream manifest(args.manifest);
+    if (!manifest) {
+        throw std::runtime_error("cannot open manifest: " + args.manifest);
+    }
+    std::ofstream out(args.output);
+    if (!out) {
+        throw std::runtime_error("cannot write output: " + args.output);
+    }
+
+    // The header line binds the whole file to what produced it: the comparator
+    // refuses a JSONL whose model, policy or class map is not the one under
+    // test, exactly as the loaders refused them at startup.
+    out << json{{"kind", "run_dataset_header"},
+                {"model", args.model},
+                {"model_sha256", pipeline.model_sha256},
+                {"policy_id", pipeline.policy.policy_id()},
+                {"class_map_sha256", pipeline.class_map.sha256},
+                {"manifest", args.manifest},
+                {"manifest_sha256", sha256_file(args.manifest)},
+                {"threads", args.threads},
+                {"onnxruntime_version", ModelSession::ort_version()},
+                {"input", {args.width, args.height}}}
+            .dump()
+        << "\n";
+
+    int processed = 0;
+    int skipped = 0;
+    int fired = 0;
+    std::string line;
+    while (std::getline(manifest, line)) {
+        if (line.empty()) continue;
+        if (args.limit > 0 && processed + skipped >= args.limit) break;
+
+        const json record = json::parse(line);
+        const std::string file_name = record.at("file_name").get<std::string>();
+        const std::string image_id = record.at("image_id").get<std::string>();
+        const std::string path = args.images_root + "/" + file_name;
+
+        StageTimings timings;
+        const auto start = Clock::now();
+        try {
+            const auto preprocess_start = Clock::now();
+            PreprocessResult input = pipeline.preprocessor.from_file(path);
+            timings.preprocess_ms = ms_since(preprocess_start);
+
+            const auto inference_start = Clock::now();
+            const std::vector<float> logits = pipeline.session.run(input.tensor);
+            timings.inference_ms = ms_since(inference_start);
+
+            const auto policy_start = Clock::now();
+            const Decision decision = pipeline.policy.decide(logits, pipeline.class_map);
+            timings.policy_ms = ms_since(policy_start);
+            timings.end_to_end_ms = ms_since(start);
+
+            json targets = json::object();
+            for (const auto &target : decision.targets) {
+                targets[target.class_name] = target.score;
+            }
+            out << json{{"image_id", image_id},
+                        {"seq_id", record.value("seq_id", "")},
+                        {"labels", record.value("labels", json::array())},
+                        {"target_scores", targets},
+                        {"shutter_trigger", decision.shutter_trigger ? 1 : 0},
+                        {"top1_index", decision.top1_index},
+                        {"top1_class", decision.top1_class},
+                        {"timings_ms", {{"preprocess", timings.preprocess_ms},
+                                        {"inference", timings.inference_ms},
+                                        {"policy", timings.policy_ms},
+                                        {"end_to_end", timings.end_to_end_ms}}}}
+                    .dump()
+                << "\n";
+            if (decision.shutter_trigger) ++fired;
+            ++processed;
+        } catch (const std::exception &error) {
+            if (args.on_corrupt == "fail") {
+                throw std::runtime_error("frame " + image_id + " (" + path +
+                                         "): " + error.what());
+            }
+            out << json{{"image_id", image_id},
+                        {"error", error.what()},
+                        {"skipped", true}}
+                    .dump()
+                << "\n";
+            ++skipped;
+        }
+        if ((processed + skipped) % 500 == 0) {
+            std::cerr << "  " << (processed + skipped) << " frames...\n";
+        }
+    }
+    out << json{{"kind", "run_dataset_footer"},
+                {"processed", processed},
+                {"skipped", skipped},
+                {"fired", fired}}
+            .dump()
+        << "\n";
+    out.close();
+    if (!out) {
+        throw std::runtime_error("short write: " + args.output);
+    }
+
+    std::cerr << "run-dataset: " << processed << " frames (" << skipped
+              << " skipped), " << fired << " fired -> " << args.output << "\n";
+    return 0;
+}
+
 int command_dump_tensor(const CommonArgs &args) {
     // P1's C++ half: preprocess one image and write the tensor where Python can
     // read it. No model, no policy -- the comparison must isolate preprocessing,
@@ -494,6 +634,7 @@ int main(int argc, char **argv) {
         if (command == "benchmark") return command_benchmark(args);
         if (command == "self-test") return command_self_test(args);
         if (command == "dump-tensor") return command_dump_tensor(args);
+        if (command == "run-dataset") return command_run_dataset(args);
     } catch (const std::exception &error) {
         std::cerr << "error: " << error.what() << "\n";
         return 1;
