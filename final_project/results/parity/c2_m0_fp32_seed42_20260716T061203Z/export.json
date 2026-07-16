@@ -1,0 +1,69 @@
+{
+  "tool": "wildlife_trigger.export",
+  "run_id": "c2_m0_fp32_seed42_20260716T061203Z",
+  "run_name": "m0_fp32_seed42",
+  "best_epoch": 11,
+  "checkpoint": {
+    "path": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/best.pt",
+    "sha256": "42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074"
+  },
+  "policy_check": {
+    "policy": "artifacts/policies/bobcat_v1.json",
+    "model_sha256_matches_checkpoint": true
+  },
+  "onnx": {
+    "path": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx",
+    "sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+    "size_bytes": 8950645,
+    "ir_version": 8,
+    "producer": "pytorch 2.11.0",
+    "opset_import": {
+      "": 17
+    },
+    "inputs": [
+      {
+        "name": "input",
+        "dtype": "FLOAT",
+        "shape": [
+          1,
+          3,
+          192,
+          256
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "logits",
+        "dtype": "FLOAT",
+        "shape": [
+          1,
+          16
+        ]
+      }
+    ],
+    "node_count": 170,
+    "op_types": {
+      "Add": 10,
+      "Clip": 35,
+      "Constant": 70,
+      "Conv": 52,
+      "Flatten": 1,
+      "Gemm": 1,
+      "GlobalAveragePool": 1
+    }
+  },
+  "exporter": "torchscript",
+  "opset_contract": 17,
+  "input_shape_nchw": [
+    1,
+    3,
+    192,
+    256
+  ],
+  "class_names_sha256": "d0c1ee60d4ede28dab2426d2b70c3f07cfc1c8683e16d595e5aad0f0e92c4632",
+  "versions": {
+    "torch": "2.11.0+cu130",
+    "onnx": "1.22.0"
+  }
+}

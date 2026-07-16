@@ -59,6 +59,20 @@ def make_run_id(phase: str, name: str, when: dt.datetime | None = None) -> str:
     return f"{phase.lower()}_{safe}_{stamp}"
 
 
+def resolve_run_id(run_dir: Path, default: str) -> str:
+    """The run's unique id, preferring `run_summary.json` over the human name.
+
+    Two M0 directories already share the name `m0_fp32_seed42` (the baseline and
+    issue #19's reverted re-run), so anything filed under the name alone could
+    belong to either. Old flat runs (C1a) carry no summary and keep the `default`
+    they have — usually `history.json`'s `run_name`.
+    """
+    summary_path = run_dir / "run_summary.json"
+    if summary_path.exists():
+        return json.loads(summary_path.read_text()).get("run_id", default)
+    return default
+
+
 def sha256_file(path: Path) -> str:
     """Hash a file's bytes, streamed.
 

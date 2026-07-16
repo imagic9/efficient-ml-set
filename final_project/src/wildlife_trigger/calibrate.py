@@ -54,7 +54,7 @@ from .policy import (
     build_policy,
     write_canonical_json,
 )
-from .runs import atomic_write_json, sha256_file
+from .runs import atomic_write_json, resolve_run_id, sha256_file
 
 # The same two splits dump_predictions can reach, under the domain names DESIGN
 # §6.3 uses. Nothing else is loadable here, by construction of the npz.
@@ -101,15 +101,7 @@ def load_predictions(run_dir: Path, target: str) -> tuple[dict, dict]:
             seq_ids,
         )
 
-    # The run's unique id, not its human name: two M0 directories already exist
-    # (the baseline and issue #19's reverted re-run), both named m0_fp32_seed42.
-    # A calibration filed under the shared name could belong to either; filed
-    # under the run_id it can only belong to one. Old flat runs (C1a) carry no
-    # run_summary.json and fall back to the name they have.
-    summary_path = run_dir / "run_summary.json"
-    run_id = history["run_name"]
-    if summary_path.exists():
-        run_id = json.loads(summary_path.read_text()).get("run_id", run_id)
+    run_id = resolve_run_id(run_dir, history["run_name"])
 
     context = {
         "run_id": run_id,
