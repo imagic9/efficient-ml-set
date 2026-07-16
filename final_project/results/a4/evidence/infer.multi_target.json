@@ -50,9 +50,9 @@
   "note": "Single-shot timings are not a benchmark; use `benchmark`.",
   "policy_id": "smoke_bobcat_coyote_v0",
   "timings_ms": {
-    "end_to_end": 16.596683,
-    "inference": 11.950721,
-    "policy": 0.004352,
-    "preprocess": 4.641418
+    "end_to_end": 15.658844,
+    "inference": 11.270996,
+    "policy": 0.0032,
+    "preprocess": 4.384552
   }
 }

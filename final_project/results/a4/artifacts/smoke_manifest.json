@@ -10,7 +10,7 @@
       192,
       256
     ],
-    "note": "DESIGN \u00a75.5 provisional Core input; C1a resolves 224x224 vs 256x192 on validation data and only the winner enters M0-M4."
+    "note": "The Core input, frozen at 256x192 by C1a on 2026-07-16 (results/ablations/data_input_decision.md). These smoke artifacts predate that decision but happen to agree with it."
   },
   "model": {
     "inputs": [

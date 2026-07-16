@@ -46,7 +46,7 @@
   },
   "optimized_graph_path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/python/m1_ptq/m1_ptq-python.optimized.onnx",
   "execution": {
-    "profile": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/python/m1_ptq/m1_ptq-python.profile_2026-07-15_21-34-00_689.json",
+    "profile": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/python/m1_ptq/m1_ptq-python.profile_2026-07-16_08-20-30_197.json",
     "executed_ops": {
       "DequantizeLinear": {
         "float": 1,

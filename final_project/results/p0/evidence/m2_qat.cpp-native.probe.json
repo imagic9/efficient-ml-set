@@ -3,7 +3,7 @@
   "onnxruntime_version": "1.27.0",
   "call_site": "c++",
   "optimized_graph": "/work/results/p0/evidence/cpp-native/m2_qat/optimized.onnx",
-  "profile": "/work/results/p0/evidence/cpp-native/m2_qat/profile_2026-07-15_18-34-02_644.json",
+  "profile": "/work/results/p0/evidence/cpp-native/m2_qat/profile_2026-07-16_05-20-32_370.json",
   "iterations": 1,
   "input_fixture": "/work/results/p0/evidence/input_1x3x224x224.bin",
   "output_elements": 1000,

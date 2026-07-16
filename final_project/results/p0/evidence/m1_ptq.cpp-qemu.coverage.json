@@ -46,7 +46,7 @@
   },
   "optimized_graph_path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/cpp-qemu/m1_ptq/optimized.onnx",
   "execution": {
-    "profile": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/cpp-qemu/m1_ptq/profile_2026-07-15_18-34-05_528.json",
+    "profile": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/cpp-qemu/m1_ptq/profile_2026-07-16_05-20-35_571.json",
     "executed_ops": {
       "DequantizeLinear": {
         "float": 1,

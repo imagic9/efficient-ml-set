@@ -39,7 +39,7 @@
   },
   "optimized_graph_path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/python/m0_fp32/m0_fp32-python.optimized.onnx",
   "execution": {
-    "profile": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/python/m0_fp32/m0_fp32-python.profile_2026-07-15_21-34-00_423.json",
+    "profile": "/home/deploy/efficientml/efficient-ml-set/final_project/results/p0/evidence/python/m0_fp32/m0_fp32-python.profile_2026-07-16_08-20-29_916.json",
     "executed_ops": {
       "Conv": {
         "float": 21

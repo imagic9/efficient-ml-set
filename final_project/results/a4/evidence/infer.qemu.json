@@ -41,12 +41,12 @@
   "model": "/work/results/a4/artifacts/smoke_mobilenetv2_16.onnx",
   "model_sha256": "36bd179d37ab54cf2a5d946ff0819d12626ea08eb999c5e7ac2d1eb5c08de7b2",
   "note": "Single-shot timings are not a benchmark; use `benchmark`.",
-  "ort_profile": "/work/results/a4/evidence/ort_profile_qemu_2026-07-15_21-17-16_653.json",
+  "ort_profile": "/work/results/a4/evidence/ort_profile_qemu_2026-07-16_05-18-08_502.json",
   "policy_id": "smoke_bobcat_v0",
   "timings_ms": {
-    "end_to_end": 1003.821364,
-    "inference": 931.127055,
-    "policy": 0.467088,
-    "preprocess": 72.199797
+    "end_to_end": 1015.20509,
+    "inference": 936.284515,
+    "policy": 0.491777,
+    "preprocess": 78.398942
   }
 }
