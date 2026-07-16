@@ -1,6 +1,7 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Core approved; implementation not started.**
+Status: **Phase A and B complete (Gates A and B pass). Phase C: C0, C1 and C1a done;
+C2 next.** The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -787,16 +788,20 @@ The 224x224 arm consumed its **whole 6,000-step budget** against the winner's 4,
 still lost, so the one step imbalance in the set runs against the selected shape rather
 than for it.
 
-**The caveat on the 320x240 bullet, which matters for C3.** Both candidates "meet" the
-DESIGN §6.3 bobcat-recall rule, so the contingency is not triggered — but they meet it
-only at thresholds of **0.0011** and **0.000049**, which fire on ~78% of trans frames at
-a **67.6% false-fire rate**. The `non_trivial` guard rejects only a threshold that fires
-on *literally every* frame (`fire_rate >= 1.0`), and 0.779 clears that bar while being
-useless as a shutter trigger. DESIGN §6.3's primary rule has no false-fire ceiling: it
-reports the rate (§6.4) but never constrains it, so as written it will hand C3 this
-operating point and report the primary rule satisfied. Measured on the C1a arms, which
-are shorter than M0 will be — but C3 must not read a satisfied rule as a working
-trigger. Flagged for Vadym; not changed here, because it is DESIGN's rule to change.
+**The caveat on the 320x240 bullet, which mattered for C3 — now resolved, see
+[#11](https://github.com/imagic9/efficient-ml-set/issues/11).** Both candidates "met"
+the DESIGN §6.3 bobcat-recall rule, so the contingency was not triggered — but they met
+it only at thresholds of **0.0011** and **0.000049**, which fire on ~78% of trans frames
+at a **67.6% false-fire rate**. The old `non_trivial` guard rejected only a threshold
+firing on *literally every* frame, and 0.779 cleared that bar while being useless as a
+shutter trigger.
+
+DESIGN §6.3 now carries a **5% false-fire budget per domain**, and the recall floor is
+spent inside it. Re-run against the winning arm, the rule returns `recall_floor_infeasible`
+at threshold **0.4233** (cis false-fire 4.6%, trans 4.9%; cis catches 76% of visits,
+trans 39%) instead of reporting a pass at 0.0011. That is the honest answer, and it is
+the branch M0 should be expected to land in — the arms are shorter than M0, but the gap
+to the floor is not a training-budget gap.
 
 **Golden tensors frozen** at 256x192 (`tests/fixtures/golden_tensors_256x192.json`, 20
 fixtures, `validate.golden_tensors`), which is what C0 deferred until this decision
@@ -827,33 +832,17 @@ Depends on: C1a.
 
 **Output:** complete M0 seed-42 run directory.
 
-**BLOCKED pending a decision — do not start this before settling it.** The third bullet
-is not satisfiable by `train.py` as it stands: it saves history and the resolved config,
-but **no environment and no dataset/model hashes**. Every C1a run directory holds only
-`best.pt`, `history.json`, `last.pt`, `predictions.npz`.
+**Unblocked.** [#10](https://github.com/imagic9/efficient-ml-set/issues/10) took option
+1: `train.py` writes through `runs.RunContext`, so a run is
+`results/training/c2/<run_id>/` carrying `provenance.json`, `resolved_config.json`,
+`hashes.json`, `run.log`, `run_summary.json` and atomic `best.pt`/`last.pt`. The C1a
+directories keep the old flat layout and their provenance gap; that is history and it
+stays visible. [#12](https://github.com/imagic9/efficient-ml-set/issues/12) makes the
+fourth bullet checkable: the winning score vector and the rule are both in the summary.
 
-The machinery already exists and is being bypassed. `runs.py`'s `RunContext` writes
-`provenance.json` (CPU, GPU, toolchain, python, git, and a warning when the tree is
-dirty), checkpoints atomically and logs persistently. Its docstring says *"Every phase
-from B onward writes through here, so DESIGN §9.2's requirement … is satisfied by
-construction rather than by remembering to do it."* **`train.py` does not import it**, so
-that sentence is false today.
-
-Two ways to close it, and the choice is Vadym's:
-
-1. **Adopt `RunContext` in `train.py`.** Satisfies C2 by construction, brings resume and
-   persistent logging, makes the docstring true. But its `run_id` is timestamped
-   (`c2_m0_fp32_seed42_20260715T183000Z`), which changes the `output_dir/run_name` layout
-   the C1a results already use.
-2. **Add provenance to the existing layout**, reusing `provenance.collect_*` without the
-   `RunContext` lifecycle. Smaller and non-breaking, but leaves two ways of recording a
-   run and the docstring still overclaims.
-
-Recommendation: (1), accepting the mixed layout for the C1a ablations. M0 is the run every
-later phase compares against, and it is worth one decision to avoid re-running it.
-
-The third bullet's last clause is already covered: `validate.dump_predictions` writes the
-validation predictions and is what C3 will calibrate from.
+The third bullet's last clause is `validate.dump_predictions`, which writes the
+validation predictions and is what C3 calibrates from. It remains a separate step after
+the best checkpoint exists.
 
 **Use DESIGN §7.2's recipe, not C1a's budget.** `configs/train/m0_fp32.yaml` *is* the
 frozen contract (256x192, `exclude_empty_class: false`), so run it with **no overrides** —
@@ -865,7 +854,13 @@ to match the arms against each other and must not leak into the baseline.
 Depends on: C2.
 
 - [ ] Search thresholds using cis-val-clean and trans-val only.
-- [ ] Apply the two-domain 90% sequence-balanced recall rule from DESIGN §6.3.
+- [ ] Apply the two-domain 90% sequence-balanced recall rule from DESIGN §6.3,
+      inside the registered **5% per-domain false-fire budget**.
+- [ ] Record the rule's status verbatim. `primary_rule_met` is the only pass;
+      `recall_floor_infeasible` ships an operating point and is **not** a pass, and
+      no table, slide or README line may describe it as one.
+- [ ] Publish the recall/false-fire trade-off curve the rule returns, so the
+      distance to the floor is readable rather than inferable.
 - [ ] Bootstrap `seq_id` clusters and save the threshold distribution/95% interval.
 - [ ] Without excluding or down-weighting short sequences, report the positive
       sequence-length distribution, `1-2`/`3-5`/`>5` recall where supported, and

@@ -36,6 +36,12 @@ MACRO_F1_MIN_SEQUENCES = 5
 # the photographer will never know about; a false fire costs a frame of storage.
 F_BETA = 2.0
 
+# DESIGN §6.3's fire budget: the device may fire on at most this share of the frames that
+# hold no bobcat, in each domain separately. A registered product limit, not a tuned
+# number — it is what "spends its shutter on bobcats" means, and it is the only thing
+# standing between the recall floor and a trigger that photographs everything.
+MAX_FALSE_FIRE_RATE = 0.05
+
 
 def fbeta(precision: float, recall: float, beta: float = F_BETA) -> float:
     if precision <= 0.0 and recall <= 0.0:
@@ -145,30 +151,84 @@ def per_class_metrics(
     }
 
 
+def trade_off_curve(rows: list[dict], points: int = 200) -> list[dict]:
+    """The recall/false-fire trade-off, thinned to `points` (DESIGN §6.3 step 5).
+
+    Thinned by rank through the candidate list rather than by even steps in score, so
+    the curve is dense exactly where the scores are — which is where the operating
+    point lives. The chosen threshold is added by the caller; it must be on the curve
+    whether or not the thinning happens to keep it.
+    """
+    if len(rows) > points:
+        keep = [rows[i] for i in np.unique(np.linspace(0, len(rows) - 1, points).astype(int))]
+    else:
+        keep = list(rows)
+
+    return [
+        {
+            "threshold": r["threshold"],
+            "admissible": r["admissible"],
+            "min_sequence_balanced_recall": r["min_sequence_balanced_recall"],
+            "max_false_fire_rate": r["max_false_fire_rate"],
+            "mean_frame_f2": r["mean_frame_f2"],
+            "per_domain": {
+                domain: {
+                    key: m[key]
+                    for key in (
+                        "sequence_balanced_recall",
+                        "frame_recall",
+                        "false_fire_rate",
+                        "fire_rate",
+                        "frame_f2",
+                    )
+                }
+                for domain, m in r["per_domain"].items()
+            },
+        }
+        for r in keep
+    ]
+
+
 def select_threshold(
     scores_by_domain: dict[str, tuple[np.ndarray, np.ndarray, list[str]]],
     min_sequence_recall: float = 0.90,
+    max_false_fire_rate: float = MAX_FALSE_FIRE_RATE,
+    curve_points: int = 200,
 ) -> dict:
-    """DESIGN §6.3's primary threshold rule.
+    """DESIGN §6.3's threshold rule: the recall floor, spent inside the fire budget.
 
-    1. search all unique observed scores;
-    2. choose the LARGEST **non-trivial** threshold whose sequence-balanced recall is
-       >= 90% on BOTH cis-val-clean and trans-val;
-    3. if none exists, maximise mean frame-level F2 and record which constraint failed.
+    1. search all unique observed scores and keep the **admissible** ones — false-fire
+       rate <= the budget on *every* domain;
+    2. choose the LARGEST admissible threshold whose sequence-balanced recall is >= 90%
+       on BOTH cis-val-clean and trans-val. Only this is the primary rule satisfied;
+    3. if none reaches the floor, the model does not meet the rule: return
+       `recall_floor_infeasible`, ship the admissible threshold maximising mean frame
+       F2, and record the recall each domain actually reached;
+    4. if nothing is admissible, return `fire_budget_infeasible` and name no operating
+       point.
 
-    Largest, not best: among thresholds that meet the recall floor, the highest one fires
+    Largest, not best: among thresholds that meet the floor, the highest one fires
     least often, and every unnecessary fire is a wasted frame. The floor is the
     requirement; F2 does not get to trade it away.
 
-    **"Non-trivial" is load-bearing and easy to drop.** The candidates are the observed
-    scores, so the smallest of them fires on every frame and scores 100% recall by
-    construction — the floor is therefore *always* satisfiable, and without this
-    qualifier step 3 would be unreachable dead code and the rule could return a trigger
-    that photographs everything. A threshold that fires on every frame in a domain
-    discriminates nothing, so it does not count as meeting the constraint.
+    **The budget is what makes the floor mean anything** (issue #11). The candidates are
+    the observed scores, so the smallest fires on every frame and scores 100% recall by
+    construction: constrain recall alone and the floor is *always* satisfiable by
+    photographing everything. The old `non_trivial` guard rejected only a threshold
+    firing on literally every frame, and 78% of frames at a 67.6% false-fire rate
+    cleared it while being useless as a shutter trigger.
+
+    **The fallback needs the budget more than the primary rule does.** Mean F2 weights
+    recall 4x, and 46% of trans-val's frames are true bobcats — so on trans-val, F2 is
+    maximised by firing on everything. Unconstrained, step 3 walks straight into the
+    operating point step 2 was rescued from.
 
     Both domains separately, because trans-val holds far more bobcats than
     cis-val-clean and a pooled constraint would let trans-val's 793 hide a cis failure.
+    False-fire rather than fire rate for the same reason in reverse: false-fire is
+    conditioned on the negatives, so it means the same thing in both domains, while a
+    fire-rate ceiling would be unmeetable on trans-val — where firing on nearly half the
+    frames is the device working.
     """
     candidates = np.unique(
         np.concatenate([scores for scores, _, _ in scores_by_domain.values()])
@@ -180,6 +240,7 @@ def select_threshold(
             domain: target_presence_metrics(scores, present, seqs, threshold)
             for domain, (scores, present, seqs) in scores_by_domain.items()
         }
+        max_false_fire = max(m["false_fire_rate"] for m in per_domain.values())
         rows.append(
             {
                 "threshold": float(threshold),
@@ -187,51 +248,91 @@ def select_threshold(
                 "min_sequence_balanced_recall": min(
                     m["sequence_balanced_recall"] for m in per_domain.values()
                 ),
+                "max_false_fire_rate": float(max_false_fire),
                 "mean_frame_f2": float(
                     np.mean([m["frame_f2"] for m in per_domain.values()])
                 ),
-                # Trivial = fires on every frame of some domain. Such a "trigger"
-                # separates nothing; it is not an operating point.
+                # DESIGN §6.3's fire budget, on every domain rather than on average: a
+                # device that behaves at one camera and fires blindly at the next has
+                # not met the budget, it has averaged it away.
+                "admissible": bool(max_false_fire <= max_false_fire_rate),
+                # Subsumed by the budget — 100% false-fire is not <= 5% — and kept
+                # because it names the degenerate case the guard used to be about.
                 "trivial": any(m["fire_rate"] >= 1.0 for m in per_domain.values()),
             }
         )
 
+    admissible = [r for r in rows if r["admissible"]]
     meeting = [
-        r
-        for r in rows
-        if r["min_sequence_balanced_recall"] >= min_sequence_recall and not r["trivial"]
+        r for r in admissible if r["min_sequence_balanced_recall"] >= min_sequence_recall
     ]
+
     if meeting:
         chosen = max(meeting, key=lambda r: r["threshold"])
+        status = "primary_rule_met"
         rule = (
-            "primary: largest non-trivial threshold with sequence-balanced recall "
-            f">= {min_sequence_recall:.0%} on both domains"
+            f"primary: largest threshold within the {max_false_fire_rate:.0%} false-fire "
+            f"budget with sequence-balanced recall >= {min_sequence_recall:.0%} on both "
+            "domains"
         )
         unmet = None
-    else:
-        # Non-trivial candidates only: falling back to a fire-on-everything threshold
-        # because it maximises F2 would be worse than the rule it replaced.
-        non_trivial = [r for r in rows if not r["trivial"]] or rows
-        chosen = max(non_trivial, key=lambda r: r["mean_frame_f2"])
+    elif admissible:
+        chosen = max(admissible, key=lambda r: r["mean_frame_f2"])
+        status = "recall_floor_infeasible"
         rule = (
-            f"fallback: no non-trivial threshold met the {min_sequence_recall:.0%} "
-            "sequence-balanced recall floor on both domains; maximised mean frame F2"
+            f"fallback: no threshold inside the {max_false_fire_rate:.0%} false-fire "
+            f"budget reached the {min_sequence_recall:.0%} sequence-balanced recall "
+            "floor on both domains; maximised mean frame F2 within the budget. The "
+            "primary rule is NOT satisfied"
         )
         unmet = {
             domain: chosen["per_domain"][domain]["sequence_balanced_recall"]
             for domain in scores_by_domain
-            if chosen["per_domain"][domain]["sequence_balanced_recall"] < min_sequence_recall
+            if chosen["per_domain"][domain]["sequence_balanced_recall"]
+            < min_sequence_recall
         }
+    else:
+        # Pathological: the largest observed score fires on at most a handful of frames,
+        # so something is admissible unless the model scores every negative above every
+        # candidate. Kept as a branch because "cannot happen" is how a rule acquires a
+        # silent default.
+        chosen = max(rows, key=lambda r: r["threshold"])
+        status = "fire_budget_infeasible"
+        rule = (
+            f"infeasible: no threshold meets the {max_false_fire_rate:.0%} false-fire "
+            "budget on both domains. This model has no deployable operating point"
+        )
+        unmet = {
+            domain: chosen["per_domain"][domain]["false_fire_rate"]
+            for domain in scores_by_domain
+            if chosen["per_domain"][domain]["false_fire_rate"] > max_false_fire_rate
+        }
+
+    curve = trade_off_curve(rows, curve_points)
+    if not any(point["threshold"] == chosen["threshold"] for point in curve):
+        curve = sorted(
+            curve + trade_off_curve([chosen], 1), key=lambda p: p["threshold"]
+        )
 
     return {
         "threshold": chosen["threshold"],
+        "status": status,
+        # The one boolean C3 and the report must read. `rule` is prose for a human, and
+        # a caller that greps it for "primary" would call the fallback a pass.
+        "primary_rule_met": status == "primary_rule_met",
         "rule": rule,
         "min_sequence_recall_required": min_sequence_recall,
+        "max_false_fire_rate_allowed": max_false_fire_rate,
         "unmet_constraint": unmet,
         "chosen_is_trivial": chosen["trivial"],
+        "chosen_is_admissible": chosen["admissible"],
         "per_domain": chosen["per_domain"],
         "candidates_searched": len(candidates),
+        "admissible_candidates": len(admissible),
         "non_trivial_candidates": sum(1 for r in rows if not r["trivial"]),
+        # DESIGN §6.3 step 5: a constrained result must be readable as a position on a
+        # curve, not inferable from a verdict.
+        "recall_false_fire_curve": curve,
     }
 
 

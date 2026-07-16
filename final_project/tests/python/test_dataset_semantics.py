@@ -154,15 +154,15 @@ def test_threshold_rule_picks_the_largest_meeting_the_recall_floor() -> None:
 
 
 def test_the_rule_never_returns_a_fire_on_everything_threshold() -> None:
-    """"Non-trivial" in DESIGN §6.3 is load-bearing, and dropping it is silent.
+    """DESIGN §6.3's floor is always satisfiable by photographing everything.
 
     Candidates are the observed scores, so the smallest one fires on every frame and
-    scores 100% recall by construction. Without the non-trivial qualifier the 90% floor
-    is *always* satisfiable, the fallback becomes dead code, and a hopeless model gets an
-    operating point that photographs everything.
+    scores 100% recall by construction. Constrain recall alone and a hopeless model gets
+    an operating point that shoots the whole world.
 
     Here the one positive scores below both negatives, so the only way to catch it is to
-    fire on all three.
+    fire on all three — and every threshold blows the fire budget. The rule must say so
+    rather than name a trigger (issue #11).
     """
     scores = np.array([0.10, 0.50, 0.90])
     present = np.array([1.0, 0.0, 0.0])
@@ -171,8 +171,11 @@ def test_the_rule_never_returns_a_fire_on_everything_threshold() -> None:
 
     result = M.select_threshold(domains, min_sequence_recall=0.90)
 
-    assert result["chosen_is_trivial"] is False, "a trigger that fires on every frame is not an operating point"
-    assert "fallback" in result["rule"]
+    assert result["chosen_is_trivial"] is False, (
+        "a trigger that fires on every frame is not an operating point"
+    )
+    assert result["primary_rule_met"] is False
+    assert result["status"] == "fire_budget_infeasible"
     assert result["unmet_constraint"], "the unmet constraint must be recorded, not hidden"
 
 
