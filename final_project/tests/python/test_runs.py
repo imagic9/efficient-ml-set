@@ -198,32 +198,101 @@ def test_record_hashes_writes_null_for_an_absent_input(tmp_path: Path) -> None:
     assert payload["manifest:empty_supplement"] is None
 
 
-def test_dirty_tree_is_warned_about(tmp_path: Path, caplog) -> None:
-    """A result from uncommitted code cannot be reproduced from a commit."""
+@pytest.fixture
+def committed_repo(tmp_path: Path):
+    """A git repo with one committed file and a results/ directory inside it."""
     import subprocess
 
     repo = tmp_path / "repo"
-    (repo / "sub").mkdir(parents=True)
+    repo.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.email", "t@t"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "t"], cwd=repo, check=True)
     (repo / "f.txt").write_text("one")
     subprocess.run(["git", "add", "-A"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-qm", "init"], cwd=repo, check=True)
-    (repo / "f.txt").write_text("modified but not committed")
+    return repo
 
+
+def create_run_from(repo: Path, results_root: Path, name: str) -> runs.RunContext:
+    """RunContext reads git from the cwd, so the cwd is part of the scenario."""
     import os
 
     cwd = os.getcwd()
     os.chdir(repo)
     try:
-        with caplog.at_level(logging.WARNING):
-            runs.RunContext.create(
-                phase="A2", name="dirty", config={}, results_root=tmp_path / "out"
-            )
+        return runs.RunContext.create(
+            phase="A2", name=name, config={}, results_root=results_root
+        )
     finally:
         os.chdir(cwd)
+
+
+def test_dirty_tree_is_warned_about(committed_repo: Path, caplog) -> None:
+    """A result from uncommitted code cannot be reproduced from a commit."""
+    (committed_repo / "f.txt").write_text("modified but not committed")
+
+    with caplog.at_level(logging.WARNING):
+        ctx = create_run_from(committed_repo, committed_repo / "results", "dirty")
 
     assert any("DIRTY" in r.message for r in caplog.records), (
         "an unreproducible run must be impossible to overlook"
     )
+    git = json.loads((ctx.run_dir / "provenance.json").read_text())["git"]
+    assert git["reproducible_from_commit"] is False
+    assert any("f.txt" in entry for entry in git["uncommitted_code"])
+
+
+def test_a_run_does_not_call_itself_dirty(committed_repo: Path, caplog) -> None:
+    """The bug that made the warning worthless the first time a real run used it.
+
+    `results/` holds committed evidence rather than being ignored, so the run directory
+    is an untracked change the moment it is created — and provenance was captured after
+    creating it. Every run therefore reported "working tree is DIRTY", citing its own
+    output. A warning that always fires is one nobody reads, so it must fire only on
+    uncommitted *code*.
+    """
+    results = committed_repo / "results"
+    with caplog.at_level(logging.WARNING):
+        ctx = create_run_from(committed_repo, results, "clean")
+
+    assert not any("DIRTY" in r.message for r in caplog.records), (
+        "a run's own directory is not a reason to distrust the run"
+    )
+    git = json.loads((ctx.run_dir / "provenance.json").read_text())["git"]
+    assert git["reproducible_from_commit"] is True
+
+    # And the previous run's uncommitted output does not condemn the next one either.
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        create_run_from(committed_repo, results, "second")
+    assert not any("DIRTY" in r.message for r in caplog.records)
+
+
+def test_the_console_handler_is_actually_attached(tmp_path: Path, capsys) -> None:
+    """FileHandler IS a StreamHandler, and that swallowed every run's terminal output.
+
+    The guard `if not any(isinstance(h, StreamHandler) ...)` was satisfied by the
+    FileHandler added two lines above it, so the console handler was never added: a
+    detached run's nohup log came out empty while training ran fine, and progress was
+    visible only inside the run directory.
+
+    Root's handlers are cleared first because pytest's own log-capture handler is also a
+    StreamHandler subclass — under it the guard skips the console handler for a real
+    reason, and the test would pass or fail on the harness rather than on the code.
+    """
+    root = logging.getLogger()
+    saved = list(root.handlers)
+    for handler in saved:
+        root.removeHandler(handler)
+    try:
+        runs.RunContext.create(
+            phase="A2", name="console", config={}, results_root=tmp_path
+        )
+        logging.getLogger("wildlife_trigger.selftest").info("epoch 0 done")
+        assert "epoch 0 done" in capsys.readouterr().out, (
+            "a long run's progress must reach the terminal watching it"
+        )
+    finally:
+        for handler in saved:
+            root.addHandler(handler)
