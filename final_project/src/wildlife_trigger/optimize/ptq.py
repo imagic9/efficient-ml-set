@@ -13,6 +13,16 @@ synthetic tensors without that shortcut leaking into M1. A synthetically
 calibrated model is a toolchain artifact whose accuracy is meaningless; see
 `--synthetic-calibration` below, which says so at the point of use.
 
+The real M1 path is `--config`: it reads the frozen calibration manifest (built
+once by `optimize.calibration_manifest`, hash-pinned in the config), refuses a
+source ONNX or manifest whose bytes moved since the config was written, and
+produces one candidate directory per calibration method — quantized graph,
+description, and the `ort_coverage` evidence (optimized graph, ORT profile,
+operator/data-type verdict) that DESIGN §8.1 requires saved per candidate.
+
+Usage:
+    python -m wildlife_trigger.optimize.ptq --config configs/optimize/m1_ptq.yaml
+
 Usage (spike only):
     python -m wildlife_trigger.optimize.ptq --input m0.onnx --output m1.onnx \
         --synthetic-calibration 32
@@ -27,6 +37,8 @@ from pathlib import Path
 
 import numpy as np
 import onnx
+import onnxruntime
+import yaml
 from onnxruntime.quantization import (
     CalibrationDataReader,
     CalibrationMethod,
@@ -37,6 +49,7 @@ from onnxruntime.quantization import (
 from onnxruntime.quantization.shape_inference import quant_pre_process
 
 from wildlife_trigger.models.export import describe
+from wildlife_trigger.runs import atomic_write_json, sha256_file
 
 # DESIGN §8.1 tests all three on validation. The spike only proves they run.
 CALIBRATION_METHODS = {
@@ -67,6 +80,39 @@ class ArrayCalibrationReader(CalibrationDataReader):
 
     def __len__(self) -> int:
         return len(self._batches)
+
+
+class ManifestCalibrationReader(CalibrationDataReader):
+    """The frozen calibration manifest as batch-1 tensors, in manifest order.
+
+    Batch 1 because the exported graph's batch dimension is static 1 (DESIGN
+    §9.1 infers one frame at a time, and `models.export` pins the shape); the
+    calibrators are histogram/range collectors, so batch size changes memory,
+    never the resulting scales.
+
+    Decoding is lazy — the dataset falls back from cache to JPEG per record —
+    so three methods over 1,024 images cost three passes, not one giant pinned
+    array. `rewind` restarts the same order; DESIGN §8.1 compares the methods
+    on identical data, and identical includes the order they saw it in.
+    """
+
+    def __init__(self, dataset, input_name: str):
+        self._dataset = dataset
+        self._input_name = input_name
+        self._index = 0
+
+    def get_next(self) -> dict[str, np.ndarray] | None:
+        if self._index >= len(self._dataset):
+            return None
+        image = self._dataset[self._index]["image"].numpy()[None, ...]
+        self._index += 1
+        return {self._input_name: image}
+
+    def rewind(self) -> None:
+        self._index = 0
+
+    def __len__(self) -> int:
+        return len(self._dataset)
 
 
 def synthetic_batches(
@@ -152,15 +198,160 @@ def quantize(
     return description
 
 
+REQUIRED_CONFIG_KEYS = (
+    "source_run_id",
+    "source_onnx",
+    "source_onnx_sha256",
+    "calibration_manifest",
+    "calibration_manifest_sha256",
+    "calibration_images",
+    "images_dir",
+    "supplement_dir",
+    "cache_dir",
+    "classes_config",
+    "width",
+    "height",
+    "methods",
+    "output_root",
+)
+
+
+def load_config(path: Path) -> dict:
+    config = yaml.safe_load(path.read_text())
+    missing = [key for key in REQUIRED_CONFIG_KEYS if key not in config]
+    if missing:
+        raise ValueError(f"{path} lacks required keys: {missing}")
+    unknown = sorted(set(config["methods"]) - set(CALIBRATION_METHODS))
+    if unknown:
+        raise ValueError(
+            f"unknown calibration methods {unknown}; expected a subset of "
+            f"{sorted(CALIBRATION_METHODS)}"
+        )
+    return config
+
+
+def calibration_dataset(config: dict):
+    """The frozen manifest as a deterministic eval-mode dataset, hash-checked.
+
+    Torch-side imports are local: this function only runs where the training
+    environment lives, while the rest of the module stays importable next to a
+    bare onnxruntime.
+    """
+    from ..data.dataset import WildlifeDataset, load_class_names
+    from ..data.preprocess import PreprocessConfig
+
+    manifest = Path(config["calibration_manifest"])
+    measured = sha256_file(manifest)
+    if measured != config["calibration_manifest_sha256"]:
+        raise RuntimeError(
+            f"{manifest} hashes to {measured[:12]}… but the config pins "
+            f"{config['calibration_manifest_sha256'][:12]}…; the calibration data "
+            "is frozen (DESIGN §8.1) and this file is not it"
+        )
+    dataset = WildlifeDataset(
+        manifest,
+        load_class_names(Path(config["classes_config"])),
+        PreprocessConfig(width=config["width"], height=config["height"]),
+        Path(config["images_dir"]),
+        cache_root=Path(config["cache_dir"]),
+        train=False,  # deterministic: no augmentation may touch calibration
+        image_root_overrides={"empty_supplement": Path(config["supplement_dir"])},
+    )
+    if len(dataset) != config["calibration_images"]:
+        raise RuntimeError(
+            f"{manifest} holds {len(dataset)} images, the config promises "
+            f"{config['calibration_images']}; refusing to calibrate on a "
+            "different corpus than the one registered"
+        )
+    return dataset
+
+
+def generate_candidates(config: dict) -> dict:
+    """One candidate directory per calibration method, with its evidence.
+
+    Every candidate starts from the identical hash-verified M0 ONNX and reads
+    the identical manifest in the identical order — so the only degree of
+    freedom between the directories is the calibration method, which is the
+    comparison DESIGN §8.1 asks for.
+    """
+    from ..validate import ort_coverage
+
+    source = Path(config["source_onnx"])
+    measured = sha256_file(source)
+    if measured != config["source_onnx_sha256"]:
+        raise RuntimeError(
+            f"{source} hashes to {measured[:12]}… but the config pins "
+            f"{config['source_onnx_sha256'][:12]}…; whatever this file is, it is "
+            "not the M0 every candidate must start from"
+        )
+
+    dataset = calibration_dataset(config)
+    input_name = model_input_name(source)
+    output_root = Path(config["output_root"])
+    summary: dict[str, dict] = {}
+
+    for method in config["methods"]:
+        candidate_dir = output_root / method
+        model_path = candidate_dir / "model.onnx"
+        reader = ManifestCalibrationReader(dataset, input_name)
+        description = quantize(
+            source,
+            model_path,
+            reader,
+            calibration_method=method,
+            per_channel=bool(config.get("per_channel", True)),
+        )
+
+        label = f"m1_ptq_{method}"
+        coverage = ort_coverage.analyse(model_path, candidate_dir, label)
+        atomic_write_json(candidate_dir / "coverage.json", coverage)
+
+        candidate = {
+            "tool": "wildlife_trigger.optimize.ptq",
+            "design": "8.1",
+            "candidate_id": f"d1_{label}",
+            "model_id": "M1-candidate",
+            "kind": "int8_ptq",
+            "method": method,
+            "source_run_id": config["source_run_id"],
+            "source_onnx": {"path": str(source), "sha256": measured},
+            "calibration": {
+                "manifest": str(config["calibration_manifest"]),
+                "sha256": config["calibration_manifest_sha256"],
+                "images": len(dataset),
+                "order": "manifest order, batch 1",
+            },
+            "input": {"width": config["width"], "height": config["height"]},
+            "onnxruntime_version": onnxruntime.__version__,
+            "model": description,
+            "integer_execution": coverage["verdict"]["integer_execution"],
+        }
+        atomic_write_json(candidate_dir / "candidate.json", candidate)
+
+        summary[method] = {
+            "candidate_dir": str(candidate_dir),
+            "model_sha256": description["sha256"],
+            "size_bytes": description["size_bytes"],
+            "integer_execution": candidate["integer_execution"],
+        }
+        print(
+            f"{method}: {description['size_bytes']:,} bytes, integer_execution="
+            f"{candidate['integer_execution']} -> {candidate_dir}"
+        )
+    return summary
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument(
+        "--config", type=Path, help="The real M1 path: configs/optimize/m1_ptq.yaml."
+    )
+    parser.add_argument("--input", type=Path)
+    parser.add_argument("--output", type=Path)
     parser.add_argument(
         "--synthetic-calibration",
         type=int,
         metavar="N",
-        required=True,
         help="Calibrate on N random batches. Toolchain proof only: the resulting "
         "model's accuracy is meaningless and it is not M1. M1 calibrates on 1,024 "
         "stratified CCT-20 images (DESIGN §8.1).",
@@ -170,6 +361,16 @@ def main() -> int:
     )
     parser.add_argument("--describe-json", type=Path)
     args = parser.parse_args()
+
+    if args.config:
+        generate_candidates(load_config(args.config))
+        return 0
+
+    if not (args.input and args.output and args.synthetic_calibration):
+        parser.error(
+            "either --config (the M1 path) or all of --input/--output/"
+            "--synthetic-calibration (the P0 spike path) is required"
+        )
 
     reader = ArrayCalibrationReader(
         synthetic_batches(args.synthetic_calibration, model_input_name(args.input))
