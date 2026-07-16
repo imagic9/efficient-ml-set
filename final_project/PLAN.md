@@ -1,7 +1,9 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A and B complete (Gates A and B pass). Phase C: C0, C1 and C1a done;
-C2 next.** The next task is always the first `[ ]` in phase order.
+Status: **Phase A and B complete (Gates A and B pass). Phase C: C0, C1, C1a, C2 and
+C3 done (C3's registered status is `recall_floor_infeasible` — an operating point
+ships, the primary rule is NOT met); C4 next.** The next task is always the first
+`[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -894,28 +896,46 @@ to match the arms against each other and must not leak into the baseline.
 
 Depends on: C2.
 
-- [ ] Search thresholds using cis-val-clean and trans-val only.
-- [ ] Apply the two-domain 90% sequence-balanced recall rule from DESIGN §6.3,
+- [x] Search thresholds using cis-val-clean and trans-val only.
+- [x] Apply the two-domain 90% sequence-balanced recall rule from DESIGN §6.3,
       inside the registered **5% per-domain false-fire budget**.
-- [ ] Record the rule's status verbatim. `primary_rule_met` is the only pass;
+- [x] Record the rule's status verbatim. `primary_rule_met` is the only pass;
       `recall_floor_infeasible` ships an operating point and is **not** a pass, and
       no table, slide or README line may describe it as one.
-- [ ] Publish the recall/false-fire trade-off curve the rule returns, so the
+- [x] Publish the recall/false-fire trade-off curve the rule returns, so the
       distance to the floor is readable rather than inferable.
-- [ ] Bootstrap `seq_id` clusters and save the threshold distribution/95% interval.
-- [ ] Without excluding or down-weighting short sequences, report the positive
+- [x] Bootstrap `seq_id` clusters and save the threshold distribution/95% interval.
+- [x] Without excluding or down-weighting short sequences, report the positive
       sequence-length distribution, `1-2`/`3-5`/`>5` recall where supported, and
       event capture rate alongside frame/sequence-balanced recall.
-- [ ] Save `artifacts/policies/bobcat_v1.json` bound to class map/model hash.
-- [ ] Implement the versioned generic policy schema with `mode: any`, non-empty
+- [x] Save `artifacts/policies/bobcat_v1.json` bound to class map/model hash.
+- [x] Implement the versioned generic policy schema with `mode: any`, non-empty
       unique animal targets, per-class thresholds, and model/class-map hashes;
       reject `car` and `empty` as wildlife targets. Runtime policy and catalog
       artifacts are JSON; training configuration may remain YAML.
-- [ ] Produce validation precision/recall/F2/false-fire/fire-rate results and score
+- [x] Produce validation precision/recall/F2/false-fire/fire-rate results and score
       distributions.
 
 **Output:** versioned M0 bobcat policy, generic policy schema, and validation
 report.
+
+**Done 2026-07-16 — status `recall_floor_infeasible`, and that is the registered
+honest outcome, not a failure of the step.** `wildlife_trigger.calibrate` on the
+epoch-11 baseline (`c2_m0_fp32_seed42_20260716T061203Z`): the shipped operating
+point is **0.538088** (best admissible mean frame F2; 350 of 4,939 candidates were
+inside the fire budget), where cis-val-clean reaches 73.3% sequence-balanced
+recall / 5.0% false-fire and trans-val reaches **7.9%** / 3.0%. No admissible
+threshold reached the 90% floor on both domains — trans-val is where it dies,
+consistent with issue #18's margin/calibration reading; C5's seeds say whether
+that is the recipe or this seed. The seq_id-cluster bootstrap of the *rule*
+(1000 replicates) puts the selected threshold in **[0.415, 0.704]** — wide,
+because the F2 fallback rides trans noise — with every replicate returning
+`recall_floor_infeasible`: the verdict itself is stable even though the number
+is not. Artifacts: `artifacts/policies/bobcat_v1.json` (verdict embedded, bound
+to the class-map bytes and the calibrated checkpoint; C4 re-binds to the ONNX
+after P2), `artifacts/class_map.json` (frozen B1 order), and the full record —
+curve, threshold distribution, strata, CIs, histograms — in
+`results/evaluation/c2_m0_fp32_seed42_20260716T061203Z/calibration.json`.
 
 ### C4 — Export and parity
 

@@ -1,0 +1,62 @@
+{
+  "calibration": {
+    "best_epoch": 11,
+    "datasets": {
+      "manifest:cis_val_clean": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",
+      "manifest:trans_val": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a"
+    },
+    "max_false_fire_rate_allowed": 0.05,
+    "min_sequence_recall_required": 0.9,
+    "per_domain": {
+      "cis_val_clean": {
+        "event_capture_rate": 0.86,
+        "false_fire_rate": 0.049511400651465795,
+        "fire_rate": 0.08027380211574363,
+        "frame_f2": 0.6354916067146285,
+        "frame_precision": 0.4108527131782946,
+        "frame_recall": 0.7361111111111112,
+        "sequence_balanced_recall": 0.7333333333333333
+      },
+      "trans_val": {
+        "event_capture_rate": 0.1660377358490566,
+        "false_fire_rate": 0.030042918454935622,
+        "fire_rate": 0.0527536231884058,
+        "frame_f2": 0.09653692920625193,
+        "frame_precision": 0.6923076923076923,
+        "frame_recall": 0.07944514501891552,
+        "sequence_balanced_recall": 0.07924528301886792
+      }
+    },
+    "primary_rule_met": false,
+    "record": "results/evaluation/c2_m0_fp32_seed42_20260716T061203Z/calibration.json",
+    "replicates": 1000,
+    "rule": "fallback: no threshold inside the 5% false-fire budget reached the 90% sequence-balanced recall floor on both domains; maximised mean frame F2 within the budget. The primary rule is NOT satisfied",
+    "run_id": "c2_m0_fp32_seed42_20260716T061203Z",
+    "seed": 42,
+    "status": "recall_floor_infeasible",
+    "threshold_ci95": [
+      0.41478729248046875,
+      0.7038048505783081
+    ],
+    "unmet_constraint": {
+      "cis_val_clean": 0.7333333333333333,
+      "trans_val": 0.07924528301886792
+    }
+  },
+  "class_map_sha256": "b38e8bb9ef6188871dba247cde4eb152c73755d2c8dd37cfdba1bcdb6c0a9128",
+  "mode": "any",
+  "model": {
+    "artifact": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/best.pt",
+    "binding": "model_sha256 names the calibrated checkpoint. C4 re-binds it to the FP32 ONNX after P2 parity; until then the C++ loader refuses this policy against any ONNX, which is the point.",
+    "kind": "pytorch_checkpoint"
+  },
+  "model_sha256": "42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074",
+  "policy_id": "bobcat_v1",
+  "schema_version": 1,
+  "targets": [
+    {
+      "class": "bobcat",
+      "threshold": 0.5380880236625671
+    }
+  ]
+}

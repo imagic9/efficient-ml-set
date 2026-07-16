@@ -101,8 +101,19 @@ def load_predictions(run_dir: Path, target: str) -> tuple[dict, dict]:
             seq_ids,
         )
 
+    # The run's unique id, not its human name: two M0 directories already exist
+    # (the baseline and issue #19's reverted re-run), both named m0_fp32_seed42.
+    # A calibration filed under the shared name could belong to either; filed
+    # under the run_id it can only belong to one. Old flat runs (C1a) carry no
+    # run_summary.json and fall back to the name they have.
+    summary_path = run_dir / "run_summary.json"
+    run_id = history["run_name"]
+    if summary_path.exists():
+        run_id = json.loads(summary_path.read_text()).get("run_id", run_id)
+
     context = {
-        "run_id": history["run_name"],
+        "run_id": run_id,
+        "run_name": history["run_name"],
         "best_epoch": history["best_epoch"],
         "class_names": class_names,
         "target": target,
@@ -210,6 +221,7 @@ def calibrate(
         "tool": "wildlife_trigger.calibrate",
         "design": "6.3",
         "run_id": context["run_id"],
+        "run_name": context["run_name"],
         "run_dir": str(run_dir),
         "best_epoch": context["best_epoch"],
         "target": target,
