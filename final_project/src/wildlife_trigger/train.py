@@ -10,11 +10,12 @@ Two things this engine refuses to do:
 
 **It does not select on accuracy.** `empty` dominates the corpus, so the most accurate
 model is the one best at predicting that nothing happened. The checkpoint score is mean
-bobcat average precision across cis-val-clean and trans-val — threshold-free, per the
-2026-07-16 amendment to DESIGN §7.2 (issue #19) — with sequence-balanced recall and
-support-aware macro F1 as tie-breaks. F2 at 0.5 stays recorded per epoch, both because
-§6.4 reports it and because the amendment's stability test compares the two on the same
-trajectory.
+bobcat F2 across cis-val-clean and trans-val at the fixed 0.5 yardstick, with
+sequence-balanced recall and support-aware macro F1 as tie-breaks (DESIGN §7.2 — which
+also records the AP amendment that challenged this rule and was reverted by its own
+pre-registered test, issue #19). Bobcat AP stays recorded per epoch beside F2: it does
+not select, but its per-checkpoint bootstrap is ~4.5x tighter and the report will want
+it.
 
 **It does not touch test.** Only train, cis-val-clean and trans-val are reachable from
 here (DESIGN §5.4). cis-test and trans-test are sealed until every model, threshold and

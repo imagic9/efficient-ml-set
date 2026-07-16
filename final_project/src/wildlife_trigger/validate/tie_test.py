@@ -47,12 +47,13 @@ from pathlib import Path
 
 import numpy as np
 
-from ..metrics import PRIMARY_METRIC, average_precision
+from ..metrics import PRIMARY_METRIC, target_presence_metrics
 from ..metrics import selection_score as design_selection_score
 
 TARGET_CLASS = "bobcat"
 SPLITS = ("cis_val_clean", "trans_val")
 DEFAULT_REPLICATES = 10_000
+DEFAULT_THRESHOLD = 0.5
 
 
 def load(path: Path) -> dict:
@@ -82,32 +83,25 @@ def sequence_groups(seq_ids: list[str]) -> list[np.ndarray]:
     return [np.array(v) for v in groups.values()]
 
 
-def selection_score(arm: dict, draws: dict[str, np.ndarray]) -> float:
+def metrics_of(split: dict, rows: np.ndarray, threshold: float) -> dict:
+    seq_ids = [split["seq_ids"][i] for i in rows]
+    return target_presence_metrics(
+        split["scores"][rows], split["present"][rows], seq_ids, threshold
+    )
+
+
+def selection_score(arm: dict, draws: dict[str, np.ndarray], threshold: float) -> float:
     """DESIGN §7.2's score, taken from `metrics.selection_score` rather than restated.
 
-    Restating it as `mean(cis_ap, trans_ap)` here would be correct today and wrong the
+    Restating it as `mean(cis_f2, trans_f2)` here would be correct today and wrong the
     day DESIGN's score changes, in a tool whose entire output is a comparison of that
-    score — which is exactly what happened once already: the primary moved from F2 at a
-    fixed 0.5 to average precision (issue #19), and this function followed by changing
-    what it feeds in, not what it computes.
-
-    The tie-break inputs are stubs. Only `primary` is read here, the stubs feed the two
-    tie-break fields exclusively, and computing real ones would drag a threshold back
-    into a comparison whose point is now being threshold-free.
+    score — and the day came: the primary moved to AP under the 2026-07-16 amendment
+    and back under its pre-registered verdict, and both times this function changed
+    what it feeds in, not what it computes. `macro_f1` feeds only the second tie-break,
+    which this never reads.
     """
-    values = {}
-    for split in SPLITS:
-        rows = draws[split]
-        values[split] = {
-            "average_precision": average_precision(
-                arm[split]["scores"][rows], arm[split]["present"][rows]
-            ),
-            "sequence_balanced_recall": 0.0,  # stub: tie-break only, never read here
-        }
-    score = design_selection_score(
-        values["cis_val_clean"], values["trans_val"], macro_f1=0.0
-    )
-    return float(score["primary"])
+    cis, trans = (metrics_of(arm[s], draws[s], threshold) for s in SPLITS)
+    return float(design_selection_score(cis, trans, macro_f1=0.0)["primary"])
 
 
 def check_pairable(a: dict, b: dict) -> None:
@@ -132,6 +126,7 @@ def main() -> int:
     parser.add_argument("--a", required=True, type=Path, help="baseline predictions.npz")
     parser.add_argument("--b", required=True, type=Path, help="challenger predictions.npz")
     parser.add_argument("--replicates", type=int, default=DEFAULT_REPLICATES)
+    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -142,8 +137,8 @@ def main() -> int:
     groups = {s: sequence_groups(a[s]["seq_ids"]) for s in SPLITS}
     rng = np.random.default_rng(args.seed)
 
-    observed_a = selection_score(a, {s: np.arange(len(a[s]["seq_ids"])) for s in SPLITS})
-    observed_b = selection_score(b, {s: np.arange(len(b[s]["seq_ids"])) for s in SPLITS})
+    observed_a = selection_score(a, {s: np.arange(len(a[s]["seq_ids"])) for s in SPLITS}, args.threshold)
+    observed_b = selection_score(b, {s: np.arange(len(b[s]["seq_ids"])) for s in SPLITS}, args.threshold)
 
     differences, scores_a, scores_b = [], [], []
     for _ in range(args.replicates):
@@ -152,8 +147,8 @@ def main() -> int:
         for split in SPLITS:
             picked = rng.integers(0, len(groups[split]), len(groups[split]))
             draws[split] = np.concatenate([groups[split][i] for i in picked])
-        score_a = selection_score(a, draws)
-        score_b = selection_score(b, draws)
+        score_a = selection_score(a, draws, args.threshold)
+        score_b = selection_score(b, draws, args.threshold)
         scores_a.append(score_a)
         scores_b.append(score_b)
         differences.append(score_b - score_a)
@@ -166,6 +161,7 @@ def main() -> int:
         "arm_a": a["run_name"],
         "arm_b": b["run_name"],
         "score": PRIMARY_METRIC,
+        "threshold": args.threshold,
         "replicates": args.replicates,
         "seed": args.seed,
         "resampling_unit": "sequence",

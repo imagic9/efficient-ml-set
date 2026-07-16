@@ -1,0 +1,117 @@
+{
+  "manifest:train": {
+    "path": "data/manifests/train.jsonl",
+    "sha256": "cfa8654070609c0f1d394207bcd7a064b30ce7e01e88a5b25dc27a92243f0e32",
+    "bytes": 6151134
+  },
+  "manifest:cis_val_clean": {
+    "path": "data/manifests/cis_val_clean.jsonl",
+    "sha256": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",
+    "bytes": 1457675
+  },
+  "manifest:trans_val": {
+    "path": "data/manifests/trans_val.jsonl",
+    "sha256": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a",
+    "bytes": 785042
+  },
+  "manifest:empty_supplement": {
+    "path": "data/manifests/cct_empty_train_v1.jsonl",
+    "sha256": "40c2d4012297d087004ef2d952c97079b89eb79d270a54032d0852cff6533afa",
+    "bytes": 4945535
+  },
+  "config:classes": {
+    "path": "configs/data/classes.yaml",
+    "sha256": "a2f8ce7621da98a625290f3660ec0a95a7adb83c437bc6837890b08a02b30ded",
+    "bytes": 1666
+  },
+  "caches": {
+    "train": {
+      "fingerprint": {
+        "cache_format_version": 2,
+        "preprocess": {
+          "width": 256,
+          "height": 192,
+          "pad_value": 114,
+          "interpolation": "INTER_LINEAR",
+          "steps_cached": "1-4 (decode, BGR->RGB, aspect-preserving resize, pad)"
+        },
+        "manifest_sha256": "cfa8654070609c0f1d394207bcd7a064b30ce7e01e88a5b25dc27a92243f0e32"
+      },
+      "image_id_order_sha256": "72982906c3cefe89fb44df45dbe031085341eaffe419ed8a0370bc6bd68da74a",
+      "images": 13553
+    },
+    "cct_empty_train_v1": {
+      "fingerprint": {
+        "cache_format_version": 2,
+        "preprocess": {
+          "width": 256,
+          "height": 192,
+          "pad_value": 114,
+          "interpolation": "INTER_LINEAR",
+          "steps_cached": "1-4 (decode, BGR->RGB, aspect-preserving resize, pad)"
+        },
+        "manifest_sha256": "40c2d4012297d087004ef2d952c97079b89eb79d270a54032d0852cff6533afa"
+      },
+      "image_id_order_sha256": "73845bc66950702878f0c4b97f6882929688e45bfbd64d9400cbd701ad3b93e8",
+      "images": 5000
+    },
+    "cis_val_clean": {
+      "fingerprint": {
+        "cache_format_version": 2,
+        "preprocess": {
+          "width": 256,
+          "height": 192,
+          "pad_value": 114,
+          "interpolation": "INTER_LINEAR",
+          "steps_cached": "1-4 (decode, BGR->RGB, aspect-preserving resize, pad)"
+        },
+        "manifest_sha256": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15"
+      },
+      "image_id_order_sha256": "82d474ff47462bde8231a0ff099c09a5f02ccf878410afd5112a8b8e80b9ffe8",
+      "images": 3214
+    },
+    "trans_val": {
+      "fingerprint": {
+        "cache_format_version": 2,
+        "preprocess": {
+          "width": 256,
+          "height": 192,
+          "pad_value": 114,
+          "interpolation": "INTER_LINEAR",
+          "steps_cached": "1-4 (decode, BGR->RGB, aspect-preserving resize, pad)"
+        },
+        "manifest_sha256": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a"
+      },
+      "image_id_order_sha256": "952f112d63a4d303467b5ef005a48792dae57cad527e3a4c326d5236a134bdf8",
+      "images": 1725
+    }
+  },
+  "class_names": [
+    "opossum",
+    "raccoon",
+    "squirrel",
+    "bobcat",
+    "skunk",
+    "dog",
+    "coyote",
+    "rabbit",
+    "bird",
+    "cat",
+    "badger",
+    "empty",
+    "car",
+    "deer",
+    "fox",
+    "rodent"
+  ],
+  "checkpoint:best": {
+    "path": "results/training/c2/c2_m0_fp32_seed42_20260716T132313Z/best.pt",
+    "sha256": "f6df6316a8057d293e1805f7df485201158a29e848e27fb1f0c46ebf24ffd57f",
+    "bytes": 27311447
+  },
+  "checkpoint:last": {
+    "path": "results/training/c2/c2_m0_fp32_seed42_20260716T132313Z/last.pt",
+    "sha256": "6ecab04ceca99ed38d8252f4e270d1a4bb89bed98b8266b981d72decbf154fba",
+    "bytes": 27311447
+  }
+}

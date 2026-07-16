@@ -420,21 +420,30 @@ def bootstrap_sequence_clusters(
 
 
 def selection_score(cis: dict, trans: dict, macro_f1: float) -> dict:
-    """DESIGN §7.2's checkpoint selection score (amended 2026-07-16, issue #19).
+    """DESIGN §7.2's checkpoint selection score.
 
-    Mean bobcat **average precision** across the two validation domains — threshold-free,
-    where the original mean F2 at a fixed 0.5 was decided by trans-val's noise at a
-    threshold C3 recalibrates anyway. Sequence-balanced recall stays as first tie-break,
-    support-aware macro F1 as second. Explicitly *not* overall accuracy: `empty`
-    dominates the corpus, so accuracy would select the model that is best at predicting
-    nothing happened.
+    Mean bobcat F2 at the fixed 0.5 yardstick across the two validation domains,
+    sequence-balanced recall as first tie-break, support-aware macro F1 as second.
+    Explicitly *not* overall accuracy: `empty` dominates the corpus, so accuracy would
+    select the model that is best at predicting nothing happened.
 
-    `primary_metric` names what `primary` is, inside the artifact itself: histories
-    written before the amendment carry F2 means under the same key, and a reader of a
-    bare number cannot tell which rule produced it.
+    **F2 survived a challenge, and the record matters more than the outcome.** The
+    2026-07-16 amendment moved the primary to mean bobcat AP on the argument that a
+    fixed threshold is noise — and its own pre-registered acceptance test reverted it
+    the same day: on the re-run M0 trajectory the AP score's relative epoch-to-epoch
+    jitter was 0.968x F2's, nowhere near the required 0.5x, because averaging jittery
+    trans with smooth cis already damps the F2 score, while AP carries its own swings
+    from the low-score region a fixed threshold never reads. What *was* confirmed: at a
+    frozen checkpoint, AP's seq_id-bootstrap relative CI is ~4.5x tighter — so AP stays
+    recorded per epoch beside F2 (see `train.evaluate`), it just does not select.
+    DESIGN §7.2 carries the full verdict; `validate.ap_stability` is the instrument.
+
+    `primary_metric` names what `primary` is, inside the artifact itself: the histories
+    written during the amendment's one day carry AP means under the same key, and a
+    reader of a bare number cannot tell which rule produced it.
     """
     return {
-        "primary": (cis["average_precision"] + trans["average_precision"]) / 2,
+        "primary": (cis["frame_f2"] + trans["frame_f2"]) / 2,
         "primary_metric": PRIMARY_METRIC,
         "tiebreak_1_sequence_balanced_recall": (
             cis["sequence_balanced_recall"] + trans["sequence_balanced_recall"]
@@ -452,7 +461,9 @@ SELECTION_ORDER = (
 )
 
 # What `primary` is. One definition, referenced wherever the rule describes itself.
-PRIMARY_METRIC = "mean_bobcat_average_precision"
+# F2 at the fixed 0.5 yardstick: the AP amendment (issue #19) was tried and REVERTED by
+# its own pre-registered test -- see `selection_score` and DESIGN §7.2's verdict.
+PRIMARY_METRIC = "mean_bobcat_frame_f2_at_0.5"
 
 
 def selection_key(score: dict) -> tuple[float, ...]:

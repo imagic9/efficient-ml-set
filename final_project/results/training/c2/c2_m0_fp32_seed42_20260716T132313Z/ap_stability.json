@@ -1,0 +1,67 @@
+{
+  "run": "results/training/c2/c2_m0_fp32_seed42_20260716T132313Z",
+  "phase_b_epochs": 14,
+  "criterion_1_trajectory": {
+    "requirement": "AP relative epoch-to-epoch change <= 0.5 x F2@0.5's",
+    "ap_series": [
+      0.4621,
+      0.5345,
+      0.5191,
+      0.5727,
+      0.5649,
+      0.4974,
+      0.5601,
+      0.5813,
+      0.5659,
+      0.5497,
+      0.534,
+      0.5448,
+      0.5625,
+      0.5608
+    ],
+    "f2_series": [
+      0.2621,
+      0.2887,
+      0.3218,
+      0.3398,
+      0.3532,
+      0.3348,
+      0.3663,
+      0.3466,
+      0.3369,
+      0.3409,
+      0.3586,
+      0.3401,
+      0.3583,
+      0.3464
+    ],
+    "ap_relative_step_change": 0.0535,
+    "f2_relative_step_change": 0.0553,
+    "ratio_ap_over_f2": 0.968,
+    "passes": false
+  },
+  "criterion_2_bootstrap_trans": {
+    "requirement": "relative CI half-width of trans AP <= that of trans F2@0.5, seq_id clusters, at the selected checkpoint",
+    "average_precision": {
+      "point_estimate": 0.5623,
+      "ci95": [
+        0.5056,
+        0.6232
+      ],
+      "half_width": 0.0588,
+      "relative_half_width": 0.1046
+    },
+    "frame_f2_at_half": {
+      "point_estimate": 0.0373,
+      "ci95": [
+        0.0208,
+        0.0559
+      ],
+      "half_width": 0.0176,
+      "relative_half_width": 0.4702
+    },
+    "passes": true
+  },
+  "verdict": "revert_to_f2",
+  "registered_in": "DESIGN \u00a77.2 amendment 2026-07-16, before these runs were trained"
+}
