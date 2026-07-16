@@ -106,8 +106,8 @@ def summarise_run(run: dict) -> dict:
     domains = {}
     for domain in ("cis_val_clean", "trans_val"):
         domains[domain] = {key: best[domain][key] for key in HEADLINE}
-        if "bobcat_ap" in best[domain]:
-            domains[domain]["bobcat_ap"] = best[domain]["bobcat_ap"]
+        if "average_precision" in best[domain]:
+            domains[domain]["average_precision"] = best[domain]["average_precision"]
 
     return {
         "run_id": run["_run_id"],

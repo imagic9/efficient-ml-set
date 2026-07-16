@@ -155,8 +155,8 @@ def build_row(
     }
     # AP per epoch arrived with issue #19's verdict; the baseline run predates it.
     for domain, key in (("cis_val_clean", "cis_ap"), ("trans_val", "trans_ap")):
-        if "bobcat_ap" in best[domain]:
-            validation[key] = best[domain]["bobcat_ap"]
+        if "average_precision" in best[domain]:
+            validation[key] = best[domain]["average_precision"]
 
     return {
         "model_id": model_id,
