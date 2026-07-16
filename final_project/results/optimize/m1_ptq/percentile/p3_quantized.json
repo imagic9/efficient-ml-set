@@ -1,0 +1,317 @@
+{
+  "gate": "P3 \u2014 quantized-model validation (DESIGN \u00a710)",
+  "candidate_id": "d1_m1_ptq_percentile",
+  "onnx": {
+    "path": "results/optimize/m1_ptq/percentile/model.onnx",
+    "sha256": "faf54dde23e4418b2cfb3b79563883624c97e536968d50aee9ee98746e1345c8"
+  },
+  "policy_id": "bobcat_m1_ptq_percentile_v1",
+  "ort_version_python": "1.27.0",
+  "tolerances": {
+    "logits_max_abs": 0.0001,
+    "decision_carve_out": 0.0001,
+    "metrics": "exact equality"
+  },
+  "checks": {
+    "graph_and_coverage": {
+      "onnx_checker": "passed",
+      "integer_execution": true,
+      "float_compute_executed": {},
+      "integer_kernels_executed": [
+        "QGemm",
+        "QLinearAdd",
+        "QLinearConv",
+        "QLinearGlobalAveragePool"
+      ],
+      "coverage_report": {
+        "label": "d1_m1_ptq_percentile",
+        "model": "results/optimize/m1_ptq/percentile/model.onnx",
+        "onnxruntime_version": "1.27.0",
+        "exported_graph": {
+          "op_types": {
+            "Add": 10,
+            "Conv": 52,
+            "DequantizeLinear": 172,
+            "Flatten": 1,
+            "Gemm": 1,
+            "GlobalAveragePool": 1,
+            "QuantizeLinear": 66
+          },
+          "node_count": 303,
+          "domains": {
+            "ai.onnx": 303
+          },
+          "initializer_dtypes": {
+            "float": 172,
+            "int32": 106,
+            "int8": 172
+          }
+        },
+        "optimized_graph": {
+          "op_types": {
+            "DequantizeLinear": 1,
+            "Flatten": 1,
+            "QGemm": 1,
+            "QLinearAdd": 10,
+            "QLinearConv": 52,
+            "QLinearGlobalAveragePool": 1,
+            "QuantizeLinear": 1,
+            "Transpose": 2
+          },
+          "node_count": 69,
+          "domains": {
+            "ai.onnx": 5,
+            "com.microsoft": 64
+          },
+          "initializer_dtypes": {
+            "float": 84,
+            "int32": 53,
+            "int8": 172
+          }
+        },
+        "optimized_graph_path": "results/optimize/m1_ptq/percentile/p3_coverage/d1_m1_ptq_percentile.optimized.onnx",
+        "execution": {
+          "profile": "results/optimize/m1_ptq/percentile/p3_coverage/d1_m1_ptq_percentile.profile_2026-07-16_23-31-21_468.json",
+          "executed_ops": {
+            "DequantizeLinear": {
+              "float": 1,
+              "int8": 2
+            },
+            "Flatten": {
+              "int8": 1
+            },
+            "QGemm": {
+              "float": 3,
+              "int32": 1,
+              "int8": 4
+            },
+            "QLinearAdd": {
+              "float": 30,
+              "int8": 50
+            },
+            "QLinearConv": {
+              "float": 156,
+              "int32": 52,
+              "int8": 208
+            },
+            "QLinearGlobalAveragePool": {
+              "float": 2,
+              "int8": 3
+            },
+            "QuantizeLinear": {
+              "float": 2,
+              "int8": 1
+            },
+            "Transpose": {
+              "int8": 2
+            }
+          },
+          "execution_providers": {
+            "CPUExecutionProvider": 69
+          },
+          "node_events": 518
+        },
+        "input_fixture": "<generated, seed 0>",
+        "output_summary": {
+          "shape": [
+            1,
+            16
+          ],
+          "dtype": "float32",
+          "mean": -1.2363380193710327,
+          "std": 1.1846472024917603,
+          "argmax": 11
+        },
+        "verdict": {
+          "integer_kernels_in_graph": {
+            "QGemm": 1,
+            "QLinearAdd": 10,
+            "QLinearConv": 52,
+            "QLinearGlobalAveragePool": 1
+          },
+          "integer_kernels_executed": {
+            "QGemm": {
+              "float": 3,
+              "int32": 1,
+              "int8": 4
+            },
+            "QLinearAdd": {
+              "float": 30,
+              "int8": 50
+            },
+            "QLinearConv": {
+              "float": 156,
+              "int32": 52,
+              "int8": 208
+            },
+            "QLinearGlobalAveragePool": {
+              "float": 2,
+              "int8": 3
+            }
+          },
+          "float_compute_in_graph": {},
+          "float_compute_executed": {},
+          "float_compute_input_dtypes": [],
+          "qdq_nodes_remaining": {
+            "DequantizeLinear": 1,
+            "QuantizeLinear": 1
+          },
+          "integer_execution": true,
+          "explanation": "integer_execution is true only when at least one integer kernel actually executed AND no Conv/Gemm/MatMul float kernel executed. Presence of QuantizeLinear/DequantizeLinear proves nothing on its own: ORT can dequantize, compute in float, and requantize."
+        }
+      },
+      "passed": true
+    },
+    "metrics_reproduce": {
+      "recorded_primary": 0.35268503031725423,
+      "rerun_primary": 0.35268503031725423,
+      "mismatches": [],
+      "passed": true
+    },
+    "logits_layer": {
+      "fixtures": 10,
+      "worst_max_abs": 0.0,
+      "passed": true,
+      "results": [
+        {
+          "fixture": "5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "585c02ec-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "586e2db9-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "5883ea9d-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58995b28-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58adc360-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58c34c6f-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58d7a1e4-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58e93a4e-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        }
+      ]
+    },
+    "decision_layer": {
+      "fixtures": 4,
+      "worst_max_abs": 0.0,
+      "passed": true,
+      "results": [
+        {
+          "fixture": "infer_5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 0.0,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 3.7396584957605228e-06,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m1_ptq_percentile_v1",
+          "model_sha256": "faf54dde23e4418b2cfb3b79563883624c97e536968d50aee9ee98746e1345c8",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/5858bfc0-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 0.0,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 7.008464308455586e-05,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m1_ptq_percentile_v1",
+          "model_sha256": "faf54dde23e4418b2cfb3b79563883624c97e536968d50aee9ee98746e1345c8",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_585c02ec-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/585c02ec-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 0.0,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 5.305388640408637e-06,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m1_ptq_percentile_v1",
+          "model_sha256": "faf54dde23e4418b2cfb3b79563883624c97e536968d50aee9ee98746e1345c8",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_frame_1024x747",
+          "image": "tests/fixtures/frame_1024x747.jpg",
+          "logits_max_abs": 0.0,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 0.01940148137509823,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m1_ptq_percentile_v1",
+          "model_sha256": "faf54dde23e4418b2cfb3b79563883624c97e536968d50aee9ee98746e1345c8",
+          "passed": true,
+          "failures": []
+        }
+      ]
+    },
+    "binding": {
+      "records": 4,
+      "wrong_bindings": [],
+      "passed": true
+    }
+  },
+  "verdict": {
+    "passed": true,
+    "failed": []
+  }
+}
