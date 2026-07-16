@@ -6,7 +6,7 @@
     "trans_val"
   ],
   "why_not_test": "DESIGN \u00a75.4 seals cis-test and trans-test. Fixtures drawn from them would commit test frames to the repository and be consulted throughout development.",
-  "tensor_shapes": "PROVISIONAL \u2014 not frozen here. PLAN C0 defers golden tensors until C1a selects the input contract (256x192 vs 224x224). Freezing them now would either pre-empt that decision or have to be redone.",
+  "tensor_shapes": "Not frozen here, by design: PLAN C0 defers golden tensors until C1a selects the input contract. C1a chose 256x192 on 2026-07-16 \u2014 the tensors for these fixtures live in tests/fixtures/golden_tensors_256x192.json (wildlife_trigger.validate.golden_tensors). This file stays the raw-frame reference that one is derived from and re-verified against.",
   "fixtures": [
     {
       "image_id": "5858bfa6-23d2-11e8-a6a3-ec086b02610b",
