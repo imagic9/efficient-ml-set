@@ -27,7 +27,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 
@@ -40,32 +39,19 @@ from wildlife_trigger.models.mobilenet import (
     example_input,
 )
 
-# DESIGN §4: 14 animals + car + empty = the 16-way single-label task. `car` and
-# `empty` are model classes but never selectable wildlife targets.
-ANIMAL_CLASSES = (
-    "badger",
-    "bird",
-    "bobcat",
-    "cat",
-    "coyote",
-    "deer",
-    "dog",
-    "fox",
-    "opossum",
-    "rabbit",
-    "raccoon",
-    "rodent",
-    "skunk",
-    "squirrel",
+# The class catalog and the canonical JSON bytes live in `wildlife_trigger.policy`,
+# the writing side of the schema the C++ loader enforces. This module only ever
+# consumed them; C3's real generator is the other consumer, and two copies of a
+# class list is how a smoke artifact and a shipped policy drift apart.
+from wildlife_trigger.policy import (
+    ANIMAL_CLASSES,
+    NON_ANIMAL_CLASSES,
+    SCHEMA_VERSION,
+    build_policy as generic_build_policy,
+    write_canonical_json as write_json,
 )
-NON_ANIMAL_CLASSES = ("car", "empty")
-SMOKE_CLASSES = ANIMAL_CLASSES + NON_ANIMAL_CLASSES
 
-# DESIGN §4 catalog: these three have no defensible operating point (badger has one
-# validation image; deer and fox have none). The policy loader must reject them
-# rather than invent a threshold. A4 carries the null so the C++ loader's rejection
-# path has something real to reject.
-NO_THRESHOLD_CLASSES = ("badger", "deer", "fox")
+SMOKE_CLASSES = ANIMAL_CLASSES + NON_ANIMAL_CLASSES
 
 # Not calibrated — calibration is D-phase work on validation data that does not
 # exist yet (DESIGN §6.3). 0.5 is the arbitrary midpoint, marked as such everywhere
@@ -73,34 +59,9 @@ NO_THRESHOLD_CLASSES = ("badger", "deer", "fox")
 PROVISIONAL_THRESHOLD = 0.5
 
 
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
-
-
-def sha256_bytes(payload: bytes) -> str:
-    return hashlib.sha256(payload).hexdigest()
-
-
-def write_json(path: Path, payload: dict) -> str:
-    """Write canonical JSON and return its SHA-256.
-
-    `sort_keys` and a fixed separator: the class map's hash is bound into the policy,
-    so the same content must serialise to the same bytes every time. Without that,
-    re-running the exporter would invalidate a policy that had not changed.
-    """
-    text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text)
-    return sha256_bytes(text.encode())
-
-
 def build_class_map() -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "provisional": (
             "A4 smoke placeholder. The 16 class NAMES are fixed by DESIGN §4, but "
             "their integer order comes from the CCT-20 annotations and is frozen by "
@@ -113,32 +74,23 @@ def build_class_map() -> dict:
 
 
 def build_policy(model_hash: str, class_map_hash: str, targets: list[str]) -> dict:
-    for name in targets:
-        if name in NO_THRESHOLD_CLASSES:
-            raise ValueError(
-                f"{name!r} has no calibrated threshold in the DESIGN §4 catalog "
-                "(insufficient validation support). A policy naming it must be "
-                "rejected, not generated."
-            )
-        if name not in ANIMAL_CLASSES:
-            raise ValueError(f"{name!r} is not a selectable animal class")
-
-    return {
-        "schema_version": 1,
-        "policy_id": "smoke_" + "_".join(targets) + "_v0",
-        "provisional": (
-            f"Threshold {PROVISIONAL_THRESHOLD} is an arbitrary midpoint, NOT a "
-            "calibrated operating point. DESIGN §6.3 calibrates the real threshold "
-            "on cis-val-clean + trans-val, which do not exist yet. No A4 number is "
-            "a result."
-        ),
-        "model_sha256": model_hash,
-        "class_map_sha256": class_map_hash,
-        "mode": "any",
-        "targets": [
+    return generic_build_policy(
+        policy_id="smoke_" + "_".join(targets) + "_v0",
+        targets=[
             {"class": name, "threshold": PROVISIONAL_THRESHOLD} for name in targets
         ],
-    }
+        class_map=build_class_map(),
+        class_map_sha256=class_map_hash,
+        model_sha256=model_hash,
+        metadata={
+            "provisional": (
+                f"Threshold {PROVISIONAL_THRESHOLD} is an arbitrary midpoint, NOT a "
+                "calibrated operating point. DESIGN §6.3 calibrates the real "
+                "threshold on cis-val-clean + trans-val, which do not exist yet. "
+                "No A4 number is a result."
+            )
+        },
+    )
 
 
 def main() -> int:
