@@ -74,6 +74,11 @@ onnxruntime_profile_*.json
 # beside them, so a later run can prove it read the same input.
 /final_project/results/**/*.bin
 
+# P1's per-fixture dump-tensor intermediates (tensor .bin + letterbox .json pairs).
+# Reproducible by scripts/run_c4_parity.sh; the committed evidence is the
+# comparator's p1_preprocess.json, which embeds every geometry and error stat.
+/final_project/results/parity/*/p1/
+
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being
 # swept up by `git add -A`.

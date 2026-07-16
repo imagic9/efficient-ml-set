@@ -1,0 +1,59 @@
+{
+  "fixtures": {
+    "ir_night_1024x747": {
+      "bytes": 220692,
+      "height": 747,
+      "jpeg_quality": 92,
+      "path": "tests/fixtures/p1_supplement/ir_night_1024x747.jpg",
+      "provenance": "Synthetic P1 supplement. Not CCT-20, not a photograph, never training data. Exists because the real golden corpus is all landscape and cannot exercise this branch.",
+      "sha256": "65b9a7803848be295618aabd7c46889036a2da6af254a9bae643cb25d2ddc5f2",
+      "why": "grayscale-looking IR: three equal low-contrast channels, ordinary night input",
+      "width": 1024
+    },
+    "odd_1023x767": {
+      "bytes": 119244,
+      "height": 767,
+      "jpeg_quality": 92,
+      "path": "tests/fixtures/p1_supplement/odd_1023x767.jpg",
+      "provenance": "Synthetic P1 supplement. Not CCT-20, not a photograph, never training data. Exists because the real golden corpus is all landscape and cannot exercise this branch.",
+      "seed": 0,
+      "sha256": "4218678b0acb58aafe7c5cf712757c7da973a5000bd65ef21f04db50547ea948",
+      "why": "odd dimensions: rounding and floor-divided pads",
+      "width": 1023
+    },
+    "portrait_747x1024": {
+      "bytes": 115530,
+      "height": 1024,
+      "jpeg_quality": 92,
+      "path": "tests/fixtures/p1_supplement/portrait_747x1024.jpg",
+      "provenance": "Synthetic P1 supplement. Not CCT-20, not a photograph, never training data. Exists because the real golden corpus is all landscape and cannot exercise this branch.",
+      "seed": 0,
+      "sha256": "41d72402ceb11330bd310f966d392e1779cf35636f734b6777cff3ae4f2fe0f3",
+      "why": "portrait: pad_left > 0, the branch no real CCT fixture reaches",
+      "width": 747
+    },
+    "square_512x512": {
+      "bytes": 41238,
+      "height": 512,
+      "jpeg_quality": 92,
+      "path": "tests/fixtures/p1_supplement/square_512x512.jpg",
+      "provenance": "Synthetic P1 supplement. Not CCT-20, not a photograph, never training data. Exists because the real golden corpus is all landscape and cannot exercise this branch.",
+      "seed": 0,
+      "sha256": "52c8b5952a982d53e211cb33653781eaaa471d4284597ce9424395bf72282917",
+      "why": "square: both pads zero on one axis exactly",
+      "width": 512
+    },
+    "tiny_100x80": {
+      "bytes": 2560,
+      "height": 80,
+      "jpeg_quality": 92,
+      "path": "tests/fixtures/p1_supplement/tiny_100x80.jpg",
+      "provenance": "Synthetic P1 supplement. Not CCT-20, not a photograph, never training data. Exists because the real golden corpus is all landscape and cannot exercise this branch.",
+      "seed": 0,
+      "sha256": "a1bf763901a6ed9bcee6019ea0d8ab6e8ce597a950559c9e194cd04bab0cf7b3",
+      "why": "smaller than the target: the upscale path",
+      "width": 100
+    }
+  },
+  "purpose": "P1 preprocessing-parity coverage the real golden corpus cannot give"
+}

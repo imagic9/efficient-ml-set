@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <opencv2/core/version.hpp>
 
 #include "wildlife_trigger/benchmark.hpp"
 #include "wildlife_trigger/cpu_features.hpp"
@@ -41,6 +42,8 @@ struct CommonArgs {
     std::string class_map;
     std::string image;
     std::string output;
+    std::string output_bin;
+    std::string preprocess_mode = "fused";
     std::string profile_prefix;
     std::string optimized_model;
     int threads = 1;
@@ -60,8 +63,13 @@ struct CommonArgs {
         << "                         --policy P.json --image X.jpg \\\n"
         << "                         [--warmup N] [--iterations N] [--output B.json]\n"
         << "  wildlife_trigger self-test --model M.onnx --class-map C.json \\\n"
-        << "                         --policy P.json --image X.jpg\n\n"
+        << "                         --policy P.json --image X.jpg\n"
+        << "  wildlife_trigger dump-tensor --image X.jpg --output-bin T.bin \\\n"
+        << "                         [--preprocess fused|reference] [--output T.json]\n\n"
         << "options:\n"
+        << "  --output-bin P         raw float32 tensor destination (dump-tensor)\n"
+        << "  --preprocess M         fused (the shipping path) or reference\n"
+        << "                         (unfused OpenCV primitives; P1's third column)\n"
         << "  --threads N            intra-op threads (default 1, stated not implied)\n"
         << "  --width/--height N     input geometry (default 256x192, DESIGN §5.5)\n"
         << "  --profile-prefix P     enable ORT profiling with this prefix\n"
@@ -86,6 +94,8 @@ CommonArgs parse(int argc, char **argv) {
         else if (flag == "--class-map") args.class_map = value();
         else if (flag == "--image") args.image = value();
         else if (flag == "--output") args.output = value();
+        else if (flag == "--output-bin") args.output_bin = value();
+        else if (flag == "--preprocess") args.preprocess_mode = value();
         else if (flag == "--profile-prefix") args.profile_prefix = value();
         else if (flag == "--optimized-model") args.optimized_model = value();
         else if (flag == "--threads") args.threads = std::stoi(value());
@@ -409,6 +419,64 @@ int command_self_test(const CommonArgs &args) {
     return failures == 0 ? 0 : 1;
 }
 
+int command_dump_tensor(const CommonArgs &args) {
+    // P1's C++ half: preprocess one image and write the tensor where Python can
+    // read it. No model, no policy -- the comparison must isolate preprocessing,
+    // and loading ORT here would only add ways for this command to fail.
+    //
+    // The .bin is raw little-endian float32, C order -- numpy.tofile's format,
+    // already the convention `validate.fixture` and ort_probe established. The
+    // C++ tensor is plane-major (C,H,W) contiguous, which is exactly numpy's
+    // contiguous (3,H,W): a straight np.fromfile(...).reshape(3,H,W).
+    require(args.image, "--image");
+    require(args.output_bin, "--output-bin");
+    if (args.preprocess_mode != "fused" && args.preprocess_mode != "reference") {
+        std::cerr << "--preprocess must be 'fused' or 'reference', got '"
+                  << args.preprocess_mode << "'\n";
+        return 2;
+    }
+
+    PreprocessConfig config;
+    config.width = args.width;
+    config.height = args.height;
+    Preprocessor preprocessor(config);
+
+    const PreprocessResult result = args.preprocess_mode == "reference"
+                                        ? preprocessor.from_file_reference(args.image)
+                                        : preprocessor.from_file(args.image);
+
+    std::ofstream bin(args.output_bin, std::ios::binary);
+    if (!bin) {
+        throw std::runtime_error("cannot open for writing: " + args.output_bin);
+    }
+    bin.write(reinterpret_cast<const char *>(result.tensor.data()),
+              static_cast<std::streamsize>(result.tensor.size() * sizeof(float)));
+    bin.close();
+    if (!bin) {
+        throw std::runtime_error("short write: " + args.output_bin);
+    }
+
+    const std::string tensor_sha256 =
+        sha256_bytes(reinterpret_cast<const uint8_t *>(result.tensor.data()),
+                     result.tensor.size() * sizeof(float));
+
+    json document{
+        {"image", args.image},
+        {"preprocess", args.preprocess_mode},
+        {"shape", {1, 3, args.height, args.width}},
+        {"dtype", "float32"},
+        {"layout", "NCHW, C order, little-endian"},
+        {"letterbox", letterbox_json(result.letterbox)},
+        {"tensor_sha256", tensor_sha256},
+        {"output_bin", args.output_bin},
+        {"opencv_version", CV_VERSION},
+    };
+    std::cerr << args.preprocess_mode << " tensor " << tensor_sha256.substr(0, 16)
+              << "... -> " << args.output_bin << "\n";
+    emit(document, args.output);
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
@@ -421,6 +489,7 @@ int main(int argc, char **argv) {
         if (command == "infer") return command_infer(args);
         if (command == "benchmark") return command_benchmark(args);
         if (command == "self-test") return command_self_test(args);
+        if (command == "dump-tensor") return command_dump_tensor(args);
     } catch (const std::exception &error) {
         std::cerr << "error: " << error.what() << "\n";
         return 1;
