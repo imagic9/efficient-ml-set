@@ -1,0 +1,110 @@
+{
+  "tool": "wildlife_trigger.optimize.calibration_manifest",
+  "design": "8.1",
+  "rule": "training data only; single-class frames; strata (source, class); floor 8 per stratum then proportional by capacity, largest-remainder; seed 20260716",
+  "seed": 20260716,
+  "total": 1024,
+  "sources": {
+    "cct20": {
+      "path": "data/manifests/train.jsonl",
+      "sha256": "cfa8654070609c0f1d394207bcd7a064b30ce7e01e88a5b25dc27a92243f0e32"
+    },
+    "empty_supplement": {
+      "path": "data/manifests/cct_empty_train_v1.jsonl",
+      "sha256": "40c2d4012297d087004ef2d952c97079b89eb79d270a54032d0852cff6533afa"
+    }
+  },
+  "strata": {
+    "cct20/badger": {
+      "eligible": 3,
+      "drawn": 3
+    },
+    "cct20/bird": {
+      "eligible": 484,
+      "drawn": 31
+    },
+    "cct20/bobcat": {
+      "eligible": 785,
+      "drawn": 46
+    },
+    "cct20/car": {
+      "eligible": 668,
+      "drawn": 40
+    },
+    "cct20/cat": {
+      "eligible": 1287,
+      "drawn": 71
+    },
+    "cct20/coyote": {
+      "eligible": 1403,
+      "drawn": 76
+    },
+    "cct20/deer": {
+      "eligible": 42,
+      "drawn": 10
+    },
+    "cct20/dog": {
+      "eligible": 820,
+      "drawn": 48
+    },
+    "cct20/fox": {
+      "eligible": 5,
+      "drawn": 5
+    },
+    "cct20/opossum": {
+      "eligible": 2726,
+      "drawn": 141
+    },
+    "cct20/rabbit": {
+      "eligible": 2443,
+      "drawn": 128
+    },
+    "cct20/raccoon": {
+      "eligible": 1027,
+      "drawn": 58
+    },
+    "cct20/rodent": {
+      "eligible": 375,
+      "drawn": 26
+    },
+    "cct20/skunk": {
+      "eligible": 229,
+      "drawn": 19
+    },
+    "cct20/squirrel": {
+      "eligible": 1249,
+      "drawn": 69
+    },
+    "empty_supplement/empty": {
+      "eligible": 5000,
+      "drawn": 253
+    }
+  },
+  "drawn_by_source": {
+    "cct20": 771,
+    "empty_supplement": 253
+  },
+  "drawn_by_class": {
+    "badger": 3,
+    "bird": 31,
+    "bobcat": 46,
+    "car": 40,
+    "cat": 71,
+    "coyote": 76,
+    "deer": 10,
+    "dog": 48,
+    "empty": 253,
+    "fox": 5,
+    "opossum": 141,
+    "rabbit": 128,
+    "raccoon": 58,
+    "rodent": 26,
+    "skunk": 19,
+    "squirrel": 69
+  },
+  "images_verified": true,
+  "output": {
+    "path": "data/manifests/calibration_1024.jsonl",
+    "sha256": "9fab904c6eb3a5501011fdd3277b3ee98655a906d6301da44364ef35d8a863c4"
+  }
+}
