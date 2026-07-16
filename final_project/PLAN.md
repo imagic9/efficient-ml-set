@@ -824,13 +824,46 @@ fixtures are what it would be built from.
 
 Depends on: C1a.
 
-- [ ] Train seed 42 on gx10.
-- [ ] Save best/last checkpoints and optimizer/scheduler state.
-- [ ] Save full history, resolved config, environment, dataset/model hashes, and
-      validation logits/predictions.
-- [ ] Verify the selected checkpoint follows the configured rule.
+- [x] Train seed 42 on gx10. *(2026-07-16: `c2_m0_fp32_seed42_20260716T061203Z`, 16m09s,
+      early-stopped at epoch 17 with best epoch 11 — 5,202 of 8,670 steps.)*
+- [x] Save best/last checkpoints and optimizer/scheduler state. *(both, atomically; #10
+      fixed `last.pt`, which carried no optimizer state and so was never a resume point.)*
+- [x] Save full history, resolved config, environment, dataset/model hashes, and
+      validation logits/predictions. *(via `RunContext`; predictions by
+      `validate.dump_predictions`. Provenance records a clean tree at `b331c29` and
+      `reproducible_from_commit: true`.)*
+- [x] Verify the selected checkpoint follows the configured rule. *(`selection_audit.json`:
+      the rule, the summary and `best.pt` all say epoch 11. Not a self-report — the
+      history is replayed through the comparator.)*
 
-**Output:** complete M0 seed-42 run directory.
+**Output:** complete M0 seed-42 run directory —
+`results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/`.
+
+**M0 seed 42, at the selection threshold of 0.5:**
+
+| | cis-val-clean | trans-val |
+|---|---:|---:|
+| bobcat F2 | 0.6272 | 0.1054 |
+| frame recall | 0.7361 | 0.0870 |
+| precision | 0.3941 | 0.6900 |
+| false-fire | 0.0531 | 0.0333 |
+| event capture | 0.8600 | 0.1849 |
+
+Selection score 0.3663 (recall tie-break 0.4101, macro F1 0.4220).
+
+**Two things here are worth the next session's attention, and both are recorded as
+issues rather than acted on — DESIGN §7.2's recipe is pre-registered and M0 is trained
+under it:**
+
+- **M0 is worse on trans-val than the C1a arm that trained on a shorter budget**
+  ([#18](https://github.com/imagic9/efficient-ml-set/issues/18)): trans F2 0.1054 against
+  0.2684, and M0's trans F2 never exceeds 0.1086 across any of its 13 phase-B epochs. It
+  is *better* on cis (0.6272 against 0.5875). C5's seeds 17 and 73 are what separate seed
+  noise from the recipe; do not tune to close it, which would be tuning on validation.
+- **The selection score is decided by trans F2 noise at a fixed 0.5 threshold**
+  ([#19](https://github.com/imagic9/efficient-ml-set/issues/19)): epoch 12 has M0's best
+  cis F2 (0.6558) and lost to epoch 11 only because trans fell 0.1054 → 0.0373. C3
+  recalibrates that threshold anyway.
 
 **Unblocked.** [#10](https://github.com/imagic9/efficient-ml-set/issues/10) took option
 1: `train.py` writes through `runs.RunContext`, so a run is
