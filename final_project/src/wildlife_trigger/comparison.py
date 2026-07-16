@@ -21,11 +21,26 @@ A row is written only from evidence, never typed in:
 Pi columns are absent by design until F-phase measures them; a null field is a
 promise nobody has kept yet, and this table only holds kept ones.
 
+Optimized candidates (M1/M2) enter through `--candidate`: their validation
+metrics come from the candidate's own ORT evaluation record
+(`optimize.evaluate_onnx`), never from the source run's history — a quantized
+model's numbers belong to its arithmetic, not to the checkpoint it started
+from. Params/MACs are copied from the base row (`--base-model-id`, default M0)
+because quantization changes neither: the architecture is byte-for-byte the
+same graph shape, only the storage and kernels differ. Pruned candidates
+(M3/M4) change the architecture and will need their own loading path — PLAN D4.
+
 Usage:
     python -m wildlife_trigger.comparison \
         --run results/training/c2/c2_m0_fp32_seed42_20260716T061203Z \
         --policy artifacts/policies/bobcat_v1.json \
         --model-id M0 --kind fp32_baseline
+
+    python -m wildlife_trigger.comparison \
+        --candidate results/optimize/m1_ptq/minmax \
+        --policy artifacts/policies/bobcat_m1_ptq_minmax_v1.json \
+        --parity results/optimize/m1_ptq/minmax/p3_quantized.json \
+        --model-id M1 --kind int8_ptq
 """
 
 from __future__ import annotations
@@ -188,6 +203,114 @@ def build_row(
     }
 
 
+def load_candidate_row_inputs(
+    candidate_dir: Path, policy_path: Path
+) -> tuple[dict, dict, dict]:
+    candidate = json.loads((candidate_dir / "candidate.json").read_text())
+    evaluation = json.loads((candidate_dir / "evaluation.json").read_text())
+    policy = json.loads(policy_path.read_text())
+
+    calibrated_for = policy["calibration"]["run_id"]
+    if calibrated_for != candidate["candidate_id"]:
+        raise RuntimeError(
+            f"policy {policy_path} was calibrated for {calibrated_for} but this "
+            f"candidate is {candidate['candidate_id']}; a row that mixes one "
+            "model's metrics with another's operating point describes a device "
+            "that does not exist"
+        )
+    if evaluation["model"]["sha256"] != candidate["model"]["sha256"]:
+        raise RuntimeError(
+            f"{candidate_dir} is inconsistent: candidate.json and evaluation.json "
+            "describe different artifacts"
+        )
+    return candidate, evaluation, policy
+
+
+def base_row(table_path: Path, base_model_id: str) -> dict:
+    """The base candidate's committed row — the source of params/MACs.
+
+    Copied from evidence rather than re-derived: the base row already proved its
+    params against the hash-verified checkpoint, and PTQ/QAT change neither the
+    parameter count nor the MAC count, only their representation.
+    """
+    if not table_path.exists():
+        raise RuntimeError(
+            f"{table_path} does not exist; the base row {base_model_id} must be "
+            "written before a derived candidate can copy its params/MACs"
+        )
+    rows = [json.loads(line) for line in table_path.read_text().splitlines() if line]
+    matches = [r for r in rows if r["model_id"] == base_model_id]
+    if not matches:
+        raise RuntimeError(
+            f"{table_path} has no {base_model_id} row; a derived candidate cannot "
+            "invent its params/MACs"
+        )
+    (row,) = matches
+    return row
+
+
+def build_candidate_row(
+    model_id: str,
+    kind: str,
+    candidate: dict,
+    evaluation: dict,
+    policy: dict,
+    policy_path: Path,
+    artifact: Path,
+    onnx_sha256: str,
+    parity_path: Path,
+    base: dict,
+) -> dict:
+    calibration = policy["calibration"]
+    domains = evaluation["domains"]
+
+    validation = {
+        "cis_f2": domains["cis_val_clean"]["target"]["frame_f2"],
+        "trans_f2": domains["trans_val"]["target"]["frame_f2"],
+        "cis_ap": domains["cis_val_clean"]["target"]["average_precision"],
+        "trans_ap": domains["trans_val"]["target"]["average_precision"],
+        "selection_score": evaluation["selection_score"]["primary"],
+    }
+
+    return {
+        "model_id": model_id,
+        "kind": kind,
+        "run_id": candidate["candidate_id"],
+        "source_run_id": candidate["source_run_id"],
+        "seed": base["seed"],
+        "input": evaluation["regime"]["input"],
+        "params": base["params"],
+        "macs": base["macs"],
+        "quantization": {
+            "method": candidate["method"],
+            "scheme": candidate["model"]["quantization"]["scheme"],
+            "format": candidate["model"]["quantization"]["format"],
+            "per_channel": candidate["model"]["quantization"]["per_channel"],
+            "calibration_manifest_sha256": candidate["calibration"]["sha256"],
+            "calibration_images": candidate["calibration"]["images"],
+        },
+        "model": {
+            "artifact": policy["model"]["artifact"],
+            "sha256": onnx_sha256,
+            "bytes": artifact.stat().st_size,
+        },
+        "evaluation_regime": evaluation["regime"],
+        "validation_at_0p5": validation,
+        "operating_point": {
+            "threshold": policy["targets"][0]["threshold"],
+            "status": calibration["status"],
+            "primary_rule_met": calibration["primary_rule_met"],
+            "per_domain": calibration["per_domain"],
+        },
+        "policy": {
+            "policy_id": policy["policy_id"],
+            "path": str(policy_path),
+            "sha256": sha256_file(policy_path),
+        },
+        "parity": {"report": str(parity_path), "passed": True},
+    }
+
+
 def update_table(table_path: Path, row: dict) -> list[dict]:
     """Replace this model's row, keep everyone else's, keep the table ordered."""
     rows: list[dict] = []
@@ -212,34 +335,56 @@ def update_table(table_path: Path, row: dict) -> list[dict]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--run", required=True, type=Path)
+    parser.add_argument("--run", type=Path, help="a training run (M0)")
+    parser.add_argument("--candidate", type=Path,
+                        help="an optimize candidate directory (M1/M2)")
     parser.add_argument("--policy", required=True, type=Path)
     parser.add_argument("--model-id", required=True, help="M0…M4")
     parser.add_argument("--kind", required=True,
                         help="fp32_baseline | int8_ptq | int8_qat | pruned_fp32 | pruned_qat")
     parser.add_argument("--parity", type=Path,
                         help="default: the report the policy itself names")
+    parser.add_argument("--base-model-id", default="M0",
+                        help="whose committed row supplies params/MACs (--candidate mode)")
     parser.add_argument("--table", type=Path, default=TABLE_PATH)
     args = parser.parse_args()
 
-    history, policy = load_row_inputs(args.run, args.policy)
-    artifact, onnx_sha256 = verify_artifact(policy)
-    parity_path = args.parity or Path(policy["model"]["parity"])
-    verify_parity(parity_path, onnx_sha256)
-    params = count_parameters(args.run, history)
+    if bool(args.run) == bool(args.candidate):
+        parser.error("exactly one of --run or --candidate is required")
 
-    from .validate.input_cost import macs_at
+    if args.candidate:
+        candidate, evaluation, policy = load_candidate_row_inputs(
+            args.candidate, args.policy
+        )
+        artifact, onnx_sha256 = verify_artifact(policy)
+        parity_path = args.parity or Path(policy["model"]["parity"])
+        verify_parity(parity_path, onnx_sha256)
+        base = base_row(args.table, args.base_model_id)
+        row = build_candidate_row(
+            args.model_id, args.kind, candidate, evaluation, policy, args.policy,
+            artifact, onnx_sha256, parity_path, base,
+        )
+    else:
+        history, policy = load_row_inputs(args.run, args.policy)
+        artifact, onnx_sha256 = verify_artifact(policy)
+        parity_path = args.parity or Path(policy["model"]["parity"])
+        verify_parity(parity_path, onnx_sha256)
+        params = count_parameters(args.run, history)
 
-    config = history["config"]
-    macs = macs_at(config["width"], config["height"], len(history["class_names"]))
+        from .validate.input_cost import macs_at
 
-    row = build_row(
-        args.model_id, args.kind, args.run, history, policy, args.policy,
-        artifact, onnx_sha256, parity_path, params, macs,
-    )
+        config = history["config"]
+        macs = macs_at(config["width"], config["height"], len(history["class_names"]))
+
+        row = build_row(
+            args.model_id, args.kind, args.run, history, policy, args.policy,
+            artifact, onnx_sha256, parity_path, params, macs,
+        )
+
     rows = update_table(args.table, row)
     print(f"{args.table}: {len(rows)} row(s); wrote {args.model_id} "
-          f"(params {params:,}, macs {macs:,}, "
+          f"(params {row['params']:,}, macs {row['macs']:,}, "
+          f"model {row['model']['bytes']:,} B, "
           f"cis F2 {row['validation_at_0p5']['cis_f2']:.4f}, "
           f"trans F2 {row['validation_at_0p5']['trans_f2']:.4f})")
     return 0

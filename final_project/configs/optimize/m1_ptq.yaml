@@ -1,0 +1,30 @@
+# M1 — INT8 PTQ candidates from the M0 FP32 ONNX (DESIGN §8.1, PLAN D1).
+#
+# The hashes are the contract: the run refuses a source model or calibration
+# manifest whose bytes differ from what this file pins, so "which data were the
+# scales computed from" is answerable from the config alone. The selection rule
+# among the produced candidates is pre-registered in
+# results/optimize/m1_ptq/preregistration.md — committed before any candidate
+# existed.
+
+source_run_id: c2_m0_fp32_seed42_20260716T061203Z
+source_onnx: results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx
+source_onnx_sha256: c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154
+
+calibration_manifest: data/manifests/calibration_1024.jsonl
+calibration_manifest_sha256: 9fab904c6eb3a5501011fdd3277b3ee98655a906d6301da44364ef35d8a863c4
+calibration_images: 1024
+
+images_dir: data/raw/extracted/eccv_18_all_images_sm
+supplement_dir: data/images/empty_supplement
+cache_dir: data/cache
+classes_config: configs/data/classes.yaml
+
+width: 256          # must match the source graph's static input; the evaluator
+height: 192         # re-reads it from the ONNX and would refuse a mismatch
+
+# All three, on identical data in identical order; validation decides (§8.1).
+methods: [minmax, entropy, percentile]
+per_channel: true   # the floor for MobileNetV2 depthwise, per the pre-registration
+
+output_root: results/optimize/m1_ptq
