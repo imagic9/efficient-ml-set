@@ -299,7 +299,7 @@ python -m wildlife_trigger.optimize.prune --config configs/optimize/m3_prune.yam
 python -m wildlife_trigger.export --run-id RUN_ID
 python -m wildlife_trigger.validate.parity --run-id RUN_ID
 python -m wildlife_trigger.evaluate --run-id RUN_ID --split val
-python -m wildlife_trigger.calibrate --run-id RUN_ID --target bobcat
+python -m wildlife_trigger.calibrate --run results/training/c2/RUN_ID --target bobcat
 ```
 
 ### C++ application
