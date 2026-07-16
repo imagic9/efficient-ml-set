@@ -81,6 +81,29 @@ def atomic_write_json(path: Path, payload: Any) -> None:
     os.replace(tmp, path)
 
 
+def changes_outside(git: dict, ignored_root: Path) -> list[str]:
+    """Porcelain entries that are not under `ignored_root`.
+
+    The dirty warning is about *code*: a result produced from uncommitted code cannot be
+    reproduced from a commit. But `results/` holds committed evidence rather than being
+    ignored, so every run directory is an untracked change until someone commits it —
+    starting with the run's own. Counting those makes every run dirty, and a warning that
+    always fires is one the reader learns to skip.
+    """
+    repo_root = git.get("repo_root")
+    if not repo_root:
+        return list(git.get("dirty_files", []))
+
+    root = ignored_root.resolve()
+    outside = []
+    for entry in git.get("dirty_files", []):
+        # " M path", "?? path/", "R  old -> new"; a rename is judged by its destination.
+        path = entry[3:].strip().split(" -> ")[-1].strip('"')
+        if not (Path(repo_root) / path).resolve().is_relative_to(root):
+            outside.append(entry)
+    return outside
+
+
 @dataclass
 class RunContext:
     """One execution of one stage, with everything needed to explain it later."""
@@ -89,6 +112,7 @@ class RunContext:
     run_dir: Path
     phase: str
     config: dict[str, Any]
+    results_root: Path | None = None
     started_at: dt.datetime = field(default_factory=utc_now)
 
     @classmethod
@@ -102,13 +126,23 @@ class RunContext:
     ) -> RunContext:
         run_id = make_run_id(phase, name)
         run_dir = results_root / phase.lower() / run_id
-        run_dir.mkdir(parents=True, exist_ok=True)
 
-        ctx = cls(run_id=run_id, run_dir=run_dir, phase=phase, config=dict(config))
+        # Read the git state *before* the directory exists. Otherwise the first thing
+        # every run sees is its own empty directory as an untracked change.
+        git = provenance.collect_git(Path.cwd()) if capture_provenance else None
+
+        run_dir.mkdir(parents=True, exist_ok=True)
+        ctx = cls(
+            run_id=run_id,
+            run_dir=run_dir,
+            phase=phase,
+            config=dict(config),
+            results_root=results_root,
+        )
         ctx._setup_logging()
         ctx._write_resolved_config()
         if capture_provenance:
-            ctx._write_provenance()
+            ctx._write_provenance(git)
 
         LOGGER.info("run %s started in %s", run_id, run_dir)
         return ctx
@@ -178,7 +212,14 @@ class RunContext:
         file_handler.setFormatter(fmt)
         root.addHandler(file_handler)
 
-        if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
+        # `not isinstance(h, FileHandler)` is load-bearing: FileHandler *is* a
+        # StreamHandler, so the plain check was satisfied by the handler added on the
+        # line above and the console one was never attached. Every run through here
+        # printed nothing to its terminal -- and nohup captured an empty file.
+        if not any(
+            isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+            for h in root.handlers
+        ):
             stream = logging.StreamHandler(sys.stdout)
             stream.setFormatter(fmt)
             root.addHandler(stream)
@@ -195,8 +236,20 @@ class RunContext:
             },
         )
 
-    def _write_provenance(self) -> None:
-        """Reuse the A0 capture rather than re-implementing a partial version."""
+    def _write_provenance(self, git: dict) -> None:
+        """Reuse the A0 capture rather than re-implementing a partial version.
+
+        `git` is collected by `create` before the run directory exists, so it describes
+        the tree this run started from rather than the tree this run just modified.
+        """
+        # Uncommitted results are outputs; uncommitted code is the thing that makes a
+        # result unreproducible. Both are recorded; only the second is warned about.
+        code_changes = (
+            changes_outside(git, self.results_root)
+            if self.results_root is not None
+            else list(git.get("dirty_files", []))
+        )
+
         snapshot = {
             "label": f"run {self.run_id}",
             "captured_at_utc": utc_now().isoformat(),
@@ -206,21 +259,26 @@ class RunContext:
             "gpu": provenance.collect_gpu(),
             "toolchain": provenance.collect_toolchain(),
             "python": provenance.collect_python(),
-            "git": provenance.collect_git(Path.cwd()),
+            "git": {
+                **git,
+                "uncommitted_code": code_changes,
+                "reproducible_from_commit": not code_changes,
+            },
             "other_workloads": provenance.collect_other_workloads(),
         }
         atomic_write_json(self.run_dir / "provenance.json", snapshot)
 
-        git = snapshot["git"]
-        if git.get("dirty"):
+        if code_changes:
             # Not fatal: a dirty tree is normal while developing. But a result
             # produced from uncommitted code cannot be reproduced from a commit,
             # so it must be impossible to overlook later.
             LOGGER.warning(
                 "working tree is DIRTY at %s; this run is not reproducible from a "
-                "commit alone (%d modified file(s))",
+                "commit alone (%d uncommitted file(s) outside %s): %s",
                 git.get("commit_short"),
-                len(git.get("dirty_files", [])),
+                len(code_changes),
+                self.results_root,
+                ", ".join(code_changes[:5]),
             )
 
     # -- results --------------------------------------------------------------
