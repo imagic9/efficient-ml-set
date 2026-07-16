@@ -6,9 +6,9 @@ Reference (M0 FP32 through deployment ORT): primary 0.3667, cis F2 0.6280, trans
 
 | method | primary | cis F2 | trans F2 | bytes | threshold | status |
 |---|---:|---:|---:|---:|---:|---|
-| lr5e-5 | 0.3832 | 0.6499 | 0.1166 | 9,096,154 | 0.650390 | recall_floor_infeasible |
-| lr1e-5 | 0.3704 | 0.6446 | 0.0963 | 9,096,062 | 0.644010 | recall_floor_infeasible |
-| lr3e-5 | 0.3628 | 0.6340 | 0.0916 | 9,096,016 | 0.530991 | recall_floor_infeasible |
+| lr5e-5 | 0.3832 | 0.6499 | 0.1166 | 2,536,267 | 0.650390 | recall_floor_infeasible |
+| lr1e-5 | 0.3704 | 0.6446 | 0.0963 | 2,536,335 | 0.644010 | recall_floor_infeasible |
+| lr3e-5 | 0.3628 | 0.6340 | 0.0916 | 2,536,369 | 0.530991 | recall_floor_infeasible |
 
 **Selected: lr5e-5** (`d2_m2_qat_lr5e-5`).
 
