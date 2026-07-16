@@ -291,3 +291,38 @@ def selection_score(cis: dict, trans: dict, macro_f1: float) -> dict:
         / 2,
         "tiebreak_2_macro_f1": macro_f1,
     }
+
+
+# The order DESIGN §7.2 ranks on: primary first, then each tie-break in turn.
+SELECTION_ORDER = (
+    "primary",
+    "tiebreak_1_sequence_balanced_recall",
+    "tiebreak_2_macro_f1",
+)
+
+
+def selection_key(score: dict) -> tuple[float, ...]:
+    """`selection_score`'s dict as the vector the rule compares."""
+    return tuple(float(score[key]) for key in SELECTION_ORDER)
+
+
+def is_better_checkpoint(candidate: dict, incumbent: dict | None) -> bool:
+    """Does `candidate` win under the whole of DESIGN §7.2, tie-breaks included?
+
+    Comparing `primary` alone silently discards the two tie-breaks the rule declares,
+    and the values are not floats drawn from a continuum: F2, sequence-balanced recall
+    and macro F1 are all ratios of finite frame and sequence counts, so exact equality
+    is an ordinary event rather than a measure-zero curiosity. Two epochs that tie on
+    F2 and differ on recall are precisely what the tie-breaks exist to separate.
+
+    Tuple comparison *is* the lexicographic rule — `(0.5, 0.9) > (0.5, 0.8)` — so the
+    order lives in `SELECTION_ORDER` and nowhere else.
+
+    Strict `>` is the final tie-break: a candidate equal on all three does not displace
+    the incumbent, and since epochs are offered in ascending order that keeps the
+    earliest. Earliest, because among indistinguishable checkpoints the one that
+    reached the score with less training is the one to defend.
+    """
+    if incumbent is None:
+        return True
+    return selection_key(candidate) > selection_key(incumbent)
