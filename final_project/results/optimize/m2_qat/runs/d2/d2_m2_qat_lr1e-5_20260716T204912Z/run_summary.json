@@ -1,0 +1,14 @@
+{
+  "run_id": "d2_m2_qat_lr1e-5_20260716T204912Z",
+  "status": "completed",
+  "started_at_utc": "2026-07-16T20:49:12.570185+00:00",
+  "finished_at_utc": "2026-07-16T20:57:33.287915+00:00",
+  "elapsed_seconds": 500.718,
+  "best_epoch": 3,
+  "best_selection_score": {
+    "primary": 0.36093767016372025,
+    "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+    "tiebreak_1_sequence_balanced_recall": 0.4072955974842767,
+    "tiebreak_2_macro_f1": 0.44267289817207267
+  }
+}
