@@ -1,0 +1,24 @@
+2026-07-16T17:48:21Z INFO    wildlife_trigger.runs: run c5_m0_fp32_seed73_20260716T174821Z started in results/training/c5/c5_m0_fp32_seed73_20260716T174821Z
+2026-07-16T17:49:12Z INFO    __main__: epoch  0 [A] step   289/8670  loss 1.5887  bobcatAP cis 0.1795 trans 0.4529  F2@0.5 cis 0.0422 trans 0.0000  score 0.0211
+2026-07-16T17:49:56Z INFO    __main__: epoch  1 [A] step   578/8670  loss 1.1521  bobcatAP cis 0.2400 trans 0.4625  F2@0.5 cis 0.1985 trans 0.0000  score 0.0993
+2026-07-16T17:50:41Z INFO    __main__: epoch  2 [A] step   867/8670  loss 1.0390  bobcatAP cis 0.2346 trans 0.4500  F2@0.5 cis 0.2592 trans 0.0000  score 0.1296
+2026-07-16T17:51:24Z INFO    __main__: epoch  3 [A] step  1156/8670  loss 0.9759  bobcatAP cis 0.2790 trans 0.4332  F2@0.5 cis 0.2299 trans 0.0000  score 0.1149
+2026-07-16T17:52:01Z INFO    __main__: epoch  4 [A] step  1445/8670  loss 0.9232  bobcatAP cis 0.2430 trans 0.4617  F2@0.5 cis 0.2158 trans 0.0000  score 0.1079
+2026-07-16T17:52:01Z INFO    __main__: phase A -> B at step 1445
+2026-07-16T17:52:52Z INFO    __main__: epoch  5 [B] step  1734/8670  loss 0.6430  bobcatAP cis 0.3395 trans 0.5181  F2@0.5 cis 0.4952 trans 0.0125  score 0.2539
+2026-07-16T17:53:41Z INFO    __main__: epoch  6 [B] step  2023/8670  loss 0.3665  bobcatAP cis 0.5639 trans 0.5159  F2@0.5 cis 0.5596 trans 0.0693  score 0.3145
+2026-07-16T17:54:32Z INFO    __main__: epoch  7 [B] step  2312/8670  loss 0.2369  bobcatAP cis 0.4899 trans 0.5592  F2@0.5 cis 0.5462 trans 0.0752  score 0.3107
+2026-07-16T17:55:38Z INFO    __main__: epoch  8 [B] step  2601/8670  loss 0.1794  bobcatAP cis 0.5858 trans 0.5654  F2@0.5 cis 0.5980 trans 0.0604  score 0.3292
+2026-07-16T17:56:27Z INFO    __main__: epoch  9 [B] step  2890/8670  loss 0.1286  bobcatAP cis 0.6187 trans 0.5066  F2@0.5 cis 0.6200 trans 0.0679  score 0.3440
+2026-07-16T17:57:19Z INFO    __main__: epoch 10 [B] step  3179/8670  loss 0.0945  bobcatAP cis 0.5892 trans 0.5912  F2@0.5 cis 0.5393 trans 0.0846  score 0.3120
+2026-07-16T17:58:09Z INFO    __main__: epoch 11 [B] step  3468/8670  loss 0.0932  bobcatAP cis 0.5662 trans 0.5550  F2@0.5 cis 0.6055 trans 0.0588  score 0.3321
+2026-07-16T17:59:01Z INFO    __main__: epoch 12 [B] step  3757/8670  loss 0.0628  bobcatAP cis 0.6505 trans 0.6217  F2@0.5 cis 0.6716 trans 0.1029  score 0.3872
+2026-07-16T17:59:53Z INFO    __main__: epoch 13 [B] step  4046/8670  loss 0.0607  bobcatAP cis 0.6479 trans 0.5355  F2@0.5 cis 0.6371 trans 0.0420  score 0.3396
+2026-07-16T18:01:00Z INFO    __main__: epoch 14 [B] step  4335/8670  loss 0.0489  bobcatAP cis 0.6212 trans 0.5844  F2@0.5 cis 0.6421 trans 0.0359  score 0.3390
+2026-07-16T18:01:51Z INFO    __main__: epoch 15 [B] step  4624/8670  loss 0.0372  bobcatAP cis 0.5699 trans 0.5281  F2@0.5 cis 0.6196 trans 0.0419  score 0.3308
+2026-07-16T18:02:58Z INFO    __main__: epoch 16 [B] step  4913/8670  loss 0.0324  bobcatAP cis 0.5019 trans 0.5401  F2@0.5 cis 0.6504 trans 0.0389  score 0.3447
+2026-07-16T18:03:51Z INFO    __main__: epoch 17 [B] step  5202/8670  loss 0.0315  bobcatAP cis 0.5366 trans 0.5142  F2@0.5 cis 0.6331 trans 0.0632  score 0.3481
+2026-07-16T18:04:40Z INFO    __main__: epoch 18 [B] step  5491/8670  loss 0.0226  bobcatAP cis 0.4798 trans 0.5602  F2@0.5 cis 0.6197 trans 0.0574  score 0.3386
+2026-07-16T18:04:40Z INFO    __main__: early stopping: no improvement for 6 epochs
+2026-07-16T18:04:40Z INFO    wildlife_trigger.runs: run c5_m0_fp32_seed73_20260716T174821Z completed in 979.3s
+2026-07-16T18:04:40Z INFO    __main__: best epoch 12 score 0.38720302997244965 -> results/training/c5/c5_m0_fp32_seed73_20260716T174821Z

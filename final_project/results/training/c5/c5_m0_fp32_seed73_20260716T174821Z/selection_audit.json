@@ -1,0 +1,25 @@
+{
+  "run": "results/training/c5/c5_m0_fp32_seed73_20260716T174821Z",
+  "rule": {
+    "order": [
+      "primary",
+      "tiebreak_1_sequence_balanced_recall",
+      "tiebreak_2_macro_f1"
+    ],
+    "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+    "final_tiebreak": "earliest epoch",
+    "phase_b_only": true
+  },
+  "selected_epoch": 12,
+  "rule_selects_epoch": 12,
+  "checkpoint_epoch": 12,
+  "winning_score": {
+    "primary": 0.38720302997244965,
+    "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+    "tiebreak_1_sequence_balanced_recall": 0.42213836477987415,
+    "tiebreak_2_macro_f1": 0.4268604600440534
+  },
+  "phase_b_epochs": 14,
+  "problems": [],
+  "agrees": true
+}

@@ -1,0 +1,36 @@
+{
+  "run_id": "c5_m0_fp32_seed17_20260716T173021Z",
+  "status": "completed",
+  "started_at_utc": "2026-07-16T17:30:21.078808+00:00",
+  "finished_at_utc": "2026-07-16T17:45:51.818738+00:00",
+  "elapsed_seconds": 930.74,
+  "best_epoch": 11,
+  "best_score": 0.3736730839731558,
+  "best_selection_score": {
+    "primary": 0.3736730839731558,
+    "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+    "tiebreak_1_sequence_balanced_recall": 0.38930817610062884,
+    "tiebreak_2_macro_f1": 0.4225362097159506
+  },
+  "selection_rule": {
+    "order": [
+      "primary",
+      "tiebreak_1_sequence_balanced_recall",
+      "tiebreak_2_macro_f1"
+    ],
+    "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+    "final_tiebreak": "earliest epoch",
+    "phase_b_only": true
+  },
+  "budget": {
+    "steps": 5202,
+    "max_steps": 8670,
+    "head_steps": 1445,
+    "steps_per_epoch": 289,
+    "effective_epochs": 18.0,
+    "images_seen": 332928,
+    "non_empty_images_seen": 243176,
+    "train_images": 18553
+  },
+  "device": "cuda"
+}
