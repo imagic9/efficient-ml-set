@@ -123,7 +123,82 @@ EOF
     # gitignored); the committed evidence is p1_preprocess.json.
 }
 
+phase_ort() {
+    # Initial ORT python-vs-C++ parity (DESIGN §10). Requires: the exported ONNX
+    # in the run dir, P1's dumped tensors (run `p1` first), and the policy
+    # ALREADY re-bound by wildlife_trigger.rebind_policy — the C++ loader
+    # refuses an unbound policy, which is the loud failure working as designed.
+    local out="${PARITY}/ort"
+    rm -rf "${out}"
+    mkdir -p "${out}/logits" "${out}/scratch"
+    local rel_out="results/parity/${RUN_ID}/ort"
+    local rel_run="${RUN_DIR#"${PROJECT_ROOT}"/}"
+    rel_run="${rel_run#./}"
+
+    local run_name
+    run_name="$("${PYTHON}" -c "
+import json; print(json.load(open('${RUN_DIR}/history.json'))['run_name'])")"
+    local onnx="${rel_run}/${run_name}.onnx"
+
+    build_cpp
+
+    echo
+    echo "--- logits layer: ort_probe (C++) on P1's canonical tensors"
+    local count=0
+    for tensor in $(ls "${PARITY}/p1/"*.fused.bin | head -10); do
+        local name
+        name="$(basename "${tensor}" .fused.bin)"
+        "${IN_CONTAINER[@]}" bash -lc "
+            ${BUILD_DIR}/ort_probe \
+                --model /work/${onnx} \
+                --input-bin /work/results/parity/${RUN_ID}/p1/${name}.fused.bin \
+                --output-bin /work/${rel_out}/logits/${name}.bin \
+                --optimized-out /work/${rel_out}/scratch/${name}.opt.onnx \
+                --profile-prefix /work/${rel_out}/scratch/${name}
+        " >/dev/null 2>&1
+        count=$((count + 1))
+    done
+    echo "    ${count} tensors probed"
+
+    echo
+    echo "--- decision layer: the real infer CLI with the re-bound policy"
+    local images=("tests/fixtures/frame_1024x747.jpg")
+    if [[ -d "data/raw/extracted/eccv_18_all_images_sm" ]]; then
+        while IFS= read -r file; do
+            images+=("data/raw/extracted/eccv_18_all_images_sm/${file}")
+        done < <("${PYTHON}" -c "
+import json
+golden = json.load(open('tests/fixtures/golden_raw.json'))
+for e in golden['fixtures'][:3]:
+    print(e['file_name'])")
+    fi
+    for image in "${images[@]}"; do
+        local name
+        name="$(basename "${image%.*}")"
+        "${IN_CONTAINER[@]}" bash -lc "
+            ${BUILD_DIR}/wildlife_trigger infer \
+                --model /work/${onnx} \
+                --class-map /work/artifacts/class_map.json \
+                --policy /work/artifacts/policies/bobcat_v1.json \
+                --image /work/${image} \
+                --output /work/${rel_out}/infer_${name}.json
+        " >/dev/null 2>&1
+    done
+    echo "    ${#images[@]} images inferred"
+
+    echo
+    echo "--- compare both layers"
+    "${PYTHON}" -m wildlife_trigger.validate.ort_cpp_parity \
+        --run "${RUN_DIR}" \
+        --p1-dir "${PARITY}/p1" \
+        --cpp-logits-dir "${out}/logits" \
+        --infer-dir "${out}" \
+        --policy artifacts/policies/bobcat_v1.json \
+        --output "${PARITY}/p_ort_cpp.json"
+}
+
 case "${PHASE}" in
     p1) phase_p1 ;;
-    *) echo "unknown phase: ${PHASE} (expected: p1)" >&2; exit 2 ;;
+    ort) phase_ort ;;
+    *) echo "unknown phase: ${PHASE} (expected: p1 | ort)" >&2; exit 2 ;;
 esac

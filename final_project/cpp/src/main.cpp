@@ -280,6 +280,10 @@ int command_infer(const CommonArgs &args) {
         {"policy_id", pipeline.policy.policy_id()},
         {"class_map_sha256", pipeline.class_map.sha256},
         {"decision", decision_json(decision)},
+        // The raw logits, for parity: P2's ORT-Python half compares against
+        // these, and P3/P4 will want them for the quantized candidates. The
+        // decision block alone cannot support a numeric comparison.
+        {"logits", logits},
         {"letterbox", letterbox_json(input.letterbox)},
         {"timings_ms", {{"preprocess", timings.preprocess_ms},
                         {"inference", timings.inference_ms},

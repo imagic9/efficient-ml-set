@@ -1,9 +1,9 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A and B complete (Gates A and B pass). Phase C: C0, C1, C1a, C2 and
-C3 done (C3's registered status is `recall_floor_infeasible` — an operating point
-ships, the primary rule is NOT met); C4 next.** The next task is always the first
-`[ ]` in phase order.
+Status: **Phase A and B complete (Gates A and B pass). Phase C: C0, C1, C1a, C2,
+C3 and C4 done (C3's registered status is `recall_floor_infeasible` — an operating
+point ships, the primary rule is NOT met); C5 next.** The next task is always the
+first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -941,14 +941,47 @@ curve, threshold distribution, strata, CIs, histograms — in
 
 Depends on: C3, C0.
 
-- [ ] Export FP32 ONNX with fixed input/output contract, metadata, and the
+- [x] Export FP32 ONNX with fixed input/output contract, metadata, and the
       P0-accepted opset (provisionally 17).
-- [ ] Pass P1 preprocessing parity against the reference C++ preprocessor.
-- [ ] Pass P2 PyTorch-vs-ORT FP32 parity.
-- [ ] Pass initial ORT Python-vs-C++ fixture parity.
-- [ ] Save parity tolerances, raw comparisons, hashes, and failures if any.
+- [x] Pass P1 preprocessing parity against the reference C++ preprocessor.
+- [x] Pass P2 PyTorch-vs-ORT FP32 parity.
+- [x] Pass initial ORT Python-vs-C++ fixture parity.
+- [x] Save parity tolerances, raw comparisons, hashes, and failures if any.
 
 **Output:** deployable M0 ONNX and parity report.
+
+**Done 2026-07-16.** Every gate's tolerances were registered in DESIGN §10 (dated
+amendment) before its first real comparison ran. Evidence under
+`results/parity/c2_m0_fp32_seed42_20260716T061203Z/`:
+
+- **Export** (`export.json`): `m0_fp32_seed42.onnx`, sha256 `c3102764…`, opset 17
+  verified in the written file, `input[1,3,192,256] → logits[1,16]`, provenance in
+  the graph's own `metadata_props`, byte-reproducible (exported twice, same hash).
+  The `.onnx` lives beside `best.pt` on gx10; binaries ship via Releases.
+- **P1** (`p1_preprocess.json`): PASSED, 25 fixtures (20 real goldens + the
+  committed 5-frame synthetic supplement that covers portrait/odd/tiny/IR, which
+  the all-landscape golden corpus cannot). Python (OpenCV 4.13) vs fused C++
+  (4.6): **bit-exact on every fixture** — the named INTER_LINEAR version risk
+  measured at zero; reference C++ within 7.15e-07 of both (the predicted 1-ulp
+  `convertTo` effect).
+- **P2** (`p2_fp32.json`): PASSED, 200 frozen fixtures (61 real near-threshold).
+  Logits torch↔ORT worst 5.63e-05 (gate 5e-4); top-1 and fire/no-fire identical
+  200/200. **The npz consistency guard's original 1e-3 form failed on 53/200 and
+  was corrected the same day** (DESIGN §10 verdict, issue #30): the committed
+  `predictions.npz` carries cuDNN-TF32 batched scores while the export is true
+  FP32 — same weights (hash chain), different convolution arithmetic. Corrected
+  guard: npz reproduced under its own regime (worst-gapped sample, gate 1e-4 —
+  measured 0.0); the CPU↔npz gap (median 6.2e-05, worst 7.25e-03) is *reported*
+  as the calibration-vs-deployment numeric distance.
+- **ORT py↔cpp** (`p_ort_cpp.json`): PASSED — same pinned ORT 1.27.0 both sides;
+  logits layer (ort_probe on P1's tensors) worst 9.54e-06; decision layer (the
+  real `infer` CLI) worst 8.11e-06, identical top-1 and SHUTTER_TRIGGER.
+- **The re-bind**: `bobcat_v1.json`'s `model_sha256` moved checkpoint→ONNX
+  through `wildlife_trigger.rebind_policy`, which refuses without a passing P2
+  report about exactly these weights and exactly this file; the previous binding
+  stays recorded inside the artifact, the calibration block untouched. The C++
+  loader now accepts the policy against the deployable graph — proven by the
+  decision layer above.
 
 ### C5 — Reproducibility confirmation and model card
 

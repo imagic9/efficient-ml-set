@@ -46,11 +46,17 @@
   "class_map_sha256": "b38e8bb9ef6188871dba247cde4eb152c73755d2c8dd37cfdba1bcdb6c0a9128",
   "mode": "any",
   "model": {
-    "artifact": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/best.pt",
-    "binding": "model_sha256 names the calibrated checkpoint. C4 re-binds it to the FP32 ONNX after P2 parity; until then the C++ loader refuses this policy against any ONNX, which is the point.",
-    "kind": "pytorch_checkpoint"
+    "artifact": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx",
+    "binding": "model_sha256 names the FP32 ONNX, re-bound after P2 parity (logits, top-1 and decisions match the calibrated checkpoint). The C++ loader now accepts this policy against exactly that file.",
+    "kind": "onnx",
+    "parity": "results/parity/c2_m0_fp32_seed42_20260716T061203Z/p2_fp32.json",
+    "previous": {
+      "artifact": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/best.pt",
+      "kind": "pytorch_checkpoint",
+      "model_sha256": "42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074"
+    }
   },
-  "model_sha256": "42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074",
+  "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
   "policy_id": "bobcat_v1",
   "schema_version": 1,
   "targets": [
