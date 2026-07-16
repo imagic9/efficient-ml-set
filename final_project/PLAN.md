@@ -1,9 +1,11 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A, B and C complete; D1 (M1 INT8 PTQ) done — the percentile
-candidate is M1, P3/P4 passed, comparison row written. Both M0 and M1 carry the
-registered `recall_floor_infeasible` status (an operating point ships, the
-primary rule is NOT met). Next: D2 (M2 QAT).** The next task is always the
+Status: **Phase A, B and C complete; D1 (M1 PTQ) and D2 (M2 QAT) done — M1 =
+percentile (primary 0.3527), M2 = QAT lr5e-5 (primary 0.3832, above the M0
+deployment reference 0.3667); both passed P3/P4 and sit in comparison.jsonl.
+Every operating point on the ladder carries the registered
+`recall_floor_infeasible` status (an operating point ships, the primary rule
+is NOT met). Next: D3 (pruning sensitivity).** The next task is always the
 first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
@@ -1062,16 +1064,38 @@ Evidence root: `results/optimize/m1_ptq/`; model card
 
 Depends on: Gate C, A3.
 
-- [ ] Initialize from M0 FP32, never from M1 PTQ.
-- [ ] Run the validated affine INT8 fake-quant/QAT recipe.
-- [ ] Search only the documented low learning-rate range on validation.
-- [ ] Export a genuinely quantized ONNX graph.
-- [ ] Inspect integer execution using exported/optimized graphs,
+- [x] Initialize from M0 FP32, never from M1 PTQ.
+- [x] Run the validated affine INT8 fake-quant/QAT recipe.
+- [x] Search only the documented low learning-rate range on validation.
+- [x] Export a genuinely quantized ONNX graph.
+- [x] Inspect integer execution using exported/optimized graphs,
       operator/data-type coverage, ORT profile, and latency together rather than a
       single version-specific fused-node name.
-- [ ] Calibrate policy and pass P3/P4.
+- [x] Calibrate policy and pass P3/P4.
 
 **Output:** selected M2 model, policy, profile, metrics, and comparison row.
+
+**DONE 2026-07-16/17** (PRs #45-#50). **M2 = the lr 5e-5 arm**
+(`d2_m2_qat_lr5e-5`, sha `499bc3ec…`, **2,536,267 B** — the smallest artifact
+on the ladder), best epoch 5 of 6 by the frozen §7.2 rule, selected across the
+pre-registered arms {1e-5, 3e-5, 5e-5} by the D1 rule, mechanically. **ORT
+primary 0.3832 — ratio 1.0451 against the M0 deployment reference**, above the
+pre-registered *fully recovers* line: QAT did not merely recover M1's PTQ drop
+(0.3527), it exceeded the FP32 reference on both domains (cis 0.6499 vs
+0.6280, trans 0.1166 vs 0.1054). Operating point 0.650390, status
+`recall_floor_infeasible` — the registered non-pass, unchanged across the
+ladder; its bootstrap interval [0.4970, 0.9144] is notably wide and D6 should
+weigh that. The "genuinely quantized graph" box earned its history: the
+fake-quant export stored FP32 weights behind Q/DQ (9,096,154 B — integer
+execution, float storage), recorded as a finding (PR #47) and fixed by
+`optimize.fold_qdq` (ORT Basic constant folding, **proven bitwise-identical**,
+PR #48); every arm was re-derived over the folded artifacts and matched to
+every recorded digit (PR #49). Findings: the LR curve is non-monotonic
+(5e-5 > 1e-5 > 3e-5); AP sits fractionally below the reference while F2 at the
+yardstick improves — the gains live in the operating region. P3 passed all
+four checks; P4 passed both full splits (worst gap 5.96e-08, zero decision
+differences). Evidence root: `results/optimize/m2_qat/`; model card
+`artifacts/model_cards/m2_int8_qat.md`; row `M2` in `comparison.jsonl`.
 
 ### D3 — Pruning sensitivity
 
