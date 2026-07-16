@@ -21,6 +21,13 @@ frame: CCT frames arrive in bursts from one camera seconds apart, so frames with
 sequence are near-duplicates. Bootstrapping frames would treat 315 bobcat sequences as
 937 independent observations and report an interval far narrower than the data supports.
 
+**Scores are computed in the deployment regime** (DESIGN §6.3 amendment 2026-07-16,
+issue #30). torch 2.11 defaults cuDNN convolutions to TF32 on this GPU, which is how
+the original seed-42 npz came to sit up to 7.25e-3 away from the exported ONNX exactly
+in the near-threshold band a calibration searches. TF32 is disabled before any batch is
+scored, and the regime is recorded inside the npz so P2's reproduction check can verify
+the file under the arithmetic it was actually written with.
+
 Usage:
     python -m wildlife_trigger.validate.dump_predictions \
         --run results/ablations/c1a_empty5k_16out_256x192 \
@@ -42,6 +49,18 @@ from ..data.preprocess import PreprocessConfig
 from ..models.mobilenet import build_mobilenet_v2
 
 VALIDATION_SPLITS = ("cis_val_clean", "trans_val")
+
+
+def enforce_deployment_regime() -> None:
+    """Score with the arithmetic that ships: true FP32, no TF32 anywhere.
+
+    The deployed device (ONNX Runtime CPU on the Pi) computes FP32. A calibration
+    that reads TF32-batched scores searches thresholds the device will never see —
+    issue #30 measured that gap at up to 7.25e-3 near the threshold. Registered as
+    the DESIGN §6.3 amendment of 2026-07-16.
+    """
+    torch.backends.cudnn.allow_tf32 = False
+    torch.backends.cuda.matmul.allow_tf32 = False
 
 
 def load_run(run_dir: Path) -> dict:
@@ -108,6 +127,7 @@ def main() -> int:
     config = run["config"]
     class_names = run["class_names"]
 
+    enforce_deployment_regime()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = build_mobilenet_v2(num_classes=len(class_names), pretrained=False).to(device)
 
@@ -136,6 +156,9 @@ def main() -> int:
         "best_epoch": run["best_epoch"],
         "width": config["width"],
         "height": config["height"],
+        # The regime this file was scored under. P2's reproduction check reads it;
+        # legacy npz files predate the key and ran under torch's default (TF32 on).
+        "cudnn_tf32": np.array(False),
     }
     for name, loader in loaders.items():
         result = predict(model, loader, device)

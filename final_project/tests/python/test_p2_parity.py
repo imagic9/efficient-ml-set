@@ -192,6 +192,30 @@ class TestParityGates:
         assert outcome["status"] == "skipped_no_cuda"
         assert "passed" not in outcome, "a skip is not a pass and must not vote"
 
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="regime reproduction needs CUDA")
+    def test_fp32_npz_is_reproduced_under_its_own_regime(self, parity_world) -> None:
+        """The D-phase scenario the §6.3 amendment exists for: an npz written with
+        TF32 off must be verified with TF32 off. parity_world's npz values are
+        torch-CPU — true FP32 — so a TF32-off CUDA pass must land within the
+        registered 1e-4, and the report must name the regime it actually ran."""
+        results = [
+            {"image_id": image_id, "npz_probability_gap": 0.0}
+            for image_id in parity_world["images"]
+        ]
+        fixtures_by_id = {
+            image_id: {"image_id": image_id, "file_name": path.name}
+            for image_id, path in parity_world["images"].items()
+        }
+        images_dir = next(iter(parity_world["images"].values())).parent
+        outcome = P2.verify_npz_regime(
+            parity_world["model"], results, fixtures_by_id, images_dir,
+            parity_world["config"], parity_world["npz_lookup"], BOBCAT,
+            batch_size=4, cudnn_tf32=False,
+        )
+        assert outcome["status"] == "ran"
+        assert outcome["regime"] == "cuda, cudnn_tf32=off, batch=4"
+        assert outcome["passed"], outcome["checks"]
+
     def test_the_carve_out_names_the_borderline_frame(self, parity_world) -> None:
         """A probability within 1e-4 of the threshold may legitimately flip; the
         fixture is flagged and listed, never silently excused."""
