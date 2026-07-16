@@ -1,9 +1,9 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A and B complete (Gates A and B pass). Phase C: C0, C1, C1a, C2,
-C3 and C4 done (C3's registered status is `recall_floor_infeasible` — an operating
-point ships, the primary rule is NOT met); C5 next.** The next task is always the
-first `[ ]` in phase order.
+Status: **Phase A, B and C complete (Gates A and B pass; Gate C deliverables all
+exist; C3's registered status is `recall_floor_infeasible` — an operating point
+ships, the primary rule is NOT met). Phase D next, starting at D1.** The next
+task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -987,14 +987,32 @@ amendment) before its first real comparison ran. Evidence under
 
 Depends on: C4.
 
-- [ ] Train confirmation seeds 17 and 73.
-- [ ] Report validation mean/std for baseline training variability.
-- [ ] Complete M0 model card: data, intended use, limitations, preprocessing,
+- [x] Train confirmation seeds 17 and 73.
+- [x] Report validation mean/std for baseline training variability.
+- [x] Complete M0 model card: data, intended use, limitations, preprocessing,
       metrics, policy, license, and hashes.
-- [ ] Add the M0 row to the machine-readable comparison table.
+- [x] Add the M0 row to the machine-readable comparison table.
 
 **Gate C:** M0 is reproducible, exported, parity-checked, calibrated, documented,
 and ready for the same Pi application as optimized candidates.
+
+**Done 2026-07-16 — and issue #18 is answered: the trans gap is the recipe, not
+the seed.** Seeds 17 and 73 ran the frozen §7.2 recipe with no overrides
+(`configs/train/m0_fp32_seed{17,73}.yaml`); both `selection_audit.json` agree with
+the rule. At the selected checkpoints, trans F2 is 0.1343 / 0.1054 / 0.1029
+(mean **0.1142 ± 0.0175**), cis F2 0.6130 / 0.6272 / 0.6716 (**0.6373 ± 0.0305**)
+— no phase-B epoch of any seed crossed trans 0.135 while the short-budget C1a arm
+once hit 0.2684, so per #18's registered reading the evidence indicts the budget,
+with the arm's own one-seed/one-epoch caveat recorded. Nothing retrains; M0 stays
+seed 42 by pre-registration (notably it has the *lowest* selection score of the
+three — confirmation seeds confirm, they do not compete). Evidence:
+`results/training/c5/seed_variability.{json,md}`. The model card is
+`artifacts/model_cards/m0_fp32.md`; the machine-readable table opens at
+`results/model_selection/comparison.jsonl` with the M0 row derived from evidence
+by `wildlife_trigger.comparison` (params 2,244,368; MACs 293,402,624 — matching
+C1a's measurement; ONNX 8,950,645 bytes, sha `c3102764…`). Both new
+`predictions.npz` are scored in the deployment regime per the §6.3 amendment
+(`cudnn_tf32: False` in-file); seed 42's stays as committed history (issue #30).
 
 ---
 

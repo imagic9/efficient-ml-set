@@ -1,14 +1,18 @@
 # Wildlife Trigger — Efficient ML Final Project
 
-Status: **Phase A and Phase B complete (both gates pass). Phase C in progress — M0 is
-trained; calibrating its operating point is the current work.**
+Status: **Phases A, B and C complete — M0 is trained, calibrated, exported,
+parity-proven, documented, and confirmed across seeds. Phase D (the optimization
+ladder M1-M4) is next.**
 
 **Trans-domain bobcat recall is poor and is reported as such**, per DESIGN §18's registered
 decision rule. M0 catches 86% of bobcat visits at cameras it has seen and 18% at the
 unseen one. No threshold reaches DESIGN §6.3's 90% recall floor inside the device's 5%
-false-fire budget, so C3 will record `recall_floor_infeasible` and ship the best operating
+false-fire budget, so C3 recorded `recall_floor_infeasible` and ships the best operating
 point the budget allows. That is a measurement, not a failure — but nothing in this
-repository may describe it as the primary rule being met.
+repository may describe it as the primary rule being met. C5's confirmation seeds
+showed it is a property of the frozen recipe, not of seed 42: trans F2 is
+0.1142 ± 0.0175 across seeds 17/42/73, and no epoch of any seed crossed 0.135
+(issue #18).
 
 | | |
 |---|---|
@@ -18,7 +22,7 @@ repository may describe it as the primary rule being met.
 | C2 (train M0 seed 42) | **done** — bobcat F2 0.6272 cis / 0.1054 trans |
 | C3 (calibrate the operating point) | **done** — `recall_floor_infeasible`: ships threshold 0.5381 inside the fire budget, but the 90% recall floor is out of reach (trans 7.9%); **not a pass** |
 | C4 (export and parity) | **done** — ONNX `c3102764…` at opset 17; P1 bit-exact, P2 and ORT py↔cpp passed; policy re-bound to the ONNX after proof |
-| C5 (seeds 17/73, model card) | next |
+| C5 (seeds 17/73, model card) | **done** — trans F2 0.1142±0.0175 across three seeds: the gap is the recipe, not the seed (#18); model card `artifacts/model_cards/m0_fp32.md`; comparison table opened with the M0 row |
 | Phases D, E, F, G | not started |
 
 The Core input is **frozen at 256x192** and the head contract at **16 outputs with a
