@@ -69,6 +69,9 @@ def world(tmp_path_factory):
         ],
     }
     (run_dir / "history.json").write_text(json.dumps(history))
+    # RunContext leaves a run_summary.json in every run; resolve_run_id prefers it
+    # because two directories already share the human name m0_fp32_seed42.
+    (run_dir / "run_summary.json").write_text(json.dumps({"run_id": run_dir.name}))
     (run_dir / "hashes.json").write_text(json.dumps({
         "checkpoint:best": {"sha256": sha256_file(run_dir / "best.pt")},
     }))
