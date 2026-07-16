@@ -1,9 +1,10 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A, B and C complete (Gates A and B pass; Gate C deliverables all
-exist; C3's registered status is `recall_floor_infeasible` — an operating point
-ships, the primary rule is NOT met). Phase D next, starting at D1.** The next
-task is always the first `[ ]` in phase order.
+Status: **Phase A, B and C complete; D1 (M1 INT8 PTQ) done — the percentile
+candidate is M1, P3/P4 passed, comparison row written. Both M0 and M1 carry the
+registered `recall_floor_infeasible` status (an operating point ships, the
+primary rule is NOT met). Next: D2 (M2 QAT).** The next task is always the
+first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1022,17 +1023,40 @@ C1a's measurement; ONNX 8,950,645 bytes, sha `c3102764…`). Both new
 
 Depends on: Gate C.
 
-- [ ] Build the fixed 1,024-image calibration manifest from training data only.
-- [ ] Generate MinMax, Entropy, and Percentile static INT8 candidates.
-- [ ] Use S8S8 QDQ as the primary representation; test QOperator only as an
+- [x] Build the fixed 1,024-image calibration manifest from training data only.
+- [x] Generate MinMax, Entropy, and Percentile static INT8 candidates.
+- [x] Use S8S8 QDQ as the primary representation; test QOperator only as an
       explicitly named ARM candidate. Save quantized/optimized graphs, ORT profile,
       operator/data-type coverage, and remaining FP32 nodes.
-- [ ] Record the pre-registered MobileNetV2 PTQ risk before viewing results.
-- [ ] Run quantization debugging for material accuracy drops.
-- [ ] Calibrate candidate-specific bobcat policies on validation.
-- [ ] Pass P3/P4 quantized ORT/C++ validation for the selected M1 candidate.
+- [x] Record the pre-registered MobileNetV2 PTQ risk before viewing results.
+- [x] Run quantization debugging for material accuracy drops. *(the registered
+      triggers did not fire — recorded with arithmetic, not skipped silently)*
+- [x] Calibrate candidate-specific bobcat policies on validation.
+- [x] Pass P3/P4 quantized ORT/C++ validation for the selected M1 candidate.
 
 **Output:** selected M1 model, policy, profile, metrics, and comparison row.
+
+**DONE 2026-07-16** (PRs #38-#43). **M1 = the percentile candidate**
+(`d1_m1_ptq_percentile`, sha `faf54dde…`, 2,620,130 B — 3.42x under M0),
+selected mechanically by `optimize.select_ptq` under the rule pre-registered in
+`results/optimize/m1_ptq/preregistration.md` *before any candidate existed*.
+Primary 0.3527 vs the M0-through-ORT reference 0.3667 (ratio 0.9618, above the
+0.95 debugging line; cis −4.2%, trans −1.4% relative — both inside −10%), so
+the registered quantization-debugging obligation did not fire. Every candidate
+executed as integer on the ARM64 host, so QOperator stayed unwarranted per the
+pre-registration. Operating point 0.496375, status `recall_floor_infeasible` —
+the same registered non-pass as M0; quantization neither created nor destroyed
+a passing trigger. Findings: MinMax ≡ Entropy **byte-identical** (sha
+`964d1196…` — the entropy calibrator landed on exactly the MinMax ranges,
+consistent with ReLU6-bounded activations; hypothesis, not diagnosed); the
+pre-registered depthwise collapse did not materialize under per-channel
+weights + in-domain calibration. P3 passed all four checks (metrics reproduce
+*exactly*; fixtures clean); P4 passed on both full validation splits through
+the new C++ `run-dataset`: worst score gap 5.96e-08, zero decision
+differences, matrices equal. Policies for all three candidates are committed;
+only percentile's carries parity and enters `comparison.jsonl` (M1 row).
+Evidence root: `results/optimize/m1_ptq/`; model card
+`artifacts/model_cards/m1_int8_ptq.md`.
 
 ### D2 — M2 INT8 QAT
 
