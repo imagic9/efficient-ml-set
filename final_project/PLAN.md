@@ -1,12 +1,12 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phases A–D complete (Gate D PASSED); Phase E underway — E1–E5 done, E6 in
-progress.** comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 /
+Status: **Phases A–D complete (Gate D PASSED); Phase E underway — E1–E6 done, Gate E6
+PASSED.** comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 /
 M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
 `recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
 (M1 dominated by M2/M4, M3 by M4), with `benchmark_val_1000.jsonl` and the
-hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1–E5 DONE, E6 in
-progress.** E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the
+hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1–E6 DONE, Gate E6
+PASSED.** E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the
 real M0 (leveled logging convention, `schema_version` on every output, build + ctest +
 self-test/infer(native+QEMU)/benchmark/run-dataset all green on M0 in the target
 container; `results/e1/e1_gate.json`). E2 certified the `Preprocessor` (fused +
@@ -18,16 +18,22 @@ PASSED** (`results/e4/p4_dataset_parity_m0.json`): confusion matrix identical on
 cis_val_clean + trans_val, 0 hard decision disagreements; the residual FP32 score gap
 is the P1 OpenCV-version drift (diagnosed, reported, not a bug). E5 closed the benchmark
 + system monitor (percentile-calculation unit test; the `performance_targets` report
-with `measured_on_pi:false`; `results/e5/benchmark_m0.json`). **E6 is IN PROGRESS** (the
-real Phase-E measurement, done in pieces): the pre-rental QEMU `cortex-a76` ISA parity
-landed — `run-dataset` native vs emulated is **bit-identical for M0/M2/M4** (max Δ 0.0,
-0 decision flips), which *contradicts* the registered "FP32 moves" expectation and means
-no Pi-ISA dispatch surprise is expected (`results/e6/qemu_parity.json`). **Next E6
-pieces:** the inference-pipeline optimization matrix (ref-vs-fused, reduced JPEG decode
-1/2 & 1/4, ORT graph levels / threads / arena), the native-vs-target build-and-test, and
-the P1–P4 shortlist consolidation. E1–E5 were consolidation of A4/C4/P4; E6 is new
-measurement. The Pi trial (Phase F) stays conditional, unscheduled,
-one-shot, never early. The next task is always the first `[ ]` in phase order.
+with `measured_on_pi:false`; `results/e5/benchmark_m0.json`). **E6 is DONE — Gate E6
+PASSED** (the real Phase-E measurement, done in pieces): (1) the pre-rental QEMU
+`cortex-a76` ISA parity — `run-dataset` native vs emulated **bit-identical for M0/M2/M4**
+(max Δ 0.0), contradicting the registered "FP32 moves" expectation, so no Pi-ISA
+dispatch surprise is expected (`qemu_parity.json`); (2) the inference-pipeline
+optimization matrix — decode the only latency knob with headroom (half 1.10×, quarter
+1.17× on gx10, diagnostic), `threads=4` regresses, the rest within noise
+(`optimization_matrix.json`); (3) the reduced-decode drift gate — **REJECTED** for the
+whole shortlist (half/quarter lose real bobcat detections), so shipping stays full
+decode (`decode_drift.json`); (4) native-vs-target — gcc 13/glibc 2.39 and gcc 12/glibc
+2.36 both 5/5 + self-test, bit-identical decisions (`native_vs_target.json`); (5) Gate
+E6 consolidation — every shortlisted model's P1–P4 chain passing and sha-bound, ALL/
+EXTENDED graphs retained (`e6_gate.json`). E1–E5 were consolidation of A4/C4/P4; E6 is
+new measurement. **Next: E7 (deployment bundle).** The Pi trial (Phase F) stays
+conditional, unscheduled, one-shot, never early. The next task is always the first
+`[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every

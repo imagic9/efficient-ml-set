@@ -5,14 +5,16 @@ full optimization ladder (M0 FP32 / M1 INT8 PTQ / M2 INT8 QAT / M3 structured-
 pruned FP32 / M4 pruned+QAT) is trained, gated (P3/P4), carded, and compared;
 the deployable pre-Pi shortlist **M0 · M2 · M4** and the fixed
 `benchmark_val_1000.jsonl` are frozen. **Phase E (C++ application + deployment
-bundle) is underway — E1–E5 done, E6 in progress.** The C++ foundation is hardened
+bundle) is underway — E1–E6 done, Gate E6 PASSED.** The C++ foundation is hardened
 and, for the first time, exercised against the real M0 baseline (Gate E1 PASSED):
 the preprocessor, session/policy, dataset runner and benchmark/monitor are each
-certified against DESIGN §11, and the pre-rental QEMU `cortex-a76` ISA parity is
-bit-identical across the shortlist. See the phase table below for per-task evidence.
-E6's remaining work is the inference-pipeline optimization matrix (ref-vs-fused,
-reduced JPEG decode, ORT graph/threads/arena) and the native-vs-target build; then
-Gate E6, E7 (bundle), E8 (dry run), and the conditional Phase F Pi trial.
+certified against DESIGN §11, the pre-rental QEMU `cortex-a76` ISA parity is
+bit-identical across the shortlist, and the inference-pipeline optimization matrix +
+correctness consolidation (Gate E6) are complete. The matrix found decode the only
+knob with real latency headroom, but the reduced-decode drift gate **rejected** it
+(it loses real bobcat detections), so the shipping pipeline stays full decode. See the
+phase table below for per-task evidence. Next: E7 (bundle), E8 (dry run), and the
+conditional Phase F Pi trial.
 
 **Trans-domain bobcat recall is poor and is reported as such**, per DESIGN §18's registered
 decision rule. M0 catches 86% of bobcat visits at cameras it has seen and 18% at the
@@ -39,7 +41,7 @@ showed it is a property of the frozen recipe, not of seed 42: trans F2 is
 | E3 (model session + policy) | **done** — `ModelSession` (RAII, contract validation, `ORT_ENABLE_ALL`, profiling, optimized-graph) + `Policy` (`mode: any`, model/class-map hash binding, `SHUTTER_TRIGGER` output); full policy/threshold test matrix incl. `empty`-target rejection, green in the target container |
 | E4 (dataset runner) | **done** — P4 dataset parity for M0 over cis_val_clean (3214) + trans_val (1725): confusion matrix identical, 0 hard decision disagreements; the FP32 score gap (≤1.1e-2) is the P1 OpenCV 4.6↔4.13 `INTER_LINEAR` drift — diagnosed, reported, not a bug (`results/e4/p4_dataset_parity_m0.json`) |
 | E5 (benchmark + system monitor) | **done** — percentile calculation unit-tested (numpy-matching linear interpolation); benchmark emits a `performance_targets` report (200 ms/5 FPS, 100 ms/10 FPS) with `measured_on_pi:false`; system monitor honest on absent sensors (`results/e5/benchmark_m0.json`) |
-| E6 (correctness + optimization experiment) | **in progress** — pre-rental QEMU `cortex-a76` ISA parity done: `run-dataset` native vs emulated is bit-identical for M0/M2/M4 (max Δ 0.0, 0 decision flips), so no Pi-ISA dispatch surprise expected (`results/e6/qemu_parity.json`). Remaining: optimization matrix (ref-vs-fused, reduced decode, ORT graph/threads/arena), native-vs-target build, P1–P4 shortlist consolidation |
+| E6 (correctness + optimization experiment) | **done — Gate E6 PASSED** (`results/e6/e6_gate.json`). QEMU `cortex-a76` ISA parity bit-identical for M0/M2/M4 (`qemu_parity.json`). Optimization matrix (one factor at a time on M0, diagnostic): decode the only latency knob with headroom (half 1.10×, quarter 1.17×), `threads=4` regresses (0.88×), preprocess/graph/arena within noise (`optimization_matrix.json`). Reduced-decode drift gate **REJECTS** half/quarter — they lose real bobcat detections (M0 17–18, M2 10–12, M4 17–19) + add 1.1–3.2% false fires, so shipping stays full decode (`decode_drift.json`). Native-vs-target: gcc 13/glibc 2.39 and gcc 12/glibc 2.36 both 5/5 ctest + self-test, bit-identical decisions over benchmark_val_1000 (`native_vs_target.json`). P1–P4 consolidated + sha-bound for the shortlist; ALL/EXTENDED graphs retained (differ by sha) |
 | E7–E8, F, G | not started |
 
 ### The optimization ladder (Phase D, validation / deployment ORT)
