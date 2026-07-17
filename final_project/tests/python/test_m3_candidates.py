@@ -100,7 +100,10 @@ class TestAllocateGreedy:
                 if g["conv"].startswith(name + ".")
             )
             assert allocation["widths"][name] == width - allocation["removals"][name]
-            assert ratio == pytest.approx(allocation["removals"][name] / width)
+            # solver ratios sit half a channel below the exact fraction
+            assert ratio == pytest.approx(
+                (allocation["removals"][name] - 0.5) / width
+            )
 
     def test_refuses_a_report_not_measured_to_the_cap(self):
         report = synthetic_report()
@@ -153,6 +156,17 @@ class TestApplyWidths:
         model = build_mobilenet_v2(num_classes=NUM_CLASSES, pretrained=False)
         with pytest.raises(ValueError, match="not an expansion block"):
             P.apply_widths(model, {"features.1": 16})
+
+    def test_exact_widths_survive_float_boundaries(self):
+        """Regression: the first c15 run asked features.2 for 56-of-96 and got
+        48 — the naive ratio 40/96 sat on an int() boundary and float noise
+        cut a whole extra quantum. Every multiple-of-8 width must realize
+        exactly, whatever the fraction's binary representation."""
+        for target_width in (88, 72, 56, 40, 24, 16, 8):
+            model = build_mobilenet_v2(num_classes=NUM_CLASSES, pretrained=False)
+            P.apply_widths(model, {"features.2": target_width})
+            realized = model.features[2].conv[0][0].out_channels
+            assert realized == target_width, f"wanted {target_width}, got {realized}"
 
 
 def selection_row(label, primary, macs, reduction, **overrides):

@@ -465,8 +465,11 @@ def allocate_greedy(
 
     # Keyed like removals/widths ("features.N"): these dicts are serialized
     # into candidate.json, where an int key silently becomes a string anyway.
+    # The ratio values are SOLVER ratios via _exact_ratio — the semantic
+    # quantities are removals/widths; the ratio only exists to make the solver
+    # realize them exactly.
     ratios = {
-        f"features.{block}": removed[block] / groups[block]["width"]
+        f"features.{block}": _exact_ratio(removed[block], groups[block]["width"])
         for block in sorted(groups)
         if removed[block]
     }
@@ -494,6 +497,21 @@ def allocate_greedy(
     }
 
 
+def _exact_ratio(removed: int, width: int) -> float:
+    """A solver ratio that realizes exactly `removed` channels, deterministically.
+
+    torch-pruning computes `n_pruned = width - int(width * (1 - ratio))`, then
+    rounds the *kept* count down to a multiple of `round_to`. The naive
+    fraction `removed / width` sits exactly on an integer boundary, so float
+    noise decides which side `int()` lands on — measured on the first c15 run:
+    40/96 truncated to 41 pruned, and the round-down then cut a whole extra
+    quantum (56 kept became 48). Half a channel below the boundary, the
+    truncation is deterministic and lands on the intended count, and the
+    round-down is a no-op because the intended kept width is already aligned.
+    """
+    return (removed - 0.5) / width
+
+
 def apply_widths(model: nn.Module, widths: dict[str, int]) -> nn.Module:
     """Reproduce a pruned architecture so a pruned checkpoint can load.
 
@@ -516,7 +534,7 @@ def apply_widths(model: nn.Module, widths: dict[str, int]) -> nn.Module:
                 f"{name}: cannot realize width {width} from {current} "
                 "(must be a smaller positive multiple of 8)"
             )
-        ratios[block] = (current - width) / current
+        ratios[block] = _exact_ratio(current - width, current)
     if ratios:
         build_pruner(model, plan, ratios, round_to=8).step()
     for name, width in widths.items():
