@@ -1,11 +1,11 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phases A–D complete (Gate D PASSED); Phase E underway — E1–E6 done, Gate E6
-PASSED.** comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 /
+Status: **Phases A–E complete (Gate E PASSED); the conditional Pi trial (Phase F) is
+next.** comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 /
 M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
 `recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
 (M1 dominated by M2/M4, M3 by M4), with `benchmark_val_1000.jsonl` and the
-hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1–E6 DONE, Gate E6
+hash-locked `pre_pi_freeze.json` built. **Phase E is complete: E1–E8 DONE, Gate E
 PASSED.** E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the
 real M0 (leveled logging convention, `schema_version` on every output, build + ctest +
 self-test/infer(native+QEMU)/benchmark/run-dataset all green on M0 in the target
@@ -31,9 +31,16 @@ decode (`decode_drift.json`); (4) native-vs-target — gcc 13/glibc 2.39 and gcc
 2.36 both 5/5 + self-test, bit-identical decisions (`native_vs_target.json`); (5) Gate
 E6 consolidation — every shortlisted model's P1–P4 chain passing and sha-bound, ALL/
 EXTENDED graphs retained (`e6_gate.json`). E1–E5 were consolidation of A4/C4/P4; E6 is
-new measurement. **Next: E7 (deployment bundle).** The Pi trial (Phase F) stays
-conditional, unscheduled, one-shot, never early. The next task is always the first
-`[ ]` in phase order.
+new measurement. **E7** packaged the deployment bundle (frozen M0/M2/M4 + policies +
+class map + a 47-frame sample slice + the pinned ORT + `install.sh`/`run_demo.sh`/
+`run_benchmark.sh` + `BUNDLE.json` + `MANIFEST.sha256`); OpenCV is apt-installed by
+`install.sh` (Debian's imgcodecs closure is impractical to carry; Pi OS Bookworm has
+the matching `.406`), and the clean-container install test passed. **E8 — GATE E
+PASSED**: the exact Pi commands run unattended in a clean `debian:bookworm-slim`, the
+one-command benchmark matrix includes the M0 baseline (diagnostic: M0 12.36 ms → M2
+6.69 ms → M4 5.45 ms on gx10), machine-readable outputs parse. **Next: the conditional
+Pi trial (Phase F)** — one-shot, unscheduled, never early — then Phase G (analysis,
+report, release). The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1582,30 +1589,62 @@ consolidation**.
 
 Depends on: E6.
 
-- [ ] Package C++ executable, required runtime/install instructions, M0 and every
+- [x] Package C++ executable, required runtime/install instructions, M0 and every
       shortlisted ONNX model/policy, class map, validation benchmark/parity subset,
-      sample images, `install.sh`, `run_demo.sh`, and checksums.
-- [ ] Generate bundle manifest with commit/model/policy hashes.
-- [ ] Test installation in a clean target-compatible container on `gx10` without
-      access to the host training environment or unbundled artifacts.
-- [ ] If binary compatibility cannot be proven, include pinned source/build
-      automation and make Pi-side compilation part of `install.sh`.
+      sample images, `install.sh`, `run_demo.sh`, and checksums. *(`build_bundle.sh`
+      stages M0/M2/M4 + policies + class map from the freeze, a 47-frame stratified
+      slice + its images, the pinned ORT, and the POSIX-sh installer/demo.)*
+- [x] Generate bundle manifest with commit/model/policy hashes. *(`BUNDLE.json`: git
+      commit, per-artifact sha256 checked against the freeze, ORT version, build
+      glibc; plus `MANIFEST.sha256` over every file.)*
+- [x] Test installation in a clean target-compatible container on `gx10` without
+      access to the host training environment or unbundled artifacts. *(clean
+      `debian:bookworm-slim`, only the bundle mounted: `install.sh` apt-installs the
+      OpenCV 4.6.0 runtime, all libraries resolve, self-test PASSED, `run_demo` ran
+      infer+benchmark+run-dataset over the 47-frame slice — `results/e7/e7_bundle.json`.)*
+- [x] If binary compatibility cannot be proven, include pinned source/build
+      automation and make Pi-side compilation part of `install.sh`. *(N/A for the
+      Bookworm target — binary compatibility IS proven: max GLIBC required 2.34 ≤ 2.36,
+      OpenCV via apt is the matching .406 soname. The Trixie-soname contingency
+      (rebuild on the Pi, or minimal OpenCV from source) is documented in
+      `deploy/pi/README.md`.)*
 
-**Output:** versioned ARM64 deployment archive.
+**DONE 2026-07-17.** OpenCV decision (empirically: Debian's `libopencv_imgcodecs`
+drags a ~50-library GDAL/poppler/database closure): **not bundled** — `install.sh`
+apt-installs the OpenCV 4.6.0 runtime, which on Pi OS Bookworm is the byte-compatible
+`.406` soname the binary linked against. `bundle_audit.py` proves completeness +
+checksums + glibc (2.34), and the clean-install test proves it runs without the
+training env.
+
+**Output:** versioned ARM64 deployment archive (staged at `results/e7/bundle/`,
+gitignored; `bundle_audit.json` + `e7_bundle.json` + `clean_install.log` committed).
 
 ### E8 — Full ARM64 dry run
 
 Depends on: E7.
 
-- [ ] On `gx10`, run the exact future Pi provision/install/demo/benchmark
-      commands inside the target-compatible ARM64 environment.
-- [ ] Verify unattended execution and machine-readable outputs.
-- [ ] Verify baseline is included in the measurement matrix.
-- [ ] Copy and parse results using the reporting code.
-- [ ] Record a known-good dry-run log for later diffing.
+- [x] On `gx10`, run the exact future Pi provision/install/demo/benchmark
+      commands inside the target-compatible ARM64 environment. *(`run_e8_dry_run.sh`:
+      `install.sh` + `run_benchmark.sh` + `run_demo.sh`, unattended, in a clean
+      `debian:bookworm-slim` with only the bundle mounted — exit 0.)*
+- [x] Verify unattended execution and machine-readable outputs. *(one `docker run`,
+      no interaction; each command writes JSON/JSONL — `benchmark_<M>.json`,
+      `benchmark_matrix.json`, `demo_predictions.jsonl`.)*
+- [x] Verify baseline is included in the measurement matrix. *(`benchmark_matrix.json`
+      names `baseline: M0` and M0 is benchmarked alongside M2/M4.)*
+- [x] Copy and parse results using the reporting code. *(`validate/e8_dry_run.py`
+      parses the matrix + per-model benchmarks: schema_version 1, ordered percentiles,
+      `measured_on_pi:false`.)*
+- [x] Record a known-good dry-run log for later diffing. *(`results/e8/dry_run.log`,
+      809 lines incl. the apt package versions, to diff against Day 1.)*
 
-**Gate E:** the deployment bundle and one-command benchmark work end to end. Do
-not rent the Pi before this gate.
+**DONE 2026-07-17 — GATE E PASSED** (`results/e8/dry_run.json`). Diagnostic latencies
+(gx10, NOT a Pi result — DESIGN §12.4) show the quantization payoff: M0 (FP32) p50
+12.36 ms → M2 (INT8 QAT) 6.69 ms → M4 (pruned+QAT) 5.45 ms, ~2.3×. Phase F takes the
+measurement that counts.
+
+**Gate E:** the deployment bundle and one-command benchmark work end to end. **PASSED
+— Phase E complete. The Pi may be rented (Phase F).**
 
 `gx10` dry-run latency is diagnostic only. Phase F remains mandatory because only
 measurements produced on a Raspberry Pi count as target-hardware evidence.

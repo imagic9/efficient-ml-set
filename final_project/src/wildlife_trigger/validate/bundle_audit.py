@@ -38,8 +38,19 @@ REQUIRED_PATHS = (
     "bin/run.sh",
     "lib/libonnxruntime.so",
     "lib/libonnxruntime.so.1",
+    "models/M0.onnx",
+    "models/M2.onnx",
+    "models/M4.onnx",
     "policies/class_map.json",
-    "policies/bobcat_v0.json",
+    "policies/M0.json",
+    "policies/M2.json",
+    "policies/M4.json",
+    "data/manifest.jsonl",
+    "install.sh",
+    "run_demo.sh",
+    "run_benchmark.sh",
+    "README.md",
+    "BUNDLE.json",
     "MANIFEST.sha256",
 )
 
@@ -125,7 +136,9 @@ def main() -> int:
             "The session-optimized graph is deliberately NOT bundled: ORT warns a "
             "graph serialized above ORT_ENABLE_EXTENDED is only valid in the "
             "environment that optimized it. The Pi optimizes the ordinary model "
-            "itself. OpenCV is also not bundled — a known E7 gap."
+            "itself. OpenCV is not bundled either — install.sh apt-installs the "
+            "matching 4.6.0 runtime (E7 decision; Debian's imgcodecs closure is "
+            "impractical to carry)."
         ),
     }
 

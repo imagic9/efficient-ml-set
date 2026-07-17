@@ -1,0 +1,39 @@
+{
+  "gate": "E \u2014 deployment bundle + one-command benchmark work end to end (PLAN E8)",
+  "unattended_exit_code": 0,
+  "baseline_in_matrix": true,
+  "models_benchmarked": [
+    "M0",
+    "M2",
+    "M4"
+  ],
+  "benchmarks": {
+    "M0": {
+      "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e7/bundle/benchmark_M0.json",
+      "end_to_end_p50_ms": 12.360886,
+      "end_to_end_p95_ms": 12.870340950000001,
+      "measured_iterations": 100,
+      "problems": []
+    },
+    "M2": {
+      "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e7/bundle/benchmark_M2.json",
+      "end_to_end_p50_ms": 6.6928339999999995,
+      "end_to_end_p95_ms": 8.28759005,
+      "measured_iterations": 100,
+      "problems": []
+    },
+    "M4": {
+      "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e7/bundle/benchmark_M4.json",
+      "end_to_end_p50_ms": 5.448493,
+      "end_to_end_p95_ms": 5.62489685,
+      "measured_iterations": 100,
+      "problems": []
+    }
+  },
+  "demo_produced_predictions": true,
+  "provenance": "gx10 dry-run latency is diagnostic only; a latency is a Pi result only when measured on a Pi (DESIGN \u00a712.4). Phase F is still mandatory.",
+  "verdict": {
+    "passed": true,
+    "failures": []
+  }
+}
