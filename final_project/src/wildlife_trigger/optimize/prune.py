@@ -268,13 +268,36 @@ def check_invariants(model: nn.Module, num_classes: int = 16) -> dict:
 def check_onnx_export(model: nn.Module, expected_widths: dict[str, int]) -> dict:
     """Invariant 5: the mutated model exports, and the graph carries the cuts.
 
-    Shapes are read back from the exported initializers, not assumed from the
-    modules: `torch.onnx.export` re-traces the model, and a mutation that
-    confused the tracer would otherwise ship the *old* widths silently.
+    Two layers, because the export renames things: `do_constant_folding=True`
+    folds BatchNorm into conv weights and drops the module-path initializer
+    names, so a name-based lookup finds nothing (measured, not assumed). What
+    folding preserves is every conv weight's *shape* — so (1) the module
+    widths are checked against what the invariants computed, and (2) the
+    multiset of 4-D initializer shapes in the exported graph must equal the
+    multiset of conv weight shapes in the mutated model. A tracer that reused
+    stale widths, or an export that silently skipped the mutation, fails (2).
     """
     import onnx
 
     from ..models.export import export_onnx
+
+    mismatches = [
+        f"features.{name.split('.')[1]}: module "
+        f"{model.features[int(name.split('.')[1])].conv[0][0].out_channels}, "
+        f"expected {width}"
+        for name, width in expected_widths.items()
+        if model.features[int(name.split(".")[1])].conv[0][0].out_channels != width
+    ]
+    if mismatches:
+        raise RuntimeError(
+            "ONNX export does not carry the pruned widths: " + "; ".join(mismatches)
+        )
+
+    module_shapes = sorted(
+        tuple(m.weight.shape)
+        for m in model.modules()
+        if isinstance(m, nn.Conv2d)
+    )
 
     was_training = model.training
     model.eval()
@@ -283,28 +306,20 @@ def check_onnx_export(model: nn.Module, expected_widths: dict[str, int]) -> dict
             path = Path(scratch) / "pruned.onnx"
             export_onnx(model, path, torch.zeros(EXAMPLE_SHAPE))
             graph = onnx.load(str(path)).graph
-            exported = {}
-            for initializer in graph.initializer:
-                shape = tuple(initializer.dims)
-                # expansion convs are the only 1x1 (Cout, Cin, 1, 1) weights
-                # whose Cout we mutated; match them by their unique Cin per
-                # block via name ordering instead: torch keeps module names.
-                exported[initializer.name] = shape
-            mismatches = []
-            for name, width in expected_widths.items():
-                weight = f"{name}.conv.0.0.weight"
-                if weight not in exported:
-                    mismatches.append(f"{weight} missing from export")
-                elif exported[weight][0] != width:
-                    mismatches.append(
-                        f"{weight}: exported {exported[weight][0]}, module {width}"
-                    )
-            if mismatches:
+            exported_shapes = sorted(
+                tuple(initializer.dims)
+                for initializer in graph.initializer
+                if len(initializer.dims) == 4  # conv weights; BN params are 1-D
+            )
+            if exported_shapes != module_shapes:
+                missing = [s for s in module_shapes if s not in exported_shapes]
+                extra = [s for s in exported_shapes if s not in module_shapes]
                 raise RuntimeError(
-                    "ONNX export does not carry the pruned widths: "
-                    + "; ".join(mismatches)
+                    "ONNX export does not carry the pruned widths: conv weight "
+                    f"shapes diverge (missing from export: {missing[:4]}, "
+                    f"unexpected in export: {extra[:4]})"
                 )
-            return {"onnx_export": "ok", "verified_weights": len(expected_widths)}
+            return {"onnx_export": "ok", "verified_conv_weights": len(module_shapes)}
     finally:
         model.train(was_training)
 
@@ -319,6 +334,9 @@ def prune_expansion(
 ) -> dict:
     """Mutate `model` in place under the full D3 contract and return evidence."""
     plan = classify(model)
+    unknown = sorted(set(ratios) - set(plan.expansion))
+    if unknown:
+        raise ValueError(f"blocks {unknown} are not expansion blocks")
     before = profile(model)
     widths_before = {b: plan.expansion[b].out_channels for b in ratios}
 
