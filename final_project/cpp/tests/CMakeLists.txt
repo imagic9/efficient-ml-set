@@ -6,6 +6,11 @@ add_executable(test_cpu_features test_cpu_features.cpp)
 target_link_libraries(test_cpu_features PRIVATE wildlife_trigger_core)
 add_test(NAME cpu_features COMMAND test_cpu_features)
 
+# Logging is header-only, so its test needs no library beyond core's include path.
+add_executable(test_logging test_logging.cpp)
+target_link_libraries(test_logging PRIVATE wildlife_trigger_core)
+add_test(NAME logging COMMAND test_logging)
+
 # These need the app library, which only exists when the ORT tools are built.
 if(WILDLIFE_BUILD_ORT_TOOLS)
   add_executable(test_policy test_policy.cpp)
