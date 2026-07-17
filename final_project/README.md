@@ -1,9 +1,9 @@
 # Wildlife Trigger — Efficient ML Final Project
 
-Status: **Phases A, B, C and the entire Phase D complete — Gate D PASSED.** The
-full optimization ladder (M0 FP32 / M1 INT8 PTQ / M2 INT8 QAT / M3 structured-
-pruned FP32 / M4 pruned+QAT) is trained, gated (P3/P4), carded, and compared;
-the deployable pre-Pi shortlist **M0 · M2 · M4** and the fixed
+Status: **Phases A–E complete — Gate E PASSED. The conditional Pi trial (Phase F) is
+next.** The full optimization ladder (M0 FP32 / M1 INT8 PTQ / M2 INT8 QAT / M3
+structured-pruned FP32 / M4 pruned+QAT) is trained, gated (P3/P4), carded, and compared
+(Gate D); the deployable pre-Pi shortlist **M0 · M2 · M4** and the fixed
 `benchmark_val_1000.jsonl` are frozen. **Phase E (C++ application + deployment
 bundle) is COMPLETE — Gate E PASSED.** The C++ foundation is hardened and exercised
 against the real M0 baseline (Gate E1), the preprocessor/session/policy/dataset-runner/

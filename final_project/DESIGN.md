@@ -1,6 +1,9 @@
 # Final Project — Executable Design Specification
 
-Status: **Core approved; implementation not started.**
+Status: **Core approved and under execution.** This document is the frozen contract;
+live phase status is tracked in [`PLAN.md`](PLAN.md) and [`README.md`](README.md). As of
+2026-07-17, Phases A–E are complete (Gate E passed) and the conditional Pi trial
+(Phase F) is next.
 
 This document is the source of truth for the Efficient ML final project. It is
 written as an execution contract for an AI coding agent: implement the phases in
