@@ -62,6 +62,14 @@ PROJECT_OUT = (24, 24, 32, 32, 32, 64, 64, 64, 64, 96, 96, 96, 160, 160, 160, 32
 EXPANSION_BLOCKS = tuple(range(2, 18))
 
 
+def _example(model: nn.Module) -> torch.Tensor:
+    """A zeros probe on the model's own device.
+
+    Every tracing/counting/forward helper here needs one; hard-coding CPU
+    crashed the first gx10 run the moment the model lived on CUDA."""
+    return torch.zeros(EXAMPLE_SHAPE, device=next(model.parameters()).device)
+
+
 @dataclass(frozen=True)
 class PruningPlan:
     """The classified model: what may root a group, and what never moves."""
@@ -139,7 +147,7 @@ def verify_group(model: nn.Module, plan: PruningPlan, block: int) -> dict:
     expected_in = {id(conv[2])}
 
     graph = tp.dependency.DependencyGraph().build_dependency(
-        model, example_inputs=torch.zeros(EXAMPLE_SHAPE)
+        model, example_inputs=_example(model)
     )
     group = graph.get_pruning_group(
         plan.expansion[block],
@@ -181,7 +189,7 @@ def build_pruner(
         raise ValueError(f"blocks {unknown} are not expansion blocks")
     return tp.pruner.MagnitudePruner(
         model,
-        torch.zeros(EXAMPLE_SHAPE),
+        _example(model),
         importance=tp.importance.GroupMagnitudeImportance(p=1),
         pruning_ratio=0.0,  # nothing moves unless named in the dict
         pruning_ratio_dict={plan.expansion[b]: r for b, r in ratios.items()},
@@ -193,7 +201,7 @@ def build_pruner(
 
 def profile(model: nn.Module) -> dict:
     """MACs/params from the one counter used before and after every mutation."""
-    macs, params = tp.utils.count_ops_and_params(model, torch.zeros(EXAMPLE_SHAPE))
+    macs, params = tp.utils.count_ops_and_params(model, _example(model))
     return {"macs": int(macs), "params": int(params), "counter": "torch_pruning.utils.count_ops_and_params"}
 
 
@@ -254,7 +262,7 @@ def check_invariants(model: nn.Module, num_classes: int = 16) -> dict:
 
     was_training = model.training
     model.train()
-    example = torch.zeros(EXAMPLE_SHAPE)
+    example = _example(model)
     output = model(example)
     if output.shape != (1, num_classes):
         raise RuntimeError(f"forward produced {tuple(output.shape)}")
@@ -304,7 +312,7 @@ def check_onnx_export(model: nn.Module, expected_widths: dict[str, int]) -> dict
     try:
         with tempfile.TemporaryDirectory() as scratch:
             path = Path(scratch) / "pruned.onnx"
-            export_onnx(model, path, torch.zeros(EXAMPLE_SHAPE))
+            export_onnx(model, path, _example(model))
             graph = onnx.load(str(path)).graph
             exported_shapes = sorted(
                 tuple(initializer.dims)
