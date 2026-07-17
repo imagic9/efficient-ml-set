@@ -5,15 +5,17 @@ comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 / M3
 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
 `recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
 (M1 dominated by M2/M4, M3 by M4), with `benchmark_val_1000.jsonl` and the
-hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1 + E2 DONE.**
+hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1 + E2 + E3 DONE.**
 E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the real
 M0 (leveled logging convention, `schema_version` on every output, build + ctest +
 self-test/infer(native+QEMU)/benchmark/run-dataset all green on M0 in the target
 container; `results/e1/e1_gate.json`). E2 certified the `Preprocessor` (fused +
-reference paths, golden-fixture parity both ways, BGR-as-RGB rejected).
-**Next: E3 (model session and policy).** Phase E is a consolidation — much of the
-C++ (session, preprocess, policy, dataset/benchmark runners) already exists from
-A4/C4/P4 and needs verifying and hardening, not writing from scratch. The Pi trial (Phase F) stays conditional, unscheduled,
+reference paths, golden-fixture parity both ways, BGR-as-RGB rejected). E3 certified
+`ModelSession` + `Policy` (contract validation, `ORT_ENABLE_ALL`/profiling/optimized-
+graph, `mode: any` + hash binding, the full policy/threshold test matrix incl. the
+`empty`-target rejection). **Next: E4 (dataset runner).** Phase E is a consolidation
+— much of the C++ (session, preprocess, policy, dataset/benchmark runners) already
+exists from A4/C4/P4 and needs verifying and hardening, not writing from scratch. The Pi trial (Phase F) stays conditional, unscheduled,
 one-shot, never early. The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
@@ -1339,17 +1341,39 @@ in C4/P1; E2 certifies it against its checklist, no new code. Evidence:
 
 Depends on: E1, C4.
 
-- [ ] Implement model contract validation and ORT session/thread configuration.
-- [ ] Default to `ORT_ENABLE_ALL`, support the registered E6 graph-level
+- [x] Implement model contract validation and ORT session/thread configuration.
+- [x] Default to `ORT_ENABLE_ALL`, support the registered E6 graph-level
       comparison, enable C++ profiling with an explicit file prefix, and support
       persistence of the session-optimized graph.
-- [ ] Implement class-map/model-hash-bound loading of one or more target classes,
+- [x] Implement class-map/model-hash-bound loading of one or more target classes,
       each with its own threshold from JSON policy/catalog artifacts; Core
       combination semantics are `mode: any`.
-- [ ] Implement `SHUTTER_TRIGGER=0/1` output with selected scores and passing
+- [x] Implement `SHUTTER_TRIGGER=0/1` output with selected scores and passing
       targets in the structured inference result.
-- [ ] Add single-target, multi-target, exact-boundary, `car`/`empty`/duplicate/
+- [x] Add single-target, multi-target, exact-boundary, `car`/`empty`/duplicate/
       unknown target, unsupported-mode, wrong-model, class-map, and threshold tests.
+
+**DONE 2026-07-17** (PR #69). Both components (DESIGN §11 components 1 and 3) were
+built in A4 and exercised against the real M0 in E1; E3 certifies them against the
+checklist. One genuine gap closed — an explicit `empty`-target rejection test — the
+rest is existing, passing evidence.
+- **`ModelSession`** (`session.{hpp,cpp}`): RAII over ORT env/session; validates the
+  contract at load (exactly one input/output, NCHW, static batch 1, static positive
+  class count) so a mismatched model fails at startup, not mid-inference; configurable
+  intra-op threads (default 1, stated); `ORT_ENABLE_ALL` default with
+  `enable_extended_only` for the registered E6 comparison; `--profile-prefix` and
+  `--optimized-model` capture (E1 wrote both on the real M0). Contract also re-checked
+  against the class map and the configured geometry in `build_pipeline`.
+- **`Policy`** (`policy.{hpp,cpp}`): `mode: any` over one or more class/threshold
+  targets loaded from JSON, hostile loader (model- and class-map-hash bound); emits
+  `SHUTTER_TRIGGER` 0/1 with every target's score/threshold/passed and the passing
+  set (`decision_json`, verified by E1's `trigger_matches_any` and A4's gate).
+- **Tests** (`test_policy.cpp`, green in E1's target-container ctest, test #3): single-
+  and multi-target `any`, inclusive exact-boundary, unknown / `car` / **`empty`** /
+  duplicate target, unsupported mode, unsupported `schema_version`, null and
+  out-of-`[0,1]` threshold, model-hash and class-map-hash mismatch, duplicate class
+  map, and logit/class count mismatch (wrong-model shape). SHA-256 against the NIST
+  vectors; softmax stable under extreme logits.
 
 ### E4 — Dataset runner
 

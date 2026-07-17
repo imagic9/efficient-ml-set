@@ -141,6 +141,14 @@ void test_loader_rejects_what_it_must() {
       "targets": [{"class": "car", "threshold": 0.5}]})", map));
     std::puts("  PASS  rejects a non-selectable class (car)");
 
+    // `empty` is the other non-selectable class, and the one an operator is most
+    // likely to reach for by mistake ("photograph when something is there") -- it is a
+    // scene label, not an animal, so it can never be a target. Tested separately from
+    // car because DESIGN §4 names both and the two travel different config paths in.
+    assert(rejects(R"({"schema_version": 1, "mode": "any",
+      "targets": [{"class": "empty", "threshold": 0.5}]})", map));
+    std::puts("  PASS  rejects a non-selectable class (empty)");
+
     assert(rejects(R"({"schema_version": 1, "mode": "any",
       "targets": [{"class": "bobcat", "threshold": 0.5},
                   {"class": "bobcat", "threshold": 0.6}]})", map));
