@@ -1462,9 +1462,11 @@ E5 closed the two remaining boxes:
 
 Depends on: E5, Gate D.
 
-- [ ] Pass P1-P4 for M0 and every shortlisted optimized model.
+- [x] Pass P1-P4 for M0 and every shortlisted optimized model. *(Consolidated by
+      Gate E6: M0 = P1/P2/p_ort_cpp/P4(E4); M2,M4 = P1(shared)/P3/P4 — every verdict
+      passing and sha256-bound to the frozen artifact.)*
 - [x] Measure reference-vs-fused preprocessing with model/config held constant.
-      *(optimization matrix, PR pending: `--preprocess reference` vs `fused` on M0,
+      *(optimization matrix, PR #74: `--preprocess reference` vs `fused` on M0,
       identical decisions to 1e-6, latency within noise on gx10.)*
 - [x] Compare full JPEG decode against reduced 1/2 and 1/4 decode; test 1/8 only
       with explicit validation accuracy/decision-drift evidence. *(decode-drift gate:
@@ -1474,15 +1476,21 @@ Depends on: E5, Gate D.
       matrix; CPU affinity not exposed in the container, recorded as not-measured.)*
 - [x] Treat `ORT_ENABLE_ALL` as the default and `ORT_ENABLE_EXTENDED` as a measured
       alternative *(both measured; ALL is the shipping default, EXTENDED within noise
-      on gx10)*; **still open:** retain optimized graphs and profiles for both rather
-      than inferring execution type from node names alone.
+      on gx10)*; retain optimized graphs and profiles for both rather than inferring
+      execution type from node names alone. *(Gate E6 retains `opt_all.onnx` and
+      `opt_extended.onnx` + profiles for M0; the two graphs genuinely differ by
+      sha256, 8.93 MB each — ALL applies fusions EXTENDED does not, confirmed from the
+      artifacts, not inferred. Integer execution itself is P0 `ort_coverage`.)*
 - [x] Keep reduced decode only if validation bobcat metrics meet the predeclared
       tolerance; it is not preprocessing parity. *(Decided per the rule: metrics do
       NOT hold — reduced decode NOT adopted, shipping pipeline stays full decode.)*
-- [ ] Run Python-vs-C++ validation dataset parity. *(P4: done for M0 in E4, M2/M4 in
-      D-phase; needs the E6 consolidation summary.)*
-- [ ] On `gx10`, run all unit/integration/self-tests under both a clean native
-      CPU-only build and the target-compatible ARM64 build.
+- [x] Run Python-vs-C++ validation dataset parity. *(P4 — M0 in E4, M2/M4 in D-phase;
+      cited and sha-bound in the Gate E6 consolidation.)*
+- [x] On `gx10`, run all unit/integration/self-tests under both a clean native
+      CPU-only build and the target-compatible ARM64 build. *(native-vs-target:
+      ubuntu2404 gcc 13/glibc 2.39 and bookworm gcc 12/glibc 2.36 — ctest 5/5 and
+      self-test PASSED in both, 0 decision disagreements over benchmark_val_1000, max
+      score Δ = 0.0.)*
 - [x] **Run P1-P4 for M0 and every shortlisted model under
       `qemu-aarch64 -cpu cortex-a76`** and record score deltas against native gx10,
       not just decision agreement. This is the pre-rental rehearsal of the §12.2
@@ -1494,8 +1502,9 @@ Depends on: E5, Gate D.
 - [x] Record emulated **correctness** only. Emulated latency is not evidence and
       must not reach a results table.
 
-**IN PROGRESS.** E6 is the one Phase-E task with genuine new measurement, done in
-pieces. First piece landed 2026-07-17 (PR #72): the **pre-rental QEMU `cortex-a76`
+**DONE — Gate E6 PASSED (2026-07-17).** E6 is the one Phase-E task with genuine new
+measurement, done in pieces. First piece landed 2026-07-17 (PR #72): the **pre-rental
+QEMU `cortex-a76`
 ISA parity** (`scripts/run_e6_qemu_parity.sh`, `validate/qemu_parity.py`,
 `results/e6/qemu_parity.json`). Verified QEMU restricts the ISA (infer under it
 reports `asimd,asimddp` only — no `i8mm`/`sve2`, `looks_like_pi5=true`), then ran the
@@ -1536,11 +1545,32 @@ stage and every command emits a resolved `pipeline_config`.
   returning a principled negative, and the shipping pipeline stays full decode. (The
   gate exits 0: a correctly-rejected optimization is a finding, not a defect.)
 
-**Still open in E6:** P1–P4 consolidation for the shortlist (cite M0's E4 P4 + M2/M4's
-D-phase P3/P4 into one E6 summary); retain optimized ALL-vs-EXTENDED graphs/profiles;
-native-vs-target build-and-test on gx10; then **Gate E6**.
+Third piece landed 2026-07-17: **native-vs-target build-and-test** and the **Gate E6
+consolidation**.
 
-**Gate E6:** the C++ application is correct before performance claims are made.
+- **Native-vs-target** (`docker/Dockerfile.native`, `scripts/build_native_container.sh`,
+  `scripts/run_e6_native_vs_target.sh`, `validate/native_vs_target.py`,
+  `results/e6/native_vs_target.json`): gx10's host (Ubuntu 24.04, gcc 13, glibc 2.39)
+  carries no OpenCV/ORT dev, so the native toolchain is reproduced in a container
+  rather than mutating the host — the same pinned ORT and OpenCV 4.6.0 as the target,
+  only gcc/glibc differ. Both toolchains: **ctest 5/5, self-test PASSED, and 0 decision
+  disagreements over the full `benchmark_val_1000` with max score Δ = 0.0** — the FP32
+  M0 output is bit-identical across gcc 12/glibc 2.36 and gcc 13/glibc 2.39. A real
+  portability witness before the rental; only the target build ships (it links 2.36).
+- **Gate E6** (`scripts/run_e6_gate.sh`, `validate/e6_gate.py`, `results/e6/e6_gate.json`):
+  consolidation, not a re-run. Each shortlisted model's parity chain is cited and
+  sha256-bound to the frozen artifact — M0 = P1/P2/p_ort_cpp/P4(E4), M2/M4 =
+  P1(shared)/P3/P4, **all passing** — alongside the E6 experiments (QEMU parity,
+  native-vs-target, the diagnostic matrix, the valid decode-drift decision). The ALL
+  and EXTENDED optimized graphs for M0 are retained (`opt_all.onnx`,
+  `opt_extended.onnx`, 8.93 MB each) and **genuinely differ by sha256** — ALL applies
+  fusions EXTENDED does not, confirmed from the artifacts rather than inferred from node
+  names; integer execution itself is P0 `ort_coverage`. The shipping pipeline is
+  unchanged (fused, full decode, `ORT_ENABLE_ALL`, arena on), so the optional-knob
+  experiments cannot fail the gate. **GATE E6 PASSED.**
+
+**Gate E6:** the C++ application is correct before performance claims are made. **PASSED
+— proceed to E7 (deployment bundle).**
 
 ### E7 — Raspberry Pi deployment bundle
 
