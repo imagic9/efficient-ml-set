@@ -1,0 +1,71 @@
+{
+  "tool": "wildlife_trigger.optimize.select_m3",
+  "registration": "results/optimize/m3_prune/m3_registration.md",
+  "reference": {
+    "path": "results/optimize/m1_ptq/m0_fp32_reference/evaluation.json",
+    "primary": 0.36670109155378394,
+    "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154"
+  },
+  "candidates": [
+    {
+      "label": "c15",
+      "candidate_id": "d4_m3_c15",
+      "primary": 0.3259079738046257,
+      "cis_f2": 0.5502392344497609,
+      "trans_f2": 0.10157671315949059,
+      "macs_ladder": 248620160,
+      "realized_mac_reduction_tp": 0.153089,
+      "params": 1957320,
+      "bytes": 7810036,
+      "pre_finetune_primary": 0.012969690305949156,
+      "threshold": 0.619708776473999,
+      "calibration_status": "recall_floor_infeasible",
+      "policy_path": "artifacts/policies/bobcat_m3_prune_c15_v1.json"
+    },
+    {
+      "label": "c30",
+      "candidate_id": "d4_m3_c30",
+      "primary": 0.35833629639708564,
+      "cis_f2": 0.5879237288135594,
+      "trans_f2": 0.12874886398061192,
+      "macs_ladder": 205614080,
+      "realized_mac_reduction_tp": 0.300164,
+      "params": 1761720,
+      "bytes": 7035950,
+      "pre_finetune_primary": 0.0,
+      "threshold": 0.8000255823135376,
+      "calibration_status": "recall_floor_infeasible",
+      "policy_path": "artifacts/policies/bobcat_m3_prune_c30_v1.json"
+    },
+    {
+      "label": "c45",
+      "candidate_id": "d4_m3_c45",
+      "primary": 0.31662959674093283,
+      "cis_f2": 0.5912162162162163,
+      "trans_f2": 0.04204297726564934,
+      "macs_ladder": 166765568,
+      "realized_mac_reduction_tp": 0.429923,
+      "params": 1340912,
+      "bytes": 5364784,
+      "pre_finetune_primary": 0.0,
+      "threshold": 0.6695271730422974,
+      "calibration_status": "recall_floor_infeasible",
+      "policy_path": "artifacts/policies/bobcat_m3_prune_c45_v1.json"
+    }
+  ],
+  "verdict": {
+    "selected": "c30",
+    "selected_candidate_id": "d4_m3_c30",
+    "rule": "largest realized MAC reduction among non-dominated candidates with primary >= 0.95 x reference (0.3484)",
+    "recovery_line": 0.34836603697609475,
+    "recovery_line_met": true,
+    "reference_primary": 0.36670109155378394,
+    "non_dominated": [
+      "c30",
+      "c45"
+    ],
+    "dominated": [
+      "c15"
+    ]
+  }
+}
