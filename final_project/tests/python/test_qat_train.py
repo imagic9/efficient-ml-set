@@ -121,7 +121,7 @@ class TestRefusals:
         _, config = world
         import dataclasses
         bad = dataclasses.replace(config, source_checkpoint_sha256="0" * 64)
-        with pytest.raises(RuntimeError, match="initializes from M0"):
+        with pytest.raises(RuntimeError, match="initializes from the pinned checkpoint"):
             qt.train_arm(bad, 1e-5)
 
     def test_wrong_class_order_is_refused(self, world, tmp_path):
