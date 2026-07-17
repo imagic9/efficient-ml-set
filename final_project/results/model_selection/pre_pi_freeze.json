@@ -1,0 +1,103 @@
+{
+  "tool": "wildlife_trigger.optimize.pre_pi_freeze",
+  "design": "8.5 / 12.2 (Gate D)",
+  "shortlist": [
+    "M0",
+    "M2",
+    "M4"
+  ],
+  "shortlist_source": "results/model_selection/pre_pi_shortlist.json",
+  "models": [
+    {
+      "model_id": "M0",
+      "kind": "fp32_baseline",
+      "onnx": {
+        "artifact": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx",
+        "sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+        "bytes": 8950645
+      },
+      "policy": {
+        "path": "artifacts/policies/bobcat_v1.json",
+        "policy_id": "bobcat_v1",
+        "sha256": "15e8958da3626e46d92845b6c5bc80f0f25882c032e058c439f7e39ab56c6c09",
+        "threshold": 0.5380880236625671,
+        "status": "recall_floor_infeasible"
+      },
+      "parity_report": "results/parity/c2_m0_fp32_seed42_20260716T061203Z/p2_fp32.json",
+      "macs": 293402624,
+      "params": 2244368
+    },
+    {
+      "model_id": "M2",
+      "kind": "int8_qat",
+      "onnx": {
+        "artifact": "results/optimize/m2_qat/lr5e-5/model.onnx",
+        "sha256": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+        "bytes": 2536267
+      },
+      "policy": {
+        "path": "artifacts/policies/bobcat_m2_qat_lr5e-5_v1.json",
+        "policy_id": "bobcat_m2_qat_lr5e-5_v1",
+        "sha256": "1c50c5c4fe707b81849ad3f3424125db8ef338cde194e51de4e4b6ed459825c4",
+        "threshold": 0.650390088558197,
+        "status": "recall_floor_infeasible"
+      },
+      "parity_report": "results/optimize/m2_qat/lr5e-5/p3_quantized.json",
+      "macs": 293402624,
+      "params": 2244368
+    },
+    {
+      "model_id": "M4",
+      "kind": "pruned_qat",
+      "onnx": {
+        "artifact": "results/optimize/m4_qat/lr5e-5/model.onnx",
+        "sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+        "bytes": 2014806
+      },
+      "policy": {
+        "path": "artifacts/policies/bobcat_m4_qat_lr5e-5_v1.json",
+        "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+        "sha256": "c434f232972b44612a54a9df7da30d97f6e70ff3b968ce442c995d806c40cf18",
+        "threshold": 0.5439130067825317,
+        "status": "recall_floor_infeasible"
+      },
+      "parity_report": "results/optimize/m4_qat/lr5e-5/p3_quantized.json",
+      "macs": 205614080,
+      "params": 1761720
+    }
+  ],
+  "class_map": {
+    "path": "artifacts/class_map.json",
+    "sha256": "b38e8bb9ef6188871dba247cde4eb152c73755d2c8dd37cfdba1bcdb6c0a9128"
+  },
+  "preprocessing": {
+    "width": 256,
+    "height": 192,
+    "pad_value": 114,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "fingerprint": {
+      "width": 256,
+      "height": 192,
+      "pad_value": 114,
+      "interpolation": "INTER_LINEAR",
+      "steps_cached": "1-4 (decode, BGR->RGB, aspect-preserving resize, pad)"
+    }
+  },
+  "benchmark": {
+    "manifest": "data/manifests/benchmark_val_1000.jsonl",
+    "sha256": "c6297263b8656b1c76d633eda569db9eaf9c2b4ba4bc0526cdf37fa4dac8b833",
+    "provenance": "data/manifests/benchmark_val_1000.provenance.json",
+    "provenance_sha256": "4caf9ab346fd28be8936004df23d4cf2cc8df26d159468294001f1ed91ea1acf",
+    "note": "validation-only; test manifests stay sealed (\u00a75.4)"
+  },
+  "test_labels": "sealed \u2014 no test manifest is named in this bundle"
+}
