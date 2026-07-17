@@ -1,0 +1,15 @@
+# D3/D4 — structured pruning of M0's expansion channels (DESIGN §8.3).
+#
+# D3 uses `m0_run`, `ratios`, `round_to`: the registered per-group sensitivity
+# measurement (results/optimize/m3_prune/sensitivity_protocol.md). D4 will add
+# its candidate section here once its allocation rule is registered — the same
+# config file so the run explains itself, per DESIGN §9.1.
+
+m0_run: results/training/c2/c2_m0_fp32_seed42_20260716T061203Z
+# best.pt must hash to the run's recorded checkpoint (enforced at load):
+# 42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074
+
+# Requested per-group ratios; the solver rounds surviving widths to round_to,
+# and the evidence records requested vs realized separately (§8.3 step 4).
+ratios: [0.125, 0.25, 0.375, 0.5]
+round_to: 8
