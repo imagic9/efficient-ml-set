@@ -13,6 +13,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <initializer_list>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -47,6 +48,9 @@ struct CommonArgs {
     std::string output;
     std::string output_bin;
     std::string preprocess_mode = "fused";
+    std::string decode = "full";       // full | half | quarter (E6 decode knob)
+    std::string graph_opt = "all";     // all | extended (ORT graph level)
+    std::string arena = "on";          // on | off (ORT CPU memory arena)
     std::string profile_prefix;
     std::string optimized_model;
     int threads = 1;
@@ -86,6 +90,12 @@ struct CommonArgs {
         << "  --output-bin P         raw float32 tensor destination (dump-tensor)\n"
         << "  --preprocess M         fused (the shipping path) or reference\n"
         << "                         (unfused OpenCV primitives; P1's third column)\n"
+        << "  --decode M             full (default), half, or quarter: JPEG decode\n"
+        << "                         reduction (IMREAD_REDUCED_COLOR_2/4). Not parity;\n"
+        << "                         E6 keeps it only if val bobcat metrics hold.\n"
+        << "  --graph-opt M          all (default, ORT_ENABLE_ALL) or extended\n"
+        << "                         (ORT_ENABLE_EXTENDED); E6 graph-level comparison\n"
+        << "  --arena M              on (default) or off: ORT CPU memory arena\n"
         << "  --threads N            intra-op threads (default 1, stated not implied)\n"
         << "  --width/--height N     input geometry (default 256x192, DESIGN §5.5)\n"
         << "  --profile-prefix P     enable ORT profiling with this prefix\n"
@@ -112,6 +122,9 @@ CommonArgs parse(int argc, char **argv) {
         else if (flag == "--output") args.output = value();
         else if (flag == "--output-bin") args.output_bin = value();
         else if (flag == "--preprocess") args.preprocess_mode = value();
+        else if (flag == "--decode") args.decode = value();
+        else if (flag == "--graph-opt") args.graph_opt = value();
+        else if (flag == "--arena") args.arena = value();
         else if (flag == "--profile-prefix") args.profile_prefix = value();
         else if (flag == "--optimized-model") args.optimized_model = value();
         else if (flag == "--threads") args.threads = std::stoi(value());
@@ -137,6 +150,24 @@ void require(const std::string &value, const char *name) {
         log::error() << name << " is required";
         usage(2);
     }
+}
+
+// Reject a typo in an enum-like flag with a message that names the alternatives,
+// rather than letting it silently fall through to a default and quietly mislabel a
+// matrix row -- the whole point of E6 is changing one factor at a time, so a value
+// that isn't the factor you think it is corrupts the comparison.
+const std::string &one_of(const std::string &value, const char *flag,
+                          std::initializer_list<const char *> allowed) {
+    for (const char *option : allowed) {
+        if (value == option) return value;
+    }
+    std::string list;
+    for (const char *option : allowed) {
+        list += (list.empty() ? "" : ", ");
+        list += option;
+    }
+    log::error() << flag << " must be one of {" << list << "}, got '" << value << "'";
+    usage(2);
 }
 
 void emit(const json &document, const std::string &path) {
@@ -219,6 +250,21 @@ struct Pipeline {
     Preprocessor preprocessor;
     ModelSession session;
     std::string model_sha256;
+    std::string preprocess_mode;  // "fused" (shipping) | "reference" (P1's column)
+
+    // Step 1, timed separately by the benchmark and dataset runner so the
+    // reduced-decode gain lands on the decode row, not hidden inside preprocess.
+    cv::Mat decode(const std::string &path) { return preprocessor.decode(path); }
+
+    // Steps 2-7 through whichever path this run selected. from_bgr is the fused hot
+    // path; from_bgr_reference is the unfused reference. Held here rather than
+    // branched at every call site so the two never drift.
+    PreprocessResult apply(const cv::Mat &bgr) {
+        return preprocess_mode == "reference" ? preprocessor.from_bgr_reference(bgr)
+                                              : preprocessor.from_bgr(bgr);
+    }
+
+    PreprocessResult preprocess(const std::string &path) { return apply(decode(path)); }
 };
 
 Pipeline build_pipeline(const CommonArgs &args, bool with_profiling) {
@@ -226,13 +272,22 @@ Pipeline build_pipeline(const CommonArgs &args, bool with_profiling) {
     require(args.class_map, "--class-map");
     require(args.policy, "--policy");
 
+    one_of(args.preprocess_mode, "--preprocess", {"fused", "reference"});
+    one_of(args.decode, "--decode", {"full", "half", "quarter"});
+    one_of(args.graph_opt, "--graph-opt", {"all", "extended"});
+    one_of(args.arena, "--arena", {"on", "off"});
+
     PreprocessConfig preprocess_config;
     preprocess_config.width = args.width;
     preprocess_config.height = args.height;
+    preprocess_config.decode_reduction =
+        args.decode == "half" ? 2 : args.decode == "quarter" ? 4 : 1;
 
     SessionConfig session_config;
     session_config.model_path = args.model;
     session_config.intra_op_threads = args.threads;
+    session_config.enable_extended_only = (args.graph_opt == "extended");
+    session_config.enable_cpu_arena = (args.arena != "off");
     if (with_profiling) {
         session_config.profile_prefix = args.profile_prefix;
         session_config.optimized_model_path = args.optimized_model;
@@ -276,8 +331,26 @@ Pipeline build_pipeline(const CommonArgs &args, bool with_profiling) {
     log::debug() << "policy '" << policy.policy_id() << "' with "
                  << policy.targets().size() << " target(s)";
 
-    return Pipeline{std::move(class_map), std::move(policy),
-                    Preprocessor(preprocess_config), std::move(session), model_hash};
+    return Pipeline{std::move(class_map),
+                    std::move(policy),
+                    Preprocessor(preprocess_config),
+                    std::move(session),
+                    model_hash,
+                    args.preprocess_mode};
+}
+
+// The resolved pipeline knobs, read back from config rather than the raw args so a
+// row records what actually ran. Every E6 matrix output carries this block, which is
+// what makes a table of latencies interpretable one factor at a time.
+json pipeline_config_json(const Pipeline &pipeline) {
+    return json{
+        {"preprocess", pipeline.preprocess_mode},
+        {"decode_reduction", pipeline.preprocessor.config().decode_reduction},
+        {"graph_optimization",
+         pipeline.session.config().enable_extended_only ? "extended" : "all"},
+        {"cpu_arena", pipeline.session.config().enable_cpu_arena ? "on" : "off"},
+        {"intra_op_threads", pipeline.session.config().intra_op_threads},
+    };
 }
 
 int command_infer(const CommonArgs &args) {
@@ -287,8 +360,12 @@ int command_infer(const CommonArgs &args) {
     StageTimings timings;
     const auto start = Clock::now();
 
+    const auto decode_start = Clock::now();
+    const cv::Mat bgr = pipeline.decode(args.image);
+    timings.decode_ms = ms_since(decode_start);
+
     const auto preprocess_start = Clock::now();
-    PreprocessResult input = pipeline.preprocessor.from_file(args.image);
+    PreprocessResult input = pipeline.apply(bgr);
     timings.preprocess_ms = ms_since(preprocess_start);
 
     const auto inference_start = Clock::now();
@@ -315,7 +392,9 @@ int command_infer(const CommonArgs &args) {
         // decision block alone cannot support a numeric comparison.
         {"logits", logits},
         {"letterbox", letterbox_json(input.letterbox)},
-        {"timings_ms", {{"preprocess", timings.preprocess_ms},
+        {"pipeline_config", pipeline_config_json(pipeline)},
+        {"timings_ms", {{"decode", timings.decode_ms},
+                        {"preprocess", timings.preprocess_ms},
                         {"inference", timings.inference_ms},
                         {"policy", timings.policy_ms},
                         {"end_to_end", timings.end_to_end_ms}}},
@@ -344,7 +423,8 @@ int command_benchmark(const CommonArgs &args) {
     // Warm-up is discarded, never averaged in: the first inference pays lazy
     // allocation, page faults and arena growth that no steady-state frame pays.
     for (int i = 0; i < args.warmup; ++i) {
-        PreprocessResult input = pipeline.preprocessor.from_file(args.image);
+        const cv::Mat bgr = pipeline.decode(args.image);
+        PreprocessResult input = pipeline.apply(bgr);
         const auto logits = pipeline.session.run(input.tensor);
         (void)pipeline.policy.decide(logits, pipeline.class_map);
     }
@@ -355,8 +435,15 @@ int command_benchmark(const CommonArgs &args) {
         StageTimings timings;
         const auto start = Clock::now();
 
+        // Decode timed on its own so the reduced-decode knob's effect is attributable:
+        // it is a decode-stage change, and folding it into preprocess would hide both
+        // the gain and the fact that the tensor changed.
+        const auto decode_start = Clock::now();
+        const cv::Mat bgr = pipeline.decode(args.image);
+        timings.decode_ms = ms_since(decode_start);
+
         const auto preprocess_start = Clock::now();
-        PreprocessResult input = pipeline.preprocessor.from_file(args.image);
+        PreprocessResult input = pipeline.apply(bgr);
         timings.preprocess_ms = ms_since(preprocess_start);
 
         const auto inference_start = Clock::now();
@@ -382,7 +469,9 @@ int command_benchmark(const CommonArgs &args) {
         {"warmup_iterations", result.warmup_iterations},
         {"measured_iterations", result.measured_iterations},
         {"intra_op_threads", result.intra_op_threads},
-        {"stages_ms", {{"preprocess", percentiles_json(result.preprocess)},
+        {"pipeline_config", pipeline_config_json(pipeline)},
+        {"stages_ms", {{"decode", percentiles_json(result.decode)},
+                       {"preprocess", percentiles_json(result.preprocess)},
                        {"inference", percentiles_json(result.inference)},
                        {"policy", percentiles_json(result.policy)},
                        {"end_to_end", percentiles_json(result.end_to_end)}}},
@@ -439,7 +528,7 @@ int command_self_test(const CommonArgs &args) {
     }
 
     if (!args.image.empty()) {
-        PreprocessResult input = pipeline.preprocessor.from_file(args.image);
+        PreprocessResult input = pipeline.preprocess(args.image);
         check(input.tensor.size() ==
                   static_cast<size_t>(3) * args.height * args.width,
               "preprocessed tensor has the contracted element count");
@@ -506,6 +595,7 @@ int command_run_dataset(const CommonArgs &args) {
                 {"manifest", args.manifest},
                 {"manifest_sha256", sha256_file(args.manifest)},
                 {"threads", args.threads},
+                {"pipeline_config", pipeline_config_json(pipeline)},
                 {"onnxruntime_version", ModelSession::ort_version()},
                 {"input", {args.width, args.height}}}
             .dump()
@@ -527,8 +617,12 @@ int command_run_dataset(const CommonArgs &args) {
         StageTimings timings;
         const auto start = Clock::now();
         try {
+            const auto decode_start = Clock::now();
+            const cv::Mat bgr = pipeline.decode(path);
+            timings.decode_ms = ms_since(decode_start);
+
             const auto preprocess_start = Clock::now();
-            PreprocessResult input = pipeline.preprocessor.from_file(path);
+            PreprocessResult input = pipeline.apply(bgr);
             timings.preprocess_ms = ms_since(preprocess_start);
 
             const auto inference_start = Clock::now();
@@ -551,7 +645,8 @@ int command_run_dataset(const CommonArgs &args) {
                         {"shutter_trigger", decision.shutter_trigger ? 1 : 0},
                         {"top1_index", decision.top1_index},
                         {"top1_class", decision.top1_class},
-                        {"timings_ms", {{"preprocess", timings.preprocess_ms},
+                        {"timings_ms", {{"decode", timings.decode_ms},
+                                        {"preprocess", timings.preprocess_ms},
                                         {"inference", timings.inference_ms},
                                         {"policy", timings.policy_ms},
                                         {"end_to_end", timings.end_to_end_ms}}}}

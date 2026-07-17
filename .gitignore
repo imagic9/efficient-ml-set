@@ -109,6 +109,13 @@ onnxruntime_profile_*.json
 /final_project/results/e6/native_*.jsonl
 /final_project/results/e6/qemu_*.jsonl
 
+# E6 optimization matrix + reduced-decode drift: the per-cell benchmark JSONs and the
+# per-model run-dataset JSONL are bulky and reproducible by
+# scripts/run_e6_optimization_matrix.sh and scripts/run_e6_decode_drift.sh. The
+# committed evidence is optimization_matrix.json and decode_drift.json.
+/final_project/results/e6/optimization_matrix/
+/final_project/results/e6/decode_drift/
+
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being
 # swept up by `git add -A`.

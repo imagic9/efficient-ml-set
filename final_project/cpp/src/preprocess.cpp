@@ -27,22 +27,41 @@ Preprocessor::Preprocessor(PreprocessConfig config) : config_(config) {
     if (config_.width <= 0 || config_.height <= 0) {
         throw std::invalid_argument("preprocess: width and height must be positive");
     }
+    if (config_.decode_reduction != 1 && config_.decode_reduction != 2 &&
+        config_.decode_reduction != 4) {
+        throw std::invalid_argument(
+            "preprocess: decode_reduction must be 1, 2, or 4 (OpenCV only exposes "
+            "IMREAD_REDUCED_COLOR_2/4/8; 8 is out of scope here)");
+    }
     // Preallocate the canvas once; from_bgr only refills it.
     canvas_.create(config_.height, config_.width, CV_8UC3);
 }
 
-PreprocessResult Preprocessor::from_file(const std::string &path) {
+cv::Mat Preprocessor::decode(const std::string &path) const {
     // IMREAD_COLOR gives 8-bit BGR regardless of the source's channel count, which
     // is step 1 exactly. A greyscale IR frame becomes 3 equal channels rather than
     // failing -- camera traps produce those at night, and they are ordinary input.
-    const cv::Mat bgr = cv::imread(path, cv::IMREAD_COLOR);
+    //
+    // IMREAD_REDUCED_COLOR_2/4 ask libjpeg to emit the image at 1/2 or 1/4 each side
+    // straight from the DCT coefficients, which is far cheaper than a full decode
+    // followed by a resize. The result is still 8-bit BGR, so the rest of the
+    // contract is unchanged -- only the source resolution the letterbox sees shrinks.
+    int flag = cv::IMREAD_COLOR;
+    if (config_.decode_reduction == 2) flag = cv::IMREAD_REDUCED_COLOR_2;
+    else if (config_.decode_reduction == 4) flag = cv::IMREAD_REDUCED_COLOR_4;
+
+    cv::Mat bgr = cv::imread(path, flag);
     if (bgr.empty()) {
         throw std::runtime_error(
             "cannot decode image: " + path +
             " (missing, truncated, or not an image). A corrupt frame must be an "
             "explicit error, never a silently grey tensor.");
     }
-    return from_bgr(bgr);
+    return bgr;
+}
+
+PreprocessResult Preprocessor::from_file(const std::string &path) {
+    return from_bgr(decode(path));
 }
 
 LetterboxInfo Preprocessor::compute_letterbox(const cv::Mat &bgr) const {
@@ -127,14 +146,7 @@ PreprocessResult Preprocessor::from_bgr(const cv::Mat &bgr) {
 }
 
 PreprocessResult Preprocessor::from_file_reference(const std::string &path) const {
-    const cv::Mat bgr = cv::imread(path, cv::IMREAD_COLOR);
-    if (bgr.empty()) {
-        throw std::runtime_error(
-            "cannot decode image: " + path +
-            " (missing, truncated, or not an image). A corrupt frame must be an "
-            "explicit error, never a silently grey tensor.");
-    }
-    return from_bgr_reference(bgr);
+    return from_bgr_reference(decode(path));
 }
 
 PreprocessResult Preprocessor::from_bgr_reference(const cv::Mat &bgr) const {

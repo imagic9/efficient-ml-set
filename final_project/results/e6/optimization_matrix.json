@@ -1,0 +1,175 @@
+{
+  "experiment": "E6 inference-pipeline optimization matrix (one factor at a time)",
+  "provenance": "gx10 latencies \u2014 DIAGNOSTIC ONLY, never a Pi result (DESIGN \u00a712.4). The matrix ranks which knobs to carry to the Pi; Phase F measures the latency that counts.",
+  "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+  "baseline": {
+    "cell": "bench_baseline",
+    "config": {
+      "cpu_arena": "on",
+      "decode_reduction": 1,
+      "graph_optimization": "all",
+      "intra_op_threads": 1,
+      "preprocess": "fused"
+    },
+    "measured_iterations": 200,
+    "decode_p50_ms": 2.5374879999999997,
+    "preprocess_p50_ms": 0.251568,
+    "inference_p50_ms": 9.568282,
+    "end_to_end_p50_ms": 12.35649,
+    "end_to_end_p95_ms": 13.966341999999997,
+    "end_to_end_fps": 80.9291311691265
+  },
+  "rows": [
+    {
+      "cell": "bench_arena_off",
+      "factor": "cpu_arena",
+      "value": "off",
+      "config": {
+        "cpu_arena": "off",
+        "decode_reduction": 1,
+        "graph_optimization": "all",
+        "intra_op_threads": 1,
+        "preprocess": "fused"
+      },
+      "measured_iterations": 200,
+      "decode_p50_ms": 2.4475685,
+      "preprocess_p50_ms": 0.24929600000000002,
+      "inference_p50_ms": 9.528385,
+      "end_to_end_p50_ms": 12.233226,
+      "end_to_end_p95_ms": 13.0534956,
+      "end_to_end_fps": 81.74458642389179,
+      "end_to_end_p50_delta_ms": -0.1232640000000007,
+      "speedup_vs_baseline": 1.0100761647009546
+    },
+    {
+      "cell": "bench_decode_half",
+      "factor": "decode_reduction",
+      "value": 2,
+      "config": {
+        "cpu_arena": "on",
+        "decode_reduction": 2,
+        "graph_optimization": "all",
+        "intra_op_threads": 1,
+        "preprocess": "fused"
+      },
+      "measured_iterations": 200,
+      "decode_p50_ms": 1.6849205,
+      "preprocess_p50_ms": 0.183584,
+      "inference_p50_ms": 9.352297499999999,
+      "end_to_end_p50_ms": 11.2166255,
+      "end_to_end_p95_ms": 14.119908549999995,
+      "end_to_end_fps": 89.15337326720947,
+      "end_to_end_p50_delta_ms": -1.1398645000000016,
+      "speedup_vs_baseline": 1.1016227652425412
+    },
+    {
+      "cell": "bench_decode_quarter",
+      "factor": "decode_reduction",
+      "value": 4,
+      "config": {
+        "cpu_arena": "on",
+        "decode_reduction": 4,
+        "graph_optimization": "all",
+        "intra_op_threads": 1,
+        "preprocess": "fused"
+      },
+      "measured_iterations": 200,
+      "decode_p50_ms": 1.361144,
+      "preprocess_p50_ms": 0.108272,
+      "inference_p50_ms": 9.124305499999998,
+      "end_to_end_p50_ms": 10.6008815,
+      "end_to_end_p95_ms": 11.1785284,
+      "end_to_end_fps": 94.33177797525612,
+      "end_to_end_p50_delta_ms": -1.755608500000001,
+      "speedup_vs_baseline": 1.1656096712334725
+    },
+    {
+      "cell": "bench_graph_extended",
+      "factor": "graph_optimization",
+      "value": "extended",
+      "config": {
+        "cpu_arena": "on",
+        "decode_reduction": 1,
+        "graph_optimization": "extended",
+        "intra_op_threads": 1,
+        "preprocess": "fused"
+      },
+      "measured_iterations": 200,
+      "decode_p50_ms": 2.4738965,
+      "preprocess_p50_ms": 0.250248,
+      "inference_p50_ms": 9.631425499999999,
+      "end_to_end_p50_ms": 12.347298,
+      "end_to_end_p95_ms": 15.6040566,
+      "end_to_end_fps": 80.98937921478853,
+      "end_to_end_p50_delta_ms": -0.009192000000000533,
+      "speedup_vs_baseline": 1.0007444543737425
+    },
+    {
+      "cell": "bench_threads_2",
+      "factor": "intra_op_threads",
+      "value": 2,
+      "config": {
+        "cpu_arena": "on",
+        "decode_reduction": 1,
+        "graph_optimization": "all",
+        "intra_op_threads": 2,
+        "preprocess": "fused"
+      },
+      "measured_iterations": 200,
+      "decode_p50_ms": 3.3031125,
+      "preprocess_p50_ms": 0.33144,
+      "inference_p50_ms": 8.372097,
+      "end_to_end_p50_ms": 12.028578,
+      "end_to_end_p95_ms": 15.187335649999998,
+      "end_to_end_fps": 83.13534650563018,
+      "end_to_end_p50_delta_ms": -0.3279120000000013,
+      "speedup_vs_baseline": 1.0272610777433544
+    },
+    {
+      "cell": "bench_threads_4",
+      "factor": "intra_op_threads",
+      "value": 4,
+      "config": {
+        "cpu_arena": "on",
+        "decode_reduction": 1,
+        "graph_optimization": "all",
+        "intra_op_threads": 4,
+        "preprocess": "fused"
+      },
+      "measured_iterations": 200,
+      "decode_p50_ms": 5.392841,
+      "preprocess_p50_ms": 0.552832,
+      "inference_p50_ms": 8.160761,
+      "end_to_end_p50_ms": 14.1074665,
+      "end_to_end_p95_ms": 15.373674199999998,
+      "end_to_end_fps": 70.88444973447217,
+      "end_to_end_p50_delta_ms": 1.7509764999999984,
+      "speedup_vs_baseline": 0.8758829942995081
+    },
+    {
+      "cell": "bench_preprocess_reference",
+      "factor": "preprocess",
+      "value": "reference",
+      "config": {
+        "cpu_arena": "on",
+        "decode_reduction": 1,
+        "graph_optimization": "all",
+        "intra_op_threads": 1,
+        "preprocess": "reference"
+      },
+      "measured_iterations": 200,
+      "decode_p50_ms": 2.4949044999999996,
+      "preprocess_p50_ms": 0.31908000000000003,
+      "inference_p50_ms": 9.490401,
+      "end_to_end_p50_ms": 12.326362,
+      "end_to_end_p95_ms": 12.97972135,
+      "end_to_end_fps": 81.1269375343674,
+      "end_to_end_p50_delta_ms": -0.030128000000001265,
+      "speedup_vs_baseline": 1.0024441923740355
+    }
+  ],
+  "verdict": {
+    "passed": true,
+    "failures": []
+  }
+}

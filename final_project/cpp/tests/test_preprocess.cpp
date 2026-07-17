@@ -9,7 +9,10 @@
 #include <cmath>
 #include <cstdio>
 
+#include <string>
+
 #include <opencv2/core.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #include "wildlife_trigger/preprocess.hpp"
 
@@ -237,6 +240,61 @@ void test_reference_rejects_what_fused_rejects() {
     std::puts("  PASS  the reference path refuses an empty image too");
 }
 
+void test_reduced_decode_shrinks_the_source() {
+    // The E6 decode knob: IMREAD_REDUCED_COLOR_2/4 must hand back a half- and
+    // quarter-resolution BGR frame straight from libjpeg, and the rest of the
+    // contract must still produce the contracted tensor shape from it. This asserts
+    // the *mechanics* (right dimensions, still 3-channel, pipeline still runs); the
+    // *accuracy* of feeding the model a lower-res frame is a separate check on real
+    // val frames (E6 decode-drift), because a smaller source is not preprocessing
+    // parity -- it changes the pixels the letterbox resamples.
+    const cv::Mat frame = structured_frame(512, 384);
+    const std::string path = "/tmp/wt_decode_reduction_4a3b.jpg";
+    const bool wrote = cv::imwrite(path, frame, {cv::IMWRITE_JPEG_QUALITY, 100});
+    assert(wrote);
+
+    struct Case {
+        int reduction;
+        int width;
+        int height;
+    };
+    // 512 and 384 are chosen divisible by 4 so the reduced dimensions are exact.
+    const Case cases[] = {{1, 512, 384}, {2, 256, 192}, {4, 128, 96}};
+    for (const auto &c : cases) {
+        auto config = config_256x192();
+        config.decode_reduction = c.reduction;
+        Preprocessor preprocessor(config);
+
+        const cv::Mat decoded = preprocessor.decode(path);
+        assert(decoded.type() == CV_8UC3);
+        assert(decoded.cols == c.width && decoded.rows == c.height);
+
+        const PreprocessResult result = preprocessor.from_bgr(decoded);
+        assert(result.tensor.size() == static_cast<size_t>(3) * 192 * 256);
+        assert(result.letterbox.source_width == c.width);
+        assert(result.letterbox.source_height == c.height);
+        std::printf("  PASS  decode 1/%d -> %dx%d BGR, tensor shape holds\n",
+                    c.reduction, c.width, c.height);
+    }
+    std::remove(path.c_str());
+}
+
+void test_reduced_decode_rejects_unsupported_factor() {
+    // OpenCV only exposes reductions of 2, 4 and 8; 3 (and anything else) has no
+    // IMREAD_REDUCED flag, so it must fail loudly at construction rather than
+    // silently decode full-resolution and mislabel a matrix row.
+    auto config = config_256x192();
+    config.decode_reduction = 3;
+    bool threw = false;
+    try {
+        Preprocessor preprocessor(config);
+    } catch (const std::exception &) {
+        threw = true;
+    }
+    assert(threw);
+    std::puts("  PASS  an unsupported decode_reduction is rejected at construction");
+}
+
 }  // namespace
 
 int main() {
@@ -249,6 +307,8 @@ int main() {
     test_corrupt_input_is_an_error();
     test_reference_and_fused_agree();
     test_reference_rejects_what_fused_rejects();
+    test_reduced_decode_shrinks_the_source();
+    test_reduced_decode_rejects_unsupported_factor();
     std::puts("all preprocessing tests passed");
     return 0;
 }

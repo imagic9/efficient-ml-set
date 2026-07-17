@@ -30,7 +30,13 @@ std::string ModelSession::ort_version() { return Ort::GetVersionString(); }
 
 ModelSession::ModelSession(SessionConfig config)
     : config_(std::move(config)),
-      memory_info_(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)) {
+      // Label the input buffer's memory to match the session's allocator: with the
+      // arena on, ORT's CPU allocator is the arena; with it off, the plain device
+      // allocator. It is only a tag on a user-owned buffer, but keeping it truthful
+      // avoids a needless allocator-mismatch copy inside Run.
+      memory_info_(Ort::MemoryInfo::CreateCpu(
+          config_.enable_cpu_arena ? OrtArenaAllocator : OrtDeviceAllocator,
+          OrtMemTypeDefault)) {
     env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "wildlife_trigger");
 
     Ort::SessionOptions options;
@@ -38,6 +44,13 @@ ModelSession::ModelSession(SessionConfig config)
                                           ? GraphOptimizationLevel::ORT_ENABLE_EXTENDED
                                           : GraphOptimizationLevel::ORT_ENABLE_ALL);
     options.SetIntraOpNumThreads(config_.intra_op_threads);
+
+    // DisableCpuMemArena is the only way to turn the arena off; there is no
+    // SetCpuMemArena(bool). Enabled is ORT's default, so we only ever call the
+    // disable, never a re-enable.
+    if (!config_.enable_cpu_arena) {
+        options.DisableCpuMemArena();
+    }
 
     if (!config_.optimized_model_path.empty()) {
         options.SetOptimizedModelFilePath(config_.optimized_model_path.c_str());

@@ -33,6 +33,13 @@ struct SessionConfig {
     // registered E6 comparison, reachable but never silently substituted.
     bool enable_extended_only = false;
 
+    // The CPU memory arena is ORT's default and stays on for the shipping binary.
+    // E6 measures it off as well (options.DisableCpuMemArena): the arena trades a
+    // little steady-state memory for fewer allocations, and on a 4-frame-per-second
+    // Pi workload the arena's benefit may not be worth its resident footprint. Off
+    // is a measured alternative, never a silent default.
+    bool enable_cpu_arena = true;
+
     // Empty disables. P0 proved these are the evidence that settles integer
     // execution, so the deployed binary keeps the capability.
     std::string profile_prefix;
