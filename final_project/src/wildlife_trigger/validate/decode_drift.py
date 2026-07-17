@@ -92,14 +92,21 @@ def compare_model(model_id: str, full_path: Path, variant_paths: dict[str, Path]
     full_score = np.array([full[i]["target_scores"][target] for i in ids], dtype=float)
 
     variants = []
-    model_failures: list[str] = []
+    model_validity: list[str] = []
     for decode, vpath in variant_paths.items():
         var = read_predictions(vpath)
-        failures: list[str] = []
+        # Two separate notions, deliberately not conflated:
+        #  - validity issues (frames missing, run truncated) mean the comparison is
+        #    invalid and are a hard error;
+        #  - reject_reasons (tolerances exceeded) are the experiment's *decision* not
+        #    to keep this variant -- a finding, not a defect. Rejecting an unsafe
+        #    optimization is the check succeeding at its job.
+        validity: list[str] = []
+        reject_reasons: list[str] = []
 
         missing = [i for i in ids if i not in var]
         if missing:
-            failures.append(f"{len(missing)} frames present in full but absent in {decode}")
+            validity.append(f"{len(missing)} frames present in full but absent in {decode}")
         common = [i for i in ids if i in var]
         idx = np.array([i in var for i in ids])
 
@@ -126,12 +133,12 @@ def compare_model(model_id: str, full_path: Path, variant_paths: dict[str, Path]
         }
 
         if len(lost_ids) > MAX_LOST_TRUE_DETECTIONS:
-            failures.append(
+            reject_reasons.append(
                 f"{len(lost_ids)} true bobcat detection(s) lost vs full decode "
                 f"(tolerance {MAX_LOST_TRUE_DETECTIONS}): {lost_ids[:8]}"
             )
         if new_false_frac > MAX_NEW_FALSE_FIRE_FRAC:
-            failures.append(
+            reject_reasons.append(
                 f"new false fires {new_false_frac:.3%} exceed the "
                 f"{MAX_NEW_FALSE_FIRE_FRAC:.0%} tolerance ({int(new_false.sum())} frames)"
             )
@@ -147,10 +154,11 @@ def compare_model(model_id: str, full_path: Path, variant_paths: dict[str, Path]
             "new_false_fires": int(new_false.sum()),
             "new_false_fire_frac": new_false_frac,
             "score_gap_vs_full": score_gap,
-            "keep": not failures,
-            "failures": failures,
+            "keep": not reject_reasons and not validity,
+            "reject_reasons": reject_reasons,
+            "validity_issues": validity,
         })
-        model_failures.extend(f"[{decode}] {m}" for m in failures)
+        model_validity.extend(f"[{decode}] {m}" for m in validity)
 
     return {
         "model": model_id,
@@ -159,8 +167,7 @@ def compare_model(model_id: str, full_path: Path, variant_paths: dict[str, Path]
         "bobcat_frames": int(present.sum()),
         "confusion_full": confusion(full_fire, present),
         "variants": variants,
-        "passed": not model_failures,
-        "failures": model_failures,
+        "validity_failures": model_validity,
     }
 
 
@@ -193,9 +200,24 @@ def main() -> int:
             float(threshold), manifest_labels, args.target,
         ))
 
-    passed = all(r["passed"] for r in results)
+    # Validity is a hard error (the comparison would be invalid); the keep/reject
+    # verdict is the experiment's decision, not a pass/fail of the application.
+    validity_failures = [f"{r['model']} {m}" for r in results for m in r["validity_failures"]]
+    experiment_valid = not validity_failures
+    kept = [
+        {"model": r["model"], "decode": v["decode"]}
+        for r in results for v in r["variants"] if v["keep"]
+    ]
+    adopted = bool(kept)
+    conclusion = (
+        f"reduced decode NOT adopted: no variant holds the predeclared bobcat "
+        f"tolerance on any shortlisted model; the shipping pipeline stays full decode."
+        if not adopted else
+        f"reduced decode adopted for: {kept}"
+    )
+
     report = {
-        "gate": "E6 reduced-decode accuracy / decision-drift (DESIGN §11, PLAN E6)",
+        "experiment": "E6 reduced-decode accuracy / decision-drift (DESIGN §11, PLAN E6)",
         "target": args.target,
         "manifest": str(args.manifest),
         "tolerances": {
@@ -205,7 +227,11 @@ def main() -> int:
                     "Latency is not judged here (DESIGN §12.4).",
         },
         "models": results,
-        "verdict": {"passed": passed, "failed": [r["model"] for r in results if not r["passed"]]},
+        "reduced_decode_adopted": adopted,
+        "kept_variants": kept,
+        "conclusion": conclusion,
+        "experiment_valid": experiment_valid,
+        "validity_failures": validity_failures,
     }
     atomic_write_json(args.output, report)
 
@@ -220,10 +246,19 @@ def main() -> int:
                   f"flips={v['decision_flips']}, lost={v['lost_true_detections']}, "
                   f"new_false={v['new_false_fires']} ({v['new_false_fire_frac']:.2%}), "
                   f"score Δ max={v['score_gap_vs_full']['max']:.3f}")
-            for f in v["failures"]:
-                print(f"        FAIL: {f}")
-    print(f"E6 decode-drift {'PASSED' if passed else 'FAILED'}; wrote {args.output}")
-    return 0 if passed else 1
+            for reason in v["reject_reasons"]:
+                print(f"        reject: {reason}")
+            for issue in v["validity_issues"]:
+                print(f"        INVALID: {issue}")
+    print(f"\nCONCLUSION: {conclusion}")
+    if not experiment_valid:
+        print("EXPERIMENT INVALID:")
+        for f in validity_failures:
+            print(f"    {f}")
+    # Exit 0 when the experiment is valid, whatever the keep/reject decision: a
+    # correctly-rejected optimization is a finding, not a failure. Only an invalid
+    # comparison (missing/truncated runs) fails.
+    return 0 if experiment_valid else 1
 
 
 if __name__ == "__main__":
