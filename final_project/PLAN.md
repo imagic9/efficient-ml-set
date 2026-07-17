@@ -1,12 +1,12 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A, B, C and the ENTIRE Phase D complete — Gate D PASSED.**
-comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 / M3
-pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
+Status: **Phases A–D complete (Gate D PASSED); Phase E underway — E1–E5 done, E6 in
+progress.** comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 /
+M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
 `recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
 (M1 dominated by M2/M4, M3 by M4), with `benchmark_val_1000.jsonl` and the
-hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1 + E2 + E3 + E4
-DONE.** E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the
+hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1–E5 DONE, E6 in
+progress.** E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the
 real M0 (leveled logging convention, `schema_version` on every output, build + ctest +
 self-test/infer(native+QEMU)/benchmark/run-dataset all green on M0 in the target
 container; `results/e1/e1_gate.json`). E2 certified the `Preprocessor` (fused +
