@@ -1,0 +1,51 @@
+{
+  "gate": "E6 pre-rental ISA parity (native gx10 vs qemu -cpu cortex-a76)",
+  "design": "12.2 / PLAN E6",
+  "note": "correctness only; emulated latency is never a result (DESIGN \u00a712.4)",
+  "tolerances": {
+    "int8_max_abs": 0.001,
+    "fp32_sanity_abs": 0.05
+  },
+  "models": [
+    {
+      "model": "M0",
+      "kind": "fp32",
+      "frames": 127,
+      "max_score_delta": 0.0,
+      "mean_score_delta": 0.0,
+      "decisions_differing": 0,
+      "hard_disagreements": [],
+      "expectation": "small shift expected (FP32 kernels differ without i8mm/sve2)",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "model": "M2",
+      "kind": "int8",
+      "frames": 127,
+      "max_score_delta": 0.0,
+      "mean_score_delta": 0.0,
+      "decisions_differing": 0,
+      "hard_disagreements": [],
+      "expectation": "near-bitwise (INT8 shares asimddp kernels)",
+      "passed": true,
+      "failures": []
+    },
+    {
+      "model": "M4",
+      "kind": "int8",
+      "frames": 127,
+      "max_score_delta": 0.0,
+      "mean_score_delta": 0.0,
+      "decisions_differing": 0,
+      "hard_disagreements": [],
+      "expectation": "near-bitwise (INT8 shares asimddp kernels)",
+      "passed": true,
+      "failures": []
+    }
+  ],
+  "verdict": {
+    "passed": true,
+    "failed": []
+  }
+}

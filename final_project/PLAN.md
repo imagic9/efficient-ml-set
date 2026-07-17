@@ -18,10 +18,15 @@ PASSED** (`results/e4/p4_dataset_parity_m0.json`): confusion matrix identical on
 cis_val_clean + trans_val, 0 hard decision disagreements; the residual FP32 score gap
 is the P1 OpenCV-version drift (diagnosed, reported, not a bug). E5 closed the benchmark
 + system monitor (percentile-calculation unit test; the `performance_targets` report
-with `measured_on_pi:false`; `results/e5/benchmark_m0.json`). **Next: E6 (correctness +
-C++ optimization experiment — the real Phase-E work: P1–P4 for the shortlist, the
-inference-pipeline matrix, and the pre-rental QEMU parity).** E1–E5 were consolidation
-of A4/C4/P4; E6 is new measurement. The Pi trial (Phase F) stays conditional, unscheduled,
+with `measured_on_pi:false`; `results/e5/benchmark_m0.json`). **E6 is IN PROGRESS** (the
+real Phase-E measurement, done in pieces): the pre-rental QEMU `cortex-a76` ISA parity
+landed — `run-dataset` native vs emulated is **bit-identical for M0/M2/M4** (max Δ 0.0,
+0 decision flips), which *contradicts* the registered "FP32 moves" expectation and means
+no Pi-ISA dispatch surprise is expected (`results/e6/qemu_parity.json`). **Next E6
+pieces:** the inference-pipeline optimization matrix (ref-vs-fused, reduced JPEG decode
+1/2 & 1/4, ORT graph levels / threads / arena), the native-vs-target build-and-test, and
+the P1–P4 shortlist consolidation. E1–E5 were consolidation of A4/C4/P4; E6 is new
+measurement. The Pi trial (Phase F) stays conditional, unscheduled,
 one-shot, never early. The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
@@ -1471,7 +1476,7 @@ Depends on: E5, Gate D.
 - [ ] Run Python-vs-C++ validation dataset parity.
 - [ ] On `gx10`, run all unit/integration/self-tests under both a clean native
       CPU-only build and the target-compatible ARM64 build.
-- [ ] **Run P1-P4 for M0 and every shortlisted model under
+- [x] **Run P1-P4 for M0 and every shortlisted model under
       `qemu-aarch64 -cpu cortex-a76`** and record score deltas against native gx10,
       not just decision agreement. This is the pre-rental rehearsal of the §12.2
       parity claim: emulation withholds `i8mm`/`sve2`, so ORT dispatches the Pi's
@@ -1479,8 +1484,25 @@ Depends on: E5, Gate D.
       the rental clock running. Expect the FP32 arm to move and INT8 not to.
 - [ ] If the RPi 4 contingency is live, repeat under `-cpu cortex-a72` for
       dispatch evidence; Cortex-A72 has no `asimddp` and INT8 will differ.
-- [ ] Record emulated **correctness** only. Emulated latency is not evidence and
+- [x] Record emulated **correctness** only. Emulated latency is not evidence and
       must not reach a results table.
+
+**IN PROGRESS.** E6 is the one Phase-E task with genuine new measurement, done in
+pieces. First piece landed 2026-07-17 (PR #72): the **pre-rental QEMU `cortex-a76`
+ISA parity** (`scripts/run_e6_qemu_parity.sh`, `validate/qemu_parity.py`,
+`results/e6/qemu_parity.json`). Verified QEMU restricts the ISA (infer under it
+reports `asimd,asimddp` only — no `i8mm`/`sve2`, `looks_like_pi5=true`), then ran the
+C++ `run-dataset` native and emulated over a 127-frame stratified slice for M0/M2/M4.
+**Result — bit-identical, all three: max bobcat-score Δ = 0.0, 0 decision
+disagreements.** This *contradicts the registered expectation* that the FP32 arm would
+move: ORT's MLAS kernels for this MobileNetV2 produce identical output with and without
+`i8mm`/`sve2` (FP32 on the deterministic NEON path, INT8 on the shared `asimddp`
+dot-product), so there is no ISA-dispatch divergence to surface. Favorable — no Pi-ISA
+surprise is expected — but QEMU is *functional* emulation; the real Pi stays the
+arbiter (§12.4), and no emulated latency was recorded. **Still open in E6:** P1–P4
+consolidation for the shortlist; reference-vs-fused; reduced JPEG decode (1/2, 1/4) +
+its accuracy check; the ORT graph-level / threads / arena matrix; native-vs-target
+build-and-test. Next E6 piece: the inference-pipeline optimization matrix.
 
 **Gate E6:** the C++ application is correct before performance claims are made.
 
