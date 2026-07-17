@@ -312,9 +312,12 @@ not merely at HEAD. A dotfile `.env` is now ignored — deliberately `.env` and 
 `*.env`, since `configs/env/pins.env` must be committed — and the token-pattern
 check is a test rather than a one-off.
 
-**Left for E7:** OpenCV soname. Bookworm apt gives 4.6.0; a Trixie Pi would give
-another. Either bundle the `.so` or link statically — do not assume the Pi's apt
-matches.
+**Resolved in E7:** OpenCV soname. Bookworm apt gives 4.6.0; a Trixie Pi would give
+another. E7's decision (bundling the `.so` was ruled out — Debian's `libopencv_imgcodecs`
+drags a ~50-library GDAL/poppler/database closure): `install.sh` apt-installs the OpenCV
+4.6.0 runtime, which on Pi OS Bookworm (Debian bookworm) is the byte-compatible `.406`
+soname the binary linked against. The Trixie-soname contingency (rebuild on the Pi, or
+minimal OpenCV from source) is documented in `deploy/pi/README.md`.
 
 ### A3 — P0 toolchain spike
 
