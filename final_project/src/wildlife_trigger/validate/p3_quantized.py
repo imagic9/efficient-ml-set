@@ -68,6 +68,50 @@ def check_graph_and_coverage(model_path: Path, workdir: Path, label: str) -> dic
     }
 
 
+def check_graph_fp32_pruned(
+    model_path: Path, workdir: Path, label: str, candidate: dict
+) -> dict:
+    """Check 1 for a pruned FP32 candidate (m3_registration.md §5).
+
+    FP32 has no integer-coverage question — the physical one replaces it: the
+    artifact's conv-shape multiset must equal the candidate's recorded pruned
+    shapes, so the deployable file provably carries the cuts. And the inverse
+    of the quantized gate holds: an FP32 artifact that executed an integer
+    kernel somewhere would be a different candidate than the evidence
+    describes.
+    """
+    onnx.checker.check_model(str(model_path), full_check=True)
+    report = ort_coverage.analyse(model_path, workdir, label)
+    verdict = report["verdict"]
+
+    graph = onnx.load(str(model_path)).graph
+    exported_shapes = sorted(
+        list(initializer.dims)
+        for initializer in graph.initializer
+        if len(initializer.dims) == 4
+    )
+    recorded_shapes = sorted(
+        list(shape) for shape in candidate["pruning"]["exported_conv_shapes"]
+    )
+    shapes_match = exported_shapes == recorded_shapes
+
+    failures = []
+    if not shapes_match:
+        failures.append("exported conv-shape multiset differs from the candidate record")
+    if verdict["integer_execution"]:
+        failures.append("an FP32 candidate executed integer kernels")
+
+    return {
+        "onnx_checker": "passed",
+        "pruned_shapes_match": shapes_match,
+        "conv_weights": len(exported_shapes),
+        "integer_execution": verdict["integer_execution"],
+        "coverage_report": report,
+        "failures": failures,
+        "passed": not failures,
+    }
+
+
 def check_metrics_reproduce(candidate_dir: Path, workdir: Path) -> dict:
     """Re-run the evaluation; the recorded candidate numbers must be exact."""
     from ..optimize.evaluate_onnx import evaluate
@@ -167,8 +211,17 @@ def main() -> int:
     session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
     config = PreprocessConfig(width=width, height=height)
 
-    print("--- P3 check 1: graph validity + operator/dtype coverage")
-    graph = check_graph_and_coverage(model_path, args.candidate / "p3_coverage", label)
+    pruned_fp32 = candidate.get("kind") in ("pruned_fp32",)
+    if pruned_fp32:
+        print("--- P3 check 1 (fp32-pruned): graph validity + physical shapes")
+        graph = check_graph_fp32_pruned(
+            model_path, args.candidate / "p3_coverage", label, candidate
+        )
+    else:
+        print("--- P3 check 1: graph validity + operator/dtype coverage")
+        graph = check_graph_and_coverage(
+            model_path, args.candidate / "p3_coverage", label
+        )
 
     print("--- P3 check 2: validation metrics reproduce exactly")
     metrics_check = check_metrics_reproduce(
@@ -211,7 +264,11 @@ def main() -> int:
     failed = [name for name, check in checks.items() if not check["passed"]]
 
     report = {
-        "gate": "P3 — quantized-model validation (DESIGN §10)",
+        "gate": (
+            "P3-equivalent — pruned FP32 candidate validation (m3_registration §5)"
+            if pruned_fp32
+            else "P3 — quantized-model validation (DESIGN §10)"
+        ),
         "candidate_id": label,
         "onnx": {"path": str(model_path), "sha256": model_sha256},
         "policy_id": policy["policy_id"],
