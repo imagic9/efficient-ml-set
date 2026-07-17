@@ -1,13 +1,12 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A, B and C complete; D1 (M1 PTQ), D2 (M2 QAT) and D3 (pruning
-sensitivity) done — M1 = percentile (primary 0.3527), M2 = QAT lr5e-5 (primary
-0.3832, above the M0 deployment reference 0.3667), both past P3/P4 and in
-comparison.jsonl; D3's sensitivity curves and ranking are in
-`results/optimize/m3_prune/`. Every operating point on the ladder carries the
+Status: **Phase A, B, C complete; D1 (M1 PTQ), D2 (M2 QAT), D3 (sensitivity),
+D4 (M3 pruned FP32) done. Ladder in comparison.jsonl: M0 FP32 / M1 percentile
+PTQ (0.3527) / M2 QAT lr5e-5 (0.3832, above the 0.3667 M0 reference) / M3 c30
+(0.3583, −29.9% MACs). All four past P3/P4; every operating point carries the
 registered `recall_floor_infeasible` status (an operating point ships, the
-primary rule is NOT met). Next: D4 (M3 pruned candidates).** The next task is
-always the first `[ ]` in phase order.
+primary rule is NOT met). Next: D5 (M4 = c30 checkpoint + the validated QAT
+recipe).** The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1140,17 +1139,42 @@ exist.
 
 Depends on: D3.
 
-- [ ] Create approximately 15%, 30%, and 45% MAC-reduction candidates with
+- [x] Create approximately 15%, 30%, and 45% MAC-reduction candidates with
       `round_to=8`; record requested versus realized MAC reduction separately.
-- [ ] Physically remove channels and verify changed shapes/MACs.
-- [ ] Assert every surviving channel count is a multiple of 8 before fine-tuning.
-- [ ] Fine-tune each under the fixed data/loss contract.
-- [ ] Export deployable candidates with the P0-accepted opset and parity-check
+- [x] Physically remove channels and verify changed shapes/MACs.
+- [x] Assert every surviving channel count is a multiple of 8 before fine-tuning.
+- [x] Fine-tune each under the fixed data/loss contract.
+- [x] Export deployable candidates with the P0-accepted opset and parity-check
       them; verify changed physical shapes/MACs in ONNX.
-- [ ] Calibrate policies and add all validation rows.
-- [ ] Select one M3 point for M4 using the validation Pareto frontier.
+- [x] Calibrate policies and add all validation rows.
+- [x] Select one M3 point for M4 using the validation Pareto frontier.
 
 **Output:** M3 candidate set, selected checkpoint, models, policies, and evidence.
+
+**DONE 2026-07-17** (PRs #55-#59). Registered before any M3 number
+(`results/optimize/m3_prune/m3_registration.md`): greedy
+marginal-damage-per-MAC allocation over the pinned D3 curves (quantum 8,
+capped at the measured 0.5), fine-tune at M0's own 3e-4 (≤15 epochs, patience
+4, frozen §7.2 contract), mechanical Pareto selection with the D1 0.95
+recovery line. **M3 = c30** (`d4_m3_c30`, sha `c7529ee6…`): 205,614,080 ladder
+MACs (**−29.9%** vs M0), 1,761,720 params (−21.5%), 7,035,950 B FP32, primary
+0.3583 (ratio 0.977, above the 0.3484 line), trans F2 *rises* to 0.1287.
+Selected as the largest realized MAC cut among non-dominated candidates above
+the line. Findings: pruning-without-fine-tune is catastrophic
+(pruned-untuned primary 0.000/0.013); recovery is **non-monotonic** — c30 (30%
+cut) recovered *above* c15 (15%, 0.3259), which is therefore dominated; the
+frontier bends down past 30% (c45 at 43% missed the line, 0.3166). The greedy
+allocation spent its budget on the D3-robust mid-network groups
+(`features.8/9/10` halved) and left the fragile wide `features.15` untouched.
+Two toolchain bugs found and fixed on the way, both with regression tests:
+allocation ratios keyed by bare ints (#56), and a float-boundary in the solver
+that cut an extra quantum (#57 — solver ratios now sit half a channel below
+the `int()` boundary). P3 (FP32-pruned variant: physical-shape gate replaces
+the integer-coverage check) passed all four; P4 passed both full splits
+(4,939 frames, worst gap 5.96e-08, zero decision differences). Evidence root
+`results/optimize/m3_prune/`; card `artifacts/model_cards/m3_pruned_fp32.md`;
+row `M3` in `comparison.jsonl`. c15/c45 stay as the frontier that justified
+the choice. **M4 (D5) applies the QAT recipe to exactly the c30 checkpoint.**
 
 ### D5 — M4 structured-pruned + QAT
 
