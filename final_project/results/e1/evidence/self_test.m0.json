@@ -1,0 +1,10 @@
+{
+  "environment": {
+    "cpu_features": "asimd,asimddp,sve,sve2,i8mm,bf16",
+    "looks_like_pi5": false,
+    "onnxruntime_version": "1.27.0"
+  },
+  "failures": 0,
+  "schema_version": 1,
+  "self_test": "PASSED"
+}
