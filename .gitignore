@@ -145,3 +145,7 @@ id_rsa*
 # E6 native-vs-target: per-toolchain run-dataset/self-test are reproducible by
 # scripts/run_e6_native_vs_target.sh. The committed evidence is native_vs_target.json.
 /final_project/results/e6/native_vs_target/
+
+# E6 gate: the retained ALL/EXTENDED optimized graphs + profiles are bulky and
+# reproducible by scripts/run_e6_gate.sh. The committed evidence is e6_gate.json.
+/final_project/results/e6/graphs/
