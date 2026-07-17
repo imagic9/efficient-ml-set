@@ -1,0 +1,317 @@
+{
+  "gate": "P3 \u2014 quantized-model validation (DESIGN \u00a710)",
+  "candidate_id": "d5_m4_qat_lr5e-5",
+  "onnx": {
+    "path": "results/optimize/m4_qat/lr5e-5/model.onnx",
+    "sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da"
+  },
+  "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+  "ort_version_python": "1.27.0",
+  "tolerances": {
+    "logits_max_abs": 0.0001,
+    "decision_carve_out": 0.0001,
+    "metrics": "exact equality"
+  },
+  "checks": {
+    "graph_and_coverage": {
+      "onnx_checker": "passed",
+      "integer_execution": true,
+      "float_compute_executed": {},
+      "integer_kernels_executed": [
+        "QGemm",
+        "QLinearAdd",
+        "QLinearConv",
+        "QLinearGlobalAveragePool"
+      ],
+      "coverage_report": {
+        "label": "d5_m4_qat_lr5e-5",
+        "model": "results/optimize/m4_qat/lr5e-5/model.onnx",
+        "onnxruntime_version": "1.27.0",
+        "exported_graph": {
+          "op_types": {
+            "Add": 10,
+            "Conv": 52,
+            "DequantizeLinear": 182,
+            "Flatten": 1,
+            "Gemm": 1,
+            "GlobalAveragePool": 1,
+            "QuantizeLinear": 66
+          },
+          "node_count": 313,
+          "domains": {
+            "ai.onnx": 313
+          },
+          "initializer_dtypes": {
+            "float": 138,
+            "int32": 53,
+            "int8": 93
+          }
+        },
+        "optimized_graph": {
+          "op_types": {
+            "DequantizeLinear": 2,
+            "Flatten": 1,
+            "QGemm": 1,
+            "QLinearAdd": 10,
+            "QLinearConv": 52,
+            "QLinearGlobalAveragePool": 1,
+            "QuantizeLinear": 2,
+            "Transpose": 2
+          },
+          "node_count": 71,
+          "domains": {
+            "ai.onnx": 7,
+            "com.microsoft": 64
+          },
+          "initializer_dtypes": {
+            "float": 85,
+            "int32": 53,
+            "int8": 93
+          }
+        },
+        "optimized_graph_path": "results/optimize/m4_qat/lr5e-5/p3_coverage/d5_m4_qat_lr5e-5.optimized.onnx",
+        "execution": {
+          "profile": "results/optimize/m4_qat/lr5e-5/p3_coverage/d5_m4_qat_lr5e-5.profile_2026-07-17_09-18-02_232.json",
+          "executed_ops": {
+            "DequantizeLinear": {
+              "float": 2,
+              "int8": 4
+            },
+            "Flatten": {
+              "float": 1
+            },
+            "QGemm": {
+              "float": 3,
+              "int32": 1,
+              "int8": 4
+            },
+            "QLinearAdd": {
+              "float": 30,
+              "int8": 50
+            },
+            "QLinearConv": {
+              "float": 156,
+              "int32": 52,
+              "int8": 208
+            },
+            "QLinearGlobalAveragePool": {
+              "float": 2,
+              "int8": 3
+            },
+            "QuantizeLinear": {
+              "float": 4,
+              "int8": 2
+            },
+            "Transpose": {
+              "int8": 2
+            }
+          },
+          "execution_providers": {
+            "CPUExecutionProvider": 71
+          },
+          "node_events": 524
+        },
+        "input_fixture": "<generated, seed 0>",
+        "output_summary": {
+          "shape": [
+            1,
+            16
+          ],
+          "dtype": "float32",
+          "mean": -4.559795379638672,
+          "std": 4.3164448738098145,
+          "argmax": 11
+        },
+        "verdict": {
+          "integer_kernels_in_graph": {
+            "QGemm": 1,
+            "QLinearAdd": 10,
+            "QLinearConv": 52,
+            "QLinearGlobalAveragePool": 1
+          },
+          "integer_kernels_executed": {
+            "QGemm": {
+              "float": 3,
+              "int32": 1,
+              "int8": 4
+            },
+            "QLinearAdd": {
+              "float": 30,
+              "int8": 50
+            },
+            "QLinearConv": {
+              "float": 156,
+              "int32": 52,
+              "int8": 208
+            },
+            "QLinearGlobalAveragePool": {
+              "float": 2,
+              "int8": 3
+            }
+          },
+          "float_compute_in_graph": {},
+          "float_compute_executed": {},
+          "float_compute_input_dtypes": [],
+          "qdq_nodes_remaining": {
+            "DequantizeLinear": 2,
+            "QuantizeLinear": 2
+          },
+          "integer_execution": true,
+          "explanation": "integer_execution is true only when at least one integer kernel actually executed AND no Conv/Gemm/MatMul float kernel executed. Presence of QuantizeLinear/DequantizeLinear proves nothing on its own: ORT can dequantize, compute in float, and requantize."
+        }
+      },
+      "passed": true
+    },
+    "metrics_reproduce": {
+      "recorded_primary": 0.37297866996752954,
+      "rerun_primary": 0.37297866996752954,
+      "mismatches": [],
+      "passed": true
+    },
+    "logits_layer": {
+      "fixtures": 10,
+      "worst_max_abs": 0.0,
+      "passed": true,
+      "results": [
+        {
+          "fixture": "5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "585c02ec-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "586e2db9-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "5883ea9d-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58995b28-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58adc360-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58c34c6f-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58d7a1e4-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58e93a4e-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 0.0,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        }
+      ]
+    },
+    "decision_layer": {
+      "fixtures": 4,
+      "worst_max_abs": 0.0,
+      "passed": true,
+      "results": [
+        {
+          "fixture": "infer_5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 0.0,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 0.2801336348056793,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+          "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/5858bfc0-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 0.0,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 0.029769431799650192,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+          "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_585c02ec-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/585c02ec-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 0.0,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 6.731485924227343e-10,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+          "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_frame_1024x747",
+          "image": "tests/fixtures/frame_1024x747.jpg",
+          "logits_max_abs": 0.0,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 1.3785109331365675e-05,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+          "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+          "passed": true,
+          "failures": []
+        }
+      ]
+    },
+    "binding": {
+      "records": 4,
+      "wrong_bindings": [],
+      "passed": true
+    }
+  },
+  "verdict": {
+    "passed": true,
+    "failed": []
+  }
+}
