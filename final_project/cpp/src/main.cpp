@@ -388,6 +388,19 @@ int command_benchmark(const CommonArgs &args) {
                        {"end_to_end", percentiles_json(result.end_to_end)}}},
         {"fps", {{"inference_from_p50", result.inference_fps},
                  {"end_to_end_from_p50", result.end_to_end_fps}}},
+        // DESIGN §11: p95 end-to-end target 200 ms / >=5 FPS (primary), 100 ms /
+        // >=10 FPS (aspirational). Reported here so the number is checkable, but the
+        // met/unmet flags are `..._on_this_host` and `measured_on_pi` is false: a
+        // gx10 or QEMU pass is NOT a Pi verdict until Phase F measures it on a Pi.
+        {"performance_targets",
+         {{"measured_on_pi", false},
+          {"p95_end_to_end_ms", result.end_to_end.p95},
+          {"primary", {{"p95_end_to_end_ms", 200.0}, {"min_fps", 5.0},
+                       {"met_on_this_host", result.end_to_end.p95 <= 200.0}}},
+          {"aspirational", {{"p95_end_to_end_ms", 100.0}, {"min_fps", 10.0},
+                            {"met_on_this_host", result.end_to_end.p95 <= 100.0}}},
+          {"note", "targets are Pi targets (DESIGN §11); the _on_this_host flags are "
+                   "diagnostic only -- not a Pi verdict until Phase F (§12.4)."}}},
         {"system", system_json(result.system)},
         {"environment", environment_json()},
         {"provenance",
