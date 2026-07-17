@@ -5,7 +5,12 @@ full optimization ladder (M0 FP32 / M1 INT8 PTQ / M2 INT8 QAT / M3 structured-
 pruned FP32 / M4 pruned+QAT) is trained, gated (P3/P4), carded, and compared;
 the deployable pre-Pi shortlist **M0 · M2 · M4** and the fixed
 `benchmark_val_1000.jsonl` are frozen. **Phase E (C++ application + deployment
-bundle) is next**, then the conditional Phase F Pi trial.
+bundle) is underway — E1 is done, Gate E1 PASSED**: the C++ foundation is
+hardened (leveled logging convention, `schema_version` on every output) and,
+for the first time, exercised against the real M0 baseline — build + ctest +
+self-test / infer (native and QEMU `cortex-a76`) / benchmark / dataset runner all
+green in the pinned target container (`results/e1/e1_gate.json`). **E2 is next**,
+then the conditional Phase F Pi trial.
 
 **Trans-domain bobcat recall is poor and is reported as such**, per DESIGN §18's registered
 decision rule. M0 catches 86% of bobcat visits at cameras it has seen and 18% at the
@@ -27,7 +32,8 @@ showed it is a property of the frozen recipe, not of seed 42: trans F2 is
 | C4 (export and parity) | **done** — ONNX `c3102764…` at opset 17; P1 bit-exact, P2 and ORT py↔cpp passed; policy re-bound to the ONNX after proof |
 | C5 (seeds 17/73, model card) | **done** — trans F2 0.1142±0.0175 across three seeds: the gap is the recipe, not the seed (#18); model card `artifacts/model_cards/m0_fp32.md`; comparison table opened with the M0 row |
 | Phase D (M1-M4 optimization ladder) | **Gate D PASSES** — see the ladder table below; all five candidates past P3/P4; shortlist and benchmark frozen |
-| Phases E, F, G | not started |
+| E1 (C++ project foundation) | **done** — Gate E1 PASSES: foundation hardened (logging convention, `schema_version`) and exercised against real M0; build + 4/4 ctest + self-test/infer(native+QEMU)/benchmark/run-dataset green in the target container (`results/e1/e1_gate.json`) |
+| Phase E (E2-E8), F, G | not started |
 
 ### The optimization ladder (Phase D, validation / deployment ORT)
 

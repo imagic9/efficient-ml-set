@@ -7,7 +7,9 @@
 //
 // Every subcommand is non-interactive, prints concise human output to stderr and
 // complete machine-readable JSON to stdout, so evidence can be piped and the chatter
-// cannot corrupt it.
+// cannot corrupt it. Diagnostics go through wildlife_trigger::log (logging.hpp), the
+// single leveled convention: error/warning are tagged, info is the untagged human
+// summary, debug is suppressed unless WILDLIFE_LOG_LEVEL asks for it.
 
 #include <chrono>
 #include <fstream>
@@ -22,6 +24,7 @@
 #include "wildlife_trigger/benchmark.hpp"
 #include "wildlife_trigger/cpu_features.hpp"
 #include "wildlife_trigger/hashing.hpp"
+#include "wildlife_trigger/logging.hpp"
 #include "wildlife_trigger/policy.hpp"
 #include "wildlife_trigger/preprocess.hpp"
 #include "wildlife_trigger/session.hpp"
@@ -97,7 +100,7 @@ CommonArgs parse(int argc, char **argv) {
         const std::string flag = argv[i];
         auto value = [&]() -> std::string {
             if (i + 1 >= argc) {
-                std::cerr << "missing value for " << flag << "\n";
+                log::error() << "missing value for " << flag;
                 usage(2);
             }
             return argv[++i];
@@ -122,7 +125,7 @@ CommonArgs parse(int argc, char **argv) {
         else if (flag == "--height") args.height = std::stoi(value());
         else if (flag == "--help" || flag == "-h") usage(0);
         else {
-            std::cerr << "unknown flag: " << flag << "\n";
+            log::error() << "unknown flag: " << flag;
             usage(2);
         }
     }
@@ -131,7 +134,7 @@ CommonArgs parse(int argc, char **argv) {
 
 void require(const std::string &value, const char *name) {
     if (value.empty()) {
-        std::cerr << name << " is required\n";
+        log::error() << name << " is required";
         usage(2);
     }
 }
@@ -145,7 +148,7 @@ void emit(const json &document, const std::string &path) {
             throw std::runtime_error("cannot write output: " + path);
         }
         file << text << "\n";
-        std::cerr << "wrote " << path << "\n";
+        log::info() << "wrote " << path;
     }
 }
 
@@ -264,6 +267,15 @@ Pipeline build_pipeline(const CommonArgs &args, bool with_profiling) {
             "]. Pass --width/--height matching the model.");
     }
 
+    // Suppressed by default; WILDLIFE_LOG_LEVEL=debug surfaces the contract the
+    // startup checks above just verified, which is what you want when a model or
+    // policy is misbehaving and the concise summary is not enough.
+    log::debug() << "model contract: " << session.contract().class_count
+                 << " classes, input [1, 3, " << args.height << ", " << args.width
+                 << "]";
+    log::debug() << "policy '" << policy.policy_id() << "' with "
+                 << policy.targets().size() << " target(s)";
+
     return Pipeline{std::move(class_map), std::move(policy),
                     Preprocessor(preprocess_config), std::move(session), model_hash};
 }
@@ -291,6 +303,7 @@ int command_infer(const CommonArgs &args) {
     const std::string profile = pipeline.session.end_profiling();
 
     json result{
+        {"schema_version", 1},
         {"image", args.image},
         {"model", args.model},
         {"model_sha256", pipeline.model_sha256},
@@ -313,9 +326,9 @@ int command_infer(const CommonArgs &args) {
         result["ort_profile"] = profile;
     }
 
-    std::cerr << (decision.shutter_trigger ? "SHUTTER_TRIGGER=1" : "SHUTTER_TRIGGER=0")
-              << "  top1=" << decision.top1_class << " (" << std::fixed
-              << std::setprecision(4) << decision.top1_score << ")\n";
+    log::info() << (decision.shutter_trigger ? "SHUTTER_TRIGGER=1" : "SHUTTER_TRIGGER=0")
+                << "  top1=" << decision.top1_class << " (" << std::fixed
+                << std::setprecision(4) << decision.top1_score << ")";
     emit(result, args.output);
     return 0;
 }
@@ -323,7 +336,7 @@ int command_infer(const CommonArgs &args) {
 int command_benchmark(const CommonArgs &args) {
     require(args.image, "--image");
     if (args.iterations <= 0) {
-        std::cerr << "--iterations must be positive\n";
+        log::error() << "--iterations must be positive";
         return 2;
     }
     Pipeline pipeline = build_pipeline(args, false);
@@ -383,9 +396,9 @@ int command_benchmark(const CommonArgs &args) {
          "smoke check of the timing path, never a performance claim."},
     };
 
-    std::cerr << "end-to-end p50=" << std::fixed << std::setprecision(2)
-              << result.end_to_end.p50 << "ms p95=" << result.end_to_end.p95
-              << "ms  (" << result.end_to_end_fps << " FPS)\n";
+    log::info() << "end-to-end p50=" << std::fixed << std::setprecision(2)
+                << result.end_to_end.p50 << "ms p95=" << result.end_to_end.p95
+                << "ms  (" << result.end_to_end_fps << " FPS)";
     emit(document, args.output);
     return 0;
 }
@@ -397,7 +410,7 @@ int command_self_test(const CommonArgs &args) {
     int failures = 0;
 
     const auto check = [&failures](bool ok, const std::string &what) {
-        std::cerr << (ok ? "  PASS  " : "  FAIL  ") << what << "\n";
+        log::info() << (ok ? "  PASS  " : "  FAIL  ") << what;
         if (!ok) ++failures;
     };
 
@@ -432,8 +445,9 @@ int command_self_test(const CommonArgs &args) {
               "every configured target is scored and reported");
     }
 
-    std::cerr << (failures == 0 ? "self-test PASSED\n" : "self-test FAILED\n");
-    emit(json{{"self_test", failures == 0 ? "PASSED" : "FAILED"},
+    log::info() << (failures == 0 ? "self-test PASSED" : "self-test FAILED");
+    emit(json{{"schema_version", 1},
+              {"self_test", failures == 0 ? "PASSED" : "FAILED"},
               {"failures", failures},
               {"environment", environment_json()}},
          args.output);
@@ -451,8 +465,8 @@ int command_run_dataset(const CommonArgs &args) {
     require(args.images_root, "--images-root");
     require(args.output, "--output");
     if (args.on_corrupt != "fail" && args.on_corrupt != "skip") {
-        std::cerr << "--on-corrupt must be 'fail' or 'skip', got '"
-                  << args.on_corrupt << "'\n";
+        log::error() << "--on-corrupt must be 'fail' or 'skip', got '"
+                     << args.on_corrupt << "'";
         return 2;
     }
 
@@ -471,6 +485,7 @@ int command_run_dataset(const CommonArgs &args) {
     // refuses a JSONL whose model, policy or class map is not the one under
     // test, exactly as the loaders refused them at startup.
     out << json{{"kind", "run_dataset_header"},
+                {"schema_version", 1},
                 {"model", args.model},
                 {"model_sha256", pipeline.model_sha256},
                 {"policy_id", pipeline.policy.policy_id()},
@@ -544,7 +559,7 @@ int command_run_dataset(const CommonArgs &args) {
             ++skipped;
         }
         if ((processed + skipped) % 500 == 0) {
-            std::cerr << "  " << (processed + skipped) << " frames...\n";
+            log::info() << "  " << (processed + skipped) << " frames...";
         }
     }
     out << json{{"kind", "run_dataset_footer"},
@@ -558,8 +573,8 @@ int command_run_dataset(const CommonArgs &args) {
         throw std::runtime_error("short write: " + args.output);
     }
 
-    std::cerr << "run-dataset: " << processed << " frames (" << skipped
-              << " skipped), " << fired << " fired -> " << args.output << "\n";
+    log::info() << "run-dataset: " << processed << " frames (" << skipped
+                << " skipped), " << fired << " fired -> " << args.output;
     return 0;
 }
 
@@ -575,8 +590,8 @@ int command_dump_tensor(const CommonArgs &args) {
     require(args.image, "--image");
     require(args.output_bin, "--output-bin");
     if (args.preprocess_mode != "fused" && args.preprocess_mode != "reference") {
-        std::cerr << "--preprocess must be 'fused' or 'reference', got '"
-                  << args.preprocess_mode << "'\n";
+        log::error() << "--preprocess must be 'fused' or 'reference', got '"
+                     << args.preprocess_mode << "'";
         return 2;
     }
 
@@ -605,6 +620,7 @@ int command_dump_tensor(const CommonArgs &args) {
                      result.tensor.size() * sizeof(float));
 
     json document{
+        {"schema_version", 1},
         {"image", args.image},
         {"preprocess", args.preprocess_mode},
         {"shape", {1, 3, args.height, args.width}},
@@ -615,8 +631,8 @@ int command_dump_tensor(const CommonArgs &args) {
         {"output_bin", args.output_bin},
         {"opencv_version", CV_VERSION},
     };
-    std::cerr << args.preprocess_mode << " tensor " << tensor_sha256.substr(0, 16)
-              << "... -> " << args.output_bin << "\n";
+    log::info() << args.preprocess_mode << " tensor " << tensor_sha256.substr(0, 16)
+                << "... -> " << args.output_bin;
     emit(document, args.output);
     return 0;
 }
@@ -636,10 +652,10 @@ int main(int argc, char **argv) {
         if (command == "dump-tensor") return command_dump_tensor(args);
         if (command == "run-dataset") return command_run_dataset(args);
     } catch (const std::exception &error) {
-        std::cerr << "error: " << error.what() << "\n";
+        log::error() << error.what();
         return 1;
     }
 
-    std::cerr << "unknown command: " << command << "\n";
+    log::error() << "unknown command: " << command;
     usage(2);
 }

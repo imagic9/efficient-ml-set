@@ -5,13 +5,15 @@ comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 / M3
 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
 `recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
 (M1 dominated by M2/M4, M3 by M4), with `benchmark_val_1000.jsonl` and the
-hash-locked `pre_pi_freeze.json` built. **Next: Phase E (C++ application +
-deployment bundle) — E1 is the first `[ ]`.** Note E1 hardens the A4 smoke
-C++ into a real application/library; much of the C++ (session, preprocess,
-policy, dataset/benchmark runners) already exists from A4/C4/P4 and needs
-consolidating, not writing from scratch. The Pi trial (Phase F) stays
-conditional, unscheduled, one-shot, never early. The next task is always the
-first `[ ]` in phase order.
+hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1 is DONE —
+Gate E1 PASSED** (the C++ foundation hardened and exercised against the real M0:
+leveled logging convention, `schema_version` on every output, build + ctest +
+self-test/infer(native+QEMU)/benchmark/run-dataset all green on M0 in the target
+container; `results/e1/e1_gate.json`). **Next: E2 (preprocessing).** Phase E is a
+consolidation — much of the C++ (session, preprocess, policy, dataset/benchmark
+runners) already exists from A4/C4/P4 and needs verifying and hardening, not
+writing from scratch. The Pi trial (Phase F) stays conditional, unscheduled,
+one-shot, never early. The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1270,17 +1272,39 @@ against M0 — **not** gx10 timing.
 
 Depends on: A4; harden the smoke implementation using M0.
 
-- [ ] Replace the 145-line course smoke test with a C++17 application/library
+- [x] Replace the 145-line course smoke test with a C++17 application/library
       structure, tests, configuration, and CLI.
-- [ ] Implement RAII/error/logging conventions and deterministic JSON schemas.
-- [ ] Vendor a pinned `nlohmann/json` single header plus license/version/hash;
+- [x] Implement RAII/error/logging conventions and deterministic JSON schemas.
+- [x] Vendor a pinned `nlohmann/json` single header plus license/version/hash;
       require no system JSON/YAML development package for the runtime bundle.
-- [ ] Pin the ORT CPU EP build and compiler flags. Use target-scoped Release `-O3`;
+- [x] Pin the ORT CPU EP build and compiler flags. Use target-scoped Release `-O3`;
       forbid `-march=native` on `gx10`. Permit explicit Pi CPU tuning or `native`
       only for a build performed on the same Pi.
-- [ ] Prefer one proven official ONNX Runtime Linux AArch64 artifact for the clean
+- [x] Prefer one proven official ONNX Runtime Linux AArch64 artifact for the clean
       `gx10` target environment and Pi; fall back to pinned source build only if
       P0 proves the artifact incompatible.
+
+**DONE 2026-07-17** (PR #67). E1 is a consolidation, not a rewrite: A4/C4/P4
+had already built the real application (`ModelSession`, `Preprocessor` fused +
+reference, `Policy`, `run-dataset`, `benchmark`, `SystemMonitor`, CLI, vendored
+`nlohmann/json` 3.12.0 hash-locked, ORT 1.27.0 + target toolchain pinned in
+`configs/env/pins.env`, `-mcpu` guard rejecting `native` on gx10). This task
+hardened that foundation and — the part A4 could not — exercised it against the
+**real M0** baseline instead of the synthetic smoke network. Added: the leveled
+logging convention (`cpp/include/wildlife_trigger/logging.hpp`, DESIGN §11
+component 7 — `error:`/`warning:` tagged, info untagged, `debug:` suppressed
+unless `WILDLIFE_LOG_LEVEL=debug`; stdout stays pure JSON) with a CTest unit
+test; `schema_version` on every machine-readable output. **Gate E1 PASSED**
+(`results/e1/e1_gate.json`, `scripts/run_e1_foundation.sh`,
+`validate/e1_gate.py`): built + 4/4 ctest green in
+`wildlife-trigger-target:bookworm` (`-mcpu cortex-a76`); self-test / infer
+(native **and** `-cpu cortex-a76` QEMU, identical decision) / benchmark /
+run-dataset all run on M0 (`m0_fp32_seed42.onnx`, sha `c3102764…`, resolved from
+the freeze); the dataset runner reproduced M0's precomputed operating point on
+**212/212** non-threshold-adjacent frames of a stratified `benchmark_val_1000`
+slice (agreement 1.0; C++-vs-Python-M0 score delta `2.2e-06`, diagnostic); the
+logging convention verified under every threshold. The gx10 benchmark (12.68 ms
+p50) is a timing-path smoke, **not a Pi result** (§12.4), and the output says so.
 
 ### E2 — Preprocessing
 

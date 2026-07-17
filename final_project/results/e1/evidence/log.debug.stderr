@@ -1,0 +1,3 @@
+debug: model contract: 16 classes, input [1, 3, 192, 256]
+debug: policy 'bobcat_v1' with 1 target(s)
+SHUTTER_TRIGGER=0  top1=empty (0.9993)

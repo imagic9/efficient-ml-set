@@ -1,0 +1,70 @@
+{
+  "class_map_sha256": "b38e8bb9ef6188871dba247cde4eb152c73755d2c8dd37cfdba1bcdb6c0a9128",
+  "decision": {
+    "SHUTTER_TRIGGER": 0,
+    "passing_targets": [],
+    "targets": [
+      {
+        "class": "bobcat",
+        "index": 3,
+        "passed": false,
+        "score": 2.5814117634581635e-06,
+        "threshold": 0.5380880236625671
+      }
+    ],
+    "top1": {
+      "class": "empty",
+      "index": 11,
+      "score": 0.9992573857307434
+    }
+  },
+  "environment": {
+    "cpu_features": "asimd,asimddp",
+    "looks_like_pi5": true,
+    "onnxruntime_version": "1.27.0"
+  },
+  "image": "/work/data/raw/extracted/eccv_18_all_images_sm/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+  "letterbox": {
+    "pad_left": 0,
+    "pad_top": 2,
+    "pixel_utilisation": 0.9739583333333334,
+    "resized": [
+      256,
+      187
+    ],
+    "scale": 0.25,
+    "source": [
+      1024,
+      747
+    ]
+  },
+  "logits": [
+    -4.5968122482299805,
+    -6.928181171417236,
+    -1.6288106441497803,
+    -7.147560119628906,
+    -6.854355335235596,
+    -5.496656894683838,
+    -4.635713577270508,
+    -6.176540374755859,
+    -7.717672824859619,
+    -8.229278564453125,
+    -12.73394775390625,
+    5.718871116638184,
+    -8.19222640991211,
+    -7.9100141525268555,
+    -13.239463806152344,
+    -10.41705322265625
+  ],
+  "model": "/work/results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx",
+  "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+  "note": "Single-shot timings are not a benchmark; use `benchmark`.",
+  "policy_id": "bobcat_v1",
+  "schema_version": 1,
+  "timings_ms": {
+    "end_to_end": 1007.707486,
+    "inference": 933.918002,
+    "policy": 0.463984,
+    "preprocess": 73.305932
+  }
+}

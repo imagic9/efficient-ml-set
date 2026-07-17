@@ -90,6 +90,12 @@ onnxruntime_profile_*.json
 /final_project/results/optimize/*/*/p3_reevaluation/
 /final_project/results/optimize/*/*/p3_coverage/
 
+# E1 foundation: the stratified slice and the per-frame run-dataset predictions
+# are large and reproducible by scripts/run_e1_foundation.sh. The committed
+# evidence is e1_gate.json plus the small per-command JSONs and stderr captures.
+/final_project/results/e1/evidence/e1_slice.jsonl
+/final_project/results/e1/evidence/run_dataset.m0.jsonl
+
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being
 # swept up by `git add -A`.

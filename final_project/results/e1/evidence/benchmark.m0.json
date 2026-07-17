@@ -1,0 +1,61 @@
+{
+  "environment": {
+    "cpu_features": "asimd,asimddp,sve,sve2,i8mm,bf16",
+    "looks_like_pi5": false,
+    "onnxruntime_version": "1.27.0"
+  },
+  "fps": {
+    "end_to_end_from_p50": 78.83869653933206,
+    "inference_from_p50": 103.01630717237647
+  },
+  "image": "/work/data/raw/extracted/eccv_18_all_images_sm/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+  "intra_op_threads": 1,
+  "measured_iterations": 100,
+  "model": "/work/results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx",
+  "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+  "provenance": "DESIGN §12.4: a latency number is a Pi result only when measured ON a Pi. Measured on any other host -- gx10 natively or under QEMU -- this is a smoke check of the timing path, never a performance claim.",
+  "schema_version": 1,
+  "stages_ms": {
+    "end_to_end": {
+      "max": 16.89386,
+      "mean": 12.977455359999997,
+      "min": 12.020263,
+      "p50": 12.6841265,
+      "p95": 15.4822354,
+      "p99": 16.40126768
+    },
+    "inference": {
+      "max": 12.958695,
+      "mean": 9.957106960000003,
+      "min": 9.204185,
+      "p50": 9.707201,
+      "p95": 11.88123275,
+      "p99": 12.639788280000001
+    },
+    "policy": {
+      "max": 0.00376,
+      "mean": 0.00073584,
+      "min": 0.000464,
+      "p50": 0.000688,
+      "p95": 0.0009455999999999999,
+      "p99": 0.0012414400000000131
+    },
+    "preprocess": {
+      "max": 3.996766,
+      "mean": 3.0194539999999996,
+      "min": 2.759886,
+      "p50": 2.931902,
+      "p95": 3.6963169999999996,
+      "p99": 3.9348622900000003
+    }
+  },
+  "system": {
+    "cpu_frequency_khz": 2808000,
+    "cpu_temperature_c": 45.8,
+    "peak_rss_kib": 99472,
+    "system_cpu_seconds": 0.044965,
+    "throttling": "unavailable",
+    "user_cpu_seconds": 1.528826
+  },
+  "warmup_iterations": 10
+}
