@@ -1,12 +1,13 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A, B and C complete; D1 (M1 PTQ) and D2 (M2 QAT) done — M1 =
-percentile (primary 0.3527), M2 = QAT lr5e-5 (primary 0.3832, above the M0
-deployment reference 0.3667); both passed P3/P4 and sit in comparison.jsonl.
-Every operating point on the ladder carries the registered
-`recall_floor_infeasible` status (an operating point ships, the primary rule
-is NOT met). Next: D3 (pruning sensitivity).** The next task is always the
-first `[ ]` in phase order.
+Status: **Phase A, B and C complete; D1 (M1 PTQ), D2 (M2 QAT) and D3 (pruning
+sensitivity) done — M1 = percentile (primary 0.3527), M2 = QAT lr5e-5 (primary
+0.3832, above the M0 deployment reference 0.3667), both past P3/P4 and in
+comparison.jsonl; D3's sensitivity curves and ranking are in
+`results/optimize/m3_prune/`. Every operating point on the ladder carries the
+registered `recall_floor_infeasible` status (an operating point ships, the
+primary rule is NOT met). Next: D4 (M3 pruned candidates).** The next task is
+always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1101,20 +1102,39 @@ differences). Evidence root: `results/optimize/m2_qat/`; model card
 
 Depends on: Gate C.
 
-- [ ] Adapt `hw1/src/structured.py` to the frozen MobileNetV2 input and restrict
+- [x] Adapt `hw1/src/structured.py` to the frozen MobileNetV2 input and restrict
       Core pruning roots to expansion channels. Each dependency group must couple
       expansion output/BN, depthwise input/output/groups/BN, and projection input;
       keep projection/residual widths, stem, final conv, and classifier fixed.
-- [ ] Set `round_to=8` on the pruner (`hw1/src/structured.py:33`) so surviving
+- [x] Set `round_to=8` on the pruner (`hw1/src/structured.py:33`) so surviving
       widths stay SIMD-aligned. Unaligned widths make MACs fall while latency does
       not, which would turn the pruning verdict into an artifact of the solver
       rather than a fact about MobileNetV2.
-- [ ] Profile M0 parameters/MACs.
-- [ ] Produce sensitivity evidence for dependency groups.
-- [ ] After each pruning step, test depthwise group/channel equality, residual-add
+- [x] Profile M0 parameters/MACs.
+- [x] Produce sensitivity evidence for dependency groups.
+- [x] After each pruning step, test depthwise group/channel equality, residual-add
       shapes, forward/backward execution, classifier width, and ONNX export.
 
 **Output:** sensitivity report and reproducible pruning config.
+
+**DONE 2026-07-17** (PRs #52-#54). The measurement rule was registered first
+(`results/optimize/m3_prune/sensitivity_protocol.md`); the machinery is
+`optimize/prune.py` (21 tests). Three probed torch-pruning facts are
+load-bearing and recorded there: an ignored out-channel member disqualifies
+its whole group (so t=6 depthwise convs must not be ignored — the intuitive
+reading prunes nothing, silently); projections participate on the in-channel
+side; `round_to` rounds surviving widths (144 @0.25 realizes 104 = 27.8%).
+Evidence: 64 single-group prunes (16 groups × ratios {.125, .25, .375, .5}),
+no fine-tune, bobcat F2 at the yardstick on both domains —
+`results/optimize/m3_prune/sensitivity.{json,md}`. By the registered index,
+`features.3` (144w, early) and the wide late groups `features.15/14` are most
+fragile; mid-network `features.9/12/6/10` most robust; several groups zero the
+primary outright at ratio 0.5, so D4 must allocate by marginal damage, not
+uniformly. Profile: M0 = 312,467,472 MACs / 2,244,368 params under the
+torch-pruning counter at 192×256 (the ladder's analytic reference 293,402,624
+stays the comparison.jsonl convention; the two are never mixed). D3 decides
+nothing; D4's allocation rule gets its own registration before its numbers
+exist.
 
 ### D4 — M3 structured-pruned FP32
 
