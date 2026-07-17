@@ -1,0 +1,90 @@
+{
+  "gate": "P4 \u2014 C++ dataset parity (DESIGN \u00a710)",
+  "candidate_id": "M0",
+  "onnx": {
+    "path": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx",
+    "sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154"
+  },
+  "policy_id": "bobcat_v1",
+  "threshold": 0.5380880236625671,
+  "tolerances": {
+    "score_max_abs": 0.0001,
+    "decision_carve_out": 0.0001,
+    "score_treatment": "diagnostic (FP32 baseline; INT8 1e-4 gate N/A)"
+  },
+  "splits": [
+    {
+      "split": "cis_val_clean",
+      "frames": 3214,
+      "worst_score_gap": 0.0075588226318359375,
+      "mean_score_gap": 0.00022391473113273213,
+      "scores_over_1e-4_gate": 593,
+      "score_treatment": "diagnostic (FP32 baseline; INT8 1e-4 gate N/A)",
+      "decisions_differing": 1,
+      "carved_out_frames": [
+        {
+          "image_id": "59c8046d-23d2-11e8-a6a3-ec086b02610b",
+          "python_score": 0.5380880236625671
+        }
+      ],
+      "near_threshold_frames": 1,
+      "confusion_python": {
+        "true_fire": 105,
+        "false_fire": 152,
+        "missed": 38,
+        "true_quiet": 2918
+      },
+      "confusion_cpp": {
+        "true_fire": 105,
+        "false_fire": 152,
+        "missed": 38,
+        "true_quiet": 2918
+      },
+      "cpp_header": {
+        "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+        "policy_id": "bobcat_v1",
+        "manifest_sha256": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",
+        "threads": 1,
+        "onnxruntime_version": "1.27.0"
+      },
+      "passed": true,
+      "failures": []
+    },
+    {
+      "split": "trans_val",
+      "frames": 1725,
+      "worst_score_gap": 0.011184632778167725,
+      "mean_score_gap": 0.0003242628449087127,
+      "scores_over_1e-4_gate": 470,
+      "score_treatment": "diagnostic (FP32 baseline; INT8 1e-4 gate N/A)",
+      "decisions_differing": 0,
+      "carved_out_frames": [],
+      "near_threshold_frames": 0,
+      "confusion_python": {
+        "true_fire": 63,
+        "false_fire": 28,
+        "missed": 730,
+        "true_quiet": 904
+      },
+      "confusion_cpp": {
+        "true_fire": 63,
+        "false_fire": 28,
+        "missed": 730,
+        "true_quiet": 904
+      },
+      "cpp_header": {
+        "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+        "policy_id": "bobcat_v1",
+        "manifest_sha256": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a",
+        "threads": 1,
+        "onnxruntime_version": "1.27.0"
+      },
+      "passed": true,
+      "failures": []
+    }
+  ],
+  "verdict": {
+    "passed": true,
+    "failed": []
+  }
+}

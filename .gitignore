@@ -96,6 +96,12 @@ onnxruntime_profile_*.json
 /final_project/results/e1/evidence/e1_slice.jsonl
 /final_project/results/e1/evidence/run_dataset.m0.jsonl
 
+# E4 dataset-runner parity: the per-frame validation JSONL is large and
+# reproducible by scripts/run_e4_m0_parity.sh. The committed evidence is
+# p4_dataset_parity_m0.json.
+/final_project/results/e4/cpp_cis_val_clean.jsonl
+/final_project/results/e4/cpp_trans_val.jsonl
+
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being
 # swept up by `git add -A`.
