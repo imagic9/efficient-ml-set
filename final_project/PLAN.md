@@ -1582,16 +1582,35 @@ consolidation**.
 
 Depends on: E6.
 
-- [ ] Package C++ executable, required runtime/install instructions, M0 and every
+- [x] Package C++ executable, required runtime/install instructions, M0 and every
       shortlisted ONNX model/policy, class map, validation benchmark/parity subset,
-      sample images, `install.sh`, `run_demo.sh`, and checksums.
-- [ ] Generate bundle manifest with commit/model/policy hashes.
-- [ ] Test installation in a clean target-compatible container on `gx10` without
-      access to the host training environment or unbundled artifacts.
-- [ ] If binary compatibility cannot be proven, include pinned source/build
-      automation and make Pi-side compilation part of `install.sh`.
+      sample images, `install.sh`, `run_demo.sh`, and checksums. *(`build_bundle.sh`
+      stages M0/M2/M4 + policies + class map from the freeze, a 47-frame stratified
+      slice + its images, the pinned ORT, and the POSIX-sh installer/demo.)*
+- [x] Generate bundle manifest with commit/model/policy hashes. *(`BUNDLE.json`: git
+      commit, per-artifact sha256 checked against the freeze, ORT version, build
+      glibc; plus `MANIFEST.sha256` over every file.)*
+- [x] Test installation in a clean target-compatible container on `gx10` without
+      access to the host training environment or unbundled artifacts. *(clean
+      `debian:bookworm-slim`, only the bundle mounted: `install.sh` apt-installs the
+      OpenCV 4.6.0 runtime, all libraries resolve, self-test PASSED, `run_demo` ran
+      infer+benchmark+run-dataset over the 47-frame slice — `results/e7/e7_bundle.json`.)*
+- [x] If binary compatibility cannot be proven, include pinned source/build
+      automation and make Pi-side compilation part of `install.sh`. *(N/A for the
+      Bookworm target — binary compatibility IS proven: max GLIBC required 2.34 ≤ 2.36,
+      OpenCV via apt is the matching .406 soname. The Trixie-soname contingency
+      (rebuild on the Pi, or minimal OpenCV from source) is documented in
+      `deploy/pi/README.md`.)*
 
-**Output:** versioned ARM64 deployment archive.
+**DONE 2026-07-17.** OpenCV decision (empirically: Debian's `libopencv_imgcodecs`
+drags a ~50-library GDAL/poppler/database closure): **not bundled** — `install.sh`
+apt-installs the OpenCV 4.6.0 runtime, which on Pi OS Bookworm is the byte-compatible
+`.406` soname the binary linked against. `bundle_audit.py` proves completeness +
+checksums + glibc (2.34), and the clean-install test proves it runs without the
+training env.
+
+**Output:** versioned ARM64 deployment archive (staged at `results/e7/bundle/`,
+gitignored; `bundle_audit.json` + `e7_bundle.json` + `clean_install.log` committed).
 
 ### E8 — Full ARM64 dry run
 

@@ -137,6 +137,7 @@ PY
 # --- 4. installer, demo, readme ----------------------------------------------
 install -m 0755 "${PROJECT_ROOT}/deploy/pi/install.sh" "${STAGING}/install.sh"
 install -m 0755 "${PROJECT_ROOT}/deploy/pi/run_demo.sh" "${STAGING}/run_demo.sh"
+install -m 0755 "${PROJECT_ROOT}/deploy/pi/run_benchmark.sh" "${STAGING}/run_benchmark.sh"
 install -m 0644 "${PROJECT_ROOT}/deploy/pi/README.md" "${STAGING}/README.md"
 
 # --- 5. provenance manifest (git commit, hashes, ORT, glibc) -----------------

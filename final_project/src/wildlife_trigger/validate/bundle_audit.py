@@ -48,6 +48,7 @@ REQUIRED_PATHS = (
     "data/manifest.jsonl",
     "install.sh",
     "run_demo.sh",
+    "run_benchmark.sh",
     "README.md",
     "BUNDLE.json",
     "MANIFEST.sha256",
