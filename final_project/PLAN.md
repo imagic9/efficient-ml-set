@@ -1,12 +1,14 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A, B, C complete; D1 (M1 PTQ), D2 (M2 QAT), D3 (sensitivity),
-D4 (M3 pruned FP32) done. Ladder in comparison.jsonl: M0 FP32 / M1 percentile
-PTQ (0.3527) / M2 QAT lr5e-5 (0.3832, above the 0.3667 M0 reference) / M3 c30
-(0.3583, −29.9% MACs). All four past P3/P4; every operating point carries the
-registered `recall_floor_infeasible` status (an operating point ships, the
-primary rule is NOT met). Next: D5 (M4 = c30 checkpoint + the validated QAT
-recipe).** The next task is always the first `[ ]` in phase order.
+Status: **Phase A, B, C and the whole D optimization ladder (D1–D5) complete.
+comparison.jsonl holds all five: M0 FP32 / M1 percentile PTQ (0.3527) / M2 QAT
+lr5e-5 (0.3832) / M3 c30 pruned FP32 (0.3583, −29.9% MACs) / M4 c30+QAT
+(0.373, 2.01 MB — ladder-smallest, −29.9% MACs). All past P3/P4; every
+operating point carries `recall_floor_infeasible`. The non-dominated
+deployment front is {M2 (accuracy), M4 (MACs+size)} with M0 as FP32 reference;
+Pi latency settles it. Next: D6 (pre-Pi shortlist + build/freeze
+`benchmark_val_1000.jsonl`, DESIGN §12.2).** The next task is always the first
+`[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1180,11 +1182,36 @@ the choice. **M4 (D5) applies the QAT recipe to exactly the c30 checkpoint.**
 
 Depends on: D4, D2.
 
-- [ ] Apply the validated QAT recipe to the selected M3 FP32 checkpoint.
-- [ ] Export, profile, calibrate, and pass P3/P4.
-- [ ] Add M4 to the comparison table without assuming it is the winner.
+- [x] Apply the validated QAT recipe to the selected M3 FP32 checkpoint.
+- [x] Export, profile, calibrate, and pass P3/P4.
+- [x] Add M4 to the comparison table without assuming it is the winner.
 
 **Output:** M4 model, policy, profile, metrics, and comparison row.
+
+**DONE 2026-07-17** (PRs #60-#63). Registered before any number
+(`results/optimize/m4_qat/registration.md`): the *validated M2 recipe* (lr5e-5,
+6 epochs, observers frozen after epoch 1) on the M3 **c30** checkpoint — no new
+LR search (§8.4 "apply the validated procedure"), and the §8.4 verdict rule
+committed to recording whichever way the M2-vs-M4 comparison fell. The trainer
+was generalized to a pruned source (`apply_widths` at init and export; the
+QAT structure is shape-agnostic). **M4 = `d5_m4_qat_lr5e-5`** (sha
+`2c9d53b4…`), best epoch 3, a real INT8 graph (`integer_execution=True`) at
+**2,014,806 B — the smallest artifact on the ladder**; params/MACs identical
+to M3 (QAT preserves shape). ORT primary **0.373** (cis F2 0.6529 — ladder
+best; trans 0.0930). **Verdict (§8.4): M4 and M2 are non-dominated** — M2 wins
+primary (0.3832), M4 wins both MACs (205.6M vs 293.4M) and size (2.01 vs 2.54
+MB); both go to the D6 shortlist and **Pi latency settles which ships**. M4
+*dominates* its FP32 parent M3 (same MACs, higher primary, 3.5× smaller file):
+QAT is what a pruned model should ship as. Finding: QAT sharpened cis at
+trans's expense (trans F2 fell from M3's 0.1287 to 0.0930) — the pruned
+architecture spent its recovered capacity on the easier domain, so M3-FP32
+keeps the ladder's best trans F2 on record. P3 (quantized variant, integer
+coverage) passed all four; P4 both splits (worst gap 5.96e-08, one trans
+decision inside the 1e-4 carve-out). Operating point 0.543913,
+`recall_floor_infeasible`. Card `artifacts/model_cards/m4_pruned_qat.md`; row
+`M4` in `comparison.jsonl`. (Cosmetic: the existing M4 run dir carries the
+pre-fix `m2_qat` name stem; `run_name_stem` fixed for future runs, nothing
+downstream keys on it.)
 
 ### D6 — Freeze deployable pre-Pi shortlist
 

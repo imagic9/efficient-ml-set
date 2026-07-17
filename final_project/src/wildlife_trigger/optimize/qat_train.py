@@ -87,6 +87,10 @@ class QatConfig:
     candidate_kind: str = "int8_qat"
     candidate_model_id: str = "M2-candidate"
     candidate_design: str = "8.2"
+    # The run-directory / history run_name stem. Defaults to M2's so D2 stays
+    # byte-stable; M4 sets "m4_qat". Nothing downstream keys on it (candidate_id
+    # is the key), but the evidence should not call an M4 run "m2_qat".
+    run_name_stem: str = "m2_qat"
 
     # Data (the frozen §7.2 contract; same defaults as TrainConfig)
     manifests_dir: str = "data/manifests"
@@ -234,7 +238,7 @@ def train_arm(config: QatConfig, lr: float) -> dict:
 
     ctx = runs.RunContext.create(
         phase=config.phase,
-        name=f"m2_qat_{label}",
+        name=f"{config.run_name_stem}_{label}",
         config={**asdict(config), "lr": lr},
         results_root=Path(config.output_root) / "runs",
     )
@@ -363,7 +367,7 @@ def train_arm(config: QatConfig, lr: float) -> dict:
             runs.save_checkpoint(ctx.best_checkpoint_path, state)
 
     history_record = {
-        "run_name": f"m2_qat_{label}",
+        "run_name": f"{config.run_name_stem}_{label}",
         "run_id": ctx.run_id,
         "lr": lr,
         "best_epoch": best["epoch"],
