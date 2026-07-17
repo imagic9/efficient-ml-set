@@ -1,14 +1,17 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phase A, B, C and the whole D optimization ladder (D1–D5) complete.
-comparison.jsonl holds all five: M0 FP32 / M1 percentile PTQ (0.3527) / M2 QAT
-lr5e-5 (0.3832) / M3 c30 pruned FP32 (0.3583, −29.9% MACs) / M4 c30+QAT
-(0.373, 2.01 MB — ladder-smallest, −29.9% MACs). All past P3/P4; every
-operating point carries `recall_floor_infeasible`. The non-dominated
-deployment front is {M2 (accuracy), M4 (MACs+size)} with M0 as FP32 reference;
-Pi latency settles it. Next: D6 (pre-Pi shortlist + build/freeze
-`benchmark_val_1000.jsonl`, DESIGN §12.2).** The next task is always the first
-`[ ]` in phase order.
+Status: **Phase A, B, C and the ENTIRE Phase D complete — Gate D PASSED.**
+comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 / M3
+pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
+`recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
+(M1 dominated by M2/M4, M3 by M4), with `benchmark_val_1000.jsonl` and the
+hash-locked `pre_pi_freeze.json` built. **Next: Phase E (C++ application +
+deployment bundle) — E1 is the first `[ ]`.** Note E1 hardens the A4 smoke
+C++ into a real application/library; much of the C++ (session, preprocess,
+policy, dataset/benchmark runners) already exists from A4/C4/P4 and needs
+consolidating, not writing from scratch. The Pi trial (Phase F) stays
+conditional, unscheduled, one-shot, never early. The next task is always the
+first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1217,14 +1220,14 @@ downstream keys on it.)
 
 Depends on: D1, D2, D4, D5.
 
-- [ ] Reject any candidate failing correctness/export/parity gates.
-- [ ] Apply DESIGN §8.5 validation selection rules.
-- [ ] Use `gx10` latency only to detect float fallback/pathologies, never to rank
+- [x] Reject any candidate failing correctness/export/parity gates.
+- [x] Apply DESIGN §8.5 validation selection rules.
+- [x] Use `gx10` latency only to detect float fallback/pathologies, never to rank
       Cortex-A76 candidates.
-- [ ] Remove candidates dominated on validation bobcat F2, MACs, and model size.
-- [ ] Write `results/model_selection/pre_pi_shortlist.md`, including every
+- [x] Remove candidates dominated on validation bobcat F2, MACs, and model size.
+- [x] Write `results/model_selection/pre_pi_shortlist.md`, including every
       rejection and all non-dominated deployable candidates.
-- [ ] **Build and freeze `benchmark_val_1000.jsonl`** per DESIGN §12.2. No earlier
+- [x] **Build and freeze `benchmark_val_1000.jsonl`** per DESIGN §12.2. No earlier
       task owned this file, yet E7 packages it and F4 runs the mandatory parity on
       it. Stratify by bobcat, empty, rare, multi-label, and preprocessing edge
       cases, and add the dedicated **threshold-adjacent stratum**
@@ -1232,11 +1235,32 @@ Depends on: D1, D2, D4, D5.
       Only those frames can flip a decision between gx10 and the Pi, so a subset
       without them can pass while proving nothing. The manifest is fixed and
       identical for every model, including M0-FP32.
-- [ ] Freeze models, candidate-specific bobcat policies, preprocessing, class map,
+- [x] Freeze models, candidate-specific bobcat policies, preprocessing, class map,
       and hashes for Pi validation; keep test labels sealed.
 
 **Gate D:** M0 and the complete deployable optimized shortlist are frozen for Pi
 validation. No final optimized winner has been selected using `gx10` latency.
+
+**PASSED 2026-07-17** (PRs #64-#65). Mechanical throughout. **Shortlist = M0 ·
+M2 · M4** (`results/model_selection/pre_pi_shortlist.{md,json}`): all five
+candidates are `recall_floor_infeasible`, so §8.5 step 2 takes the documented
+fallback branch; on (mean bobcat F2, MACs, size) **M1 is dominated by M2/M4 and
+M3 by M4**, leaving the non-dominated optimized front {M2, M4} plus M0 as the
+mandatory FP32 baseline (§12.2). gx10 latency is not used to rank — float
+fallback is excluded by the committed integer-execution coverage (§12.4).
+**`benchmark_val_1000.jsonl`** (sha `c6297263…`, `data.benchmark_manifest`):
+1000 validation frames, the **threshold-adjacent stratum over-sampled 2.04% →
+10.10%** (all 101 frames within eps=0.1 of M0's 0.538 operating point — the
+only frames a GB10-SVE2-vs-Pi-NEON numeric difference can flip), plus bobcat
+293 / empty 293 / rare 158 / other 153 / 2 non-bobcat multi-label (the rest of
+the 61 multi-label frames contain bobcat and sit in that stratum);
+preprocessing-edge is honestly empty (CCT-20 val is geometrically uniform
+≈1.37 aspect). Built once from M0's operating point, identical for every model,
+seeded/deterministic, validation-only. **`pre_pi_freeze.json`**: the
+hash-locked bill of materials for M0/M2/M4 — every ONNX re-verified against its
+policy binding, plus class map, preprocessing contract, benchmark hash; test
+labels sealed. Pi latency (F-phase) chooses the final model from {M2, M4}
+against M0 — **not** gx10 timing.
 
 ---
 
