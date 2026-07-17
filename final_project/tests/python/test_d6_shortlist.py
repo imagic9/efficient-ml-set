@@ -14,7 +14,9 @@ import numpy as np
 import pytest
 
 from wildlife_trigger.data import benchmark_manifest as B
+from wildlife_trigger.optimize import pre_pi_freeze as F
 from wildlife_trigger.optimize import pre_pi_shortlist as S
+from wildlife_trigger.runs import sha256_file
 
 
 def row(model_id, kind, primary, macs, byts, *, status="recall_floor_infeasible",
@@ -198,3 +200,66 @@ class TestBenchmarkManifest:
         np.savez(npz, **data)
         with pytest.raises(RuntimeError, match="no M0 score"):
             B.build(manifests, npz, policy, tmp / "b.jsonl", eps=0.1, seed=42)
+
+
+class TestFreeze:
+    @pytest.fixture()
+    def world(self, tmp_path):
+        """A shortlist + comparison + policies + fake ONNX artifacts that agree."""
+        art = tmp_path / "artifacts"
+        (art / "policies").mkdir(parents=True)
+        class_map = art / "class_map.json"
+        class_map.write_text(json.dumps({"classes": ["bobcat"]}, sort_keys=True))
+
+        rows = []
+        for mid, byts in (("M0", 8_950_645), ("M2", 2_536_267)):
+            onnx = tmp_path / f"{mid}.onnx"
+            onnx.write_bytes(f"graph-{mid}".encode())
+            sha = sha256_file(onnx)
+            policy_path = art / "policies" / f"bobcat_{mid}_v1.json"
+            policy_path.write_text(json.dumps({
+                "policy_id": f"bobcat_{mid}_v1",
+                "model_sha256": sha,
+                "model": {"artifact": str(onnx), "parity": f"{mid}_p3.json"},
+                "targets": [{"class": "bobcat", "threshold": 0.5}],
+                "calibration": {"status": "recall_floor_infeasible"},
+            }))
+            rows.append({
+                "model_id": mid,
+                "kind": "int8_qat" if mid == "M2" else "fp32_baseline",
+                "macs": 293_402_624, "params": 2_244_368,
+                "model": {"sha256": sha, "bytes": byts},
+                "policy": {"path": str(policy_path)},
+            })
+
+        comparison = tmp_path / "comparison.jsonl"
+        comparison.write_text("".join(json.dumps(r) + "\n" for r in rows))
+        shortlist = tmp_path / "shortlist.json"
+        shortlist.write_text(json.dumps({"shortlist": ["M0", "M2"]}))
+        benchmark = tmp_path / "benchmark_val_1000.jsonl"
+        benchmark.write_text('{"image_id":"x"}\n')
+        benchmark.with_suffix(".provenance.json").write_text("{}")
+        return {"comparison": comparison, "shortlist": shortlist,
+                "class_map": class_map, "benchmark": benchmark, "tmp": tmp_path}
+
+    def test_freezes_the_shortlisted_bundle(self, world):
+        record = F.freeze(world["shortlist"], world["comparison"], world["benchmark"],
+                          world["class_map"], 256, 192)
+        assert [m["model_id"] for m in record["models"]] == ["M0", "M2"]
+        assert record["preprocessing"]["width"] == 256
+        assert record["test_labels"].startswith("sealed")
+        for m in record["models"]:
+            assert m["onnx"]["sha256"] and m["policy"]["sha256"]
+
+    def test_refuses_a_drifted_artifact(self, world):
+        (world["tmp"] / "M2.onnx").write_bytes(b"tampered graph, different bytes")
+        with pytest.raises(RuntimeError, match="drifted from what was calibrated"):
+            F.freeze(world["shortlist"], world["comparison"], world["benchmark"],
+                     world["class_map"], 256, 192)
+
+    def test_records_preprocessing_and_benchmark_hashes(self, world):
+        record = F.freeze(world["shortlist"], world["comparison"], world["benchmark"],
+                         world["class_map"], 256, 192)
+        assert record["benchmark"]["sha256"]
+        assert record["class_map"]["sha256"]
+        assert record["preprocessing"]["mean"] == [0.485, 0.456, 0.406]
