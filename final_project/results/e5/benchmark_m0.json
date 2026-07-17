@@ -1,0 +1,76 @@
+{
+  "environment": {
+    "cpu_features": "asimd,asimddp,sve,sve2,i8mm,bf16",
+    "looks_like_pi5": false,
+    "onnxruntime_version": "1.27.0"
+  },
+  "fps": {
+    "end_to_end_from_p50": 80.69143196992114,
+    "inference_from_p50": 104.0134905497243
+  },
+  "image": "/work/tests/fixtures/frame_1024x747.jpg",
+  "intra_op_threads": 1,
+  "measured_iterations": 200,
+  "model": "/work/results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx",
+  "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+  "performance_targets": {
+    "aspirational": {
+      "met_on_this_host": true,
+      "min_fps": 10.0,
+      "p95_end_to_end_ms": 100.0
+    },
+    "measured_on_pi": false,
+    "note": "targets are Pi targets (DESIGN §11); the _on_this_host flags are diagnostic only -- not a Pi verdict until Phase F (§12.4).",
+    "p95_end_to_end_ms": 13.106234,
+    "primary": {
+      "met_on_this_host": true,
+      "min_fps": 5.0,
+      "p95_end_to_end_ms": 200.0
+    }
+  },
+  "provenance": "DESIGN §12.4: a latency number is a Pi result only when measured ON a Pi. Measured on any other host -- gx10 natively or under QEMU -- this is a smoke check of the timing path, never a performance claim.",
+  "schema_version": 1,
+  "stages_ms": {
+    "end_to_end": {
+      "max": 14.997153,
+      "mean": 12.441614374999999,
+      "min": 11.874018,
+      "p50": 12.392889499999999,
+      "p95": 13.106234,
+      "p99": 13.520938639999994
+    },
+    "inference": {
+      "max": 11.968209,
+      "mean": 9.647434649999997,
+      "min": 9.181553,
+      "p50": 9.6141375,
+      "p95": 10.16862915,
+      "p99": 10.538238789999998
+    },
+    "policy": {
+      "max": 0.000976,
+      "mean": 0.0007323200000000001,
+      "min": 0.000576,
+      "p50": 0.00072,
+      "p95": 0.000848,
+      "p99": 0.0009601599999999998
+    },
+    "preprocess": {
+      "max": 3.315329,
+      "mean": 2.7932553250000005,
+      "min": 2.655377,
+      "p50": 2.77764,
+      "p95": 2.9506399999999995,
+      "p99": 3.081223049999999
+    }
+  },
+  "system": {
+    "cpu_frequency_khz": 2808000,
+    "cpu_temperature_c": 45.9,
+    "peak_rss_kib": 99324,
+    "system_cpu_seconds": 0.051046,
+    "throttling": "unavailable",
+    "user_cpu_seconds": 2.700453
+  },
+  "warmup_iterations": 10
+}

@@ -20,4 +20,10 @@ if(WILDLIFE_BUILD_ORT_TOOLS)
   add_executable(test_preprocess test_preprocess.cpp)
   target_link_libraries(test_preprocess PRIVATE wildlife_trigger_app ${OpenCV_LIBS})
   add_test(NAME preprocess COMMAND test_preprocess)
+
+  # summarise() (percentile math) lives in the app library; the test needs no ORT
+  # symbols but links the library that carries it.
+  add_executable(test_benchmark test_benchmark.cpp)
+  target_link_libraries(test_benchmark PRIVATE wildlife_trigger_app)
+  add_test(NAME benchmark COMMAND test_benchmark)
 endif()

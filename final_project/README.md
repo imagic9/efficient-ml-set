@@ -36,7 +36,8 @@ showed it is a property of the frozen recipe, not of seed 42: trans F2 is
 | E2 (preprocessing) | **done** — `Preprocessor` fused + reference paths agree ≤1e-6 on six geometries and match the Python golden tensors (P1: python↔fused 0.0, python↔reference 7e-7); BGR-as-RGB rejected; corrupt image raises |
 | E3 (model session + policy) | **done** — `ModelSession` (RAII, contract validation, `ORT_ENABLE_ALL`, profiling, optimized-graph) + `Policy` (`mode: any`, model/class-map hash binding, `SHUTTER_TRIGGER` output); full policy/threshold test matrix incl. `empty`-target rejection, green in the target container |
 | E4 (dataset runner) | **done** — P4 dataset parity for M0 over cis_val_clean (3214) + trans_val (1725): confusion matrix identical, 0 hard decision disagreements; the FP32 score gap (≤1.1e-2) is the P1 OpenCV 4.6↔4.13 `INTER_LINEAR` drift — diagnosed, reported, not a bug (`results/e4/p4_dataset_parity_m0.json`) |
-| Phase E (E5-E8), F, G | not started |
+| E5 (benchmark + system monitor) | **done** — percentile calculation unit-tested (numpy-matching linear interpolation); benchmark emits a `performance_targets` report (200 ms/5 FPS, 100 ms/10 FPS) with `measured_on_pi:false`; system monitor honest on absent sensors (`results/e5/benchmark_m0.json`) |
+| Phase E (E6-E8), F, G | not started |
 
 ### The optimization ladder (Phase D, validation / deployment ORT)
 
