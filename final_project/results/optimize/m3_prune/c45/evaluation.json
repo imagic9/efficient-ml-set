@@ -1,0 +1,98 @@
+{
+  "tool": "wildlife_trigger.optimize.evaluate_onnx",
+  "label": "d4_m3_c45",
+  "target": "bobcat",
+  "yardstick_threshold": 0.5,
+  "model": {
+    "path": "results/optimize/m3_prune/c45/model.onnx",
+    "sha256": "ebcca096d63843f3f623448ea40a7908b0a91b3069ceaa91cf3a5bfdcce5c741",
+    "bytes": 5364784
+  },
+  "regime": {
+    "runtime": "onnxruntime 1.27.0",
+    "provider": "CPUExecutionProvider",
+    "intra_op_threads": 1,
+    "batch_size": 1,
+    "input": "256x192"
+  },
+  "manifests": {
+    "cis_val_clean": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",
+    "trans_val": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a"
+  },
+  "class_names": [
+    "opossum",
+    "raccoon",
+    "squirrel",
+    "bobcat",
+    "skunk",
+    "dog",
+    "coyote",
+    "rabbit",
+    "bird",
+    "cat",
+    "badger",
+    "empty",
+    "car",
+    "deer",
+    "fox",
+    "rodent"
+  ],
+  "domains": {
+    "cis_val_clean": {
+      "target": {
+        "threshold": 0.5,
+        "frame_recall": 0.7291666666666666,
+        "frame_precision": 0.33653846153846156,
+        "frame_f2": 0.5912162162162163,
+        "sequence_balanced_recall": 0.7266666666666666,
+        "positive_sequences": 50,
+        "event_capture_rate": 0.82,
+        "false_fire_rate": 0.06742671009771987,
+        "fire_rate": 0.0970752955818295,
+        "true_positives": 105,
+        "false_positives": 207,
+        "false_negatives": 39,
+        "positive_frames": 144,
+        "negative_frames": 3070,
+        "average_precision": 0.5602189721441803
+      },
+      "support_aware_macro_f1": 0.6144836566851173,
+      "top1_accuracy": 0.5706285003111388,
+      "frames": 3214,
+      "sequences": 1197
+    },
+    "trans_val": {
+      "target": {
+        "threshold": 0.5,
+        "frame_recall": 0.034047919293820936,
+        "frame_precision": 0.6923076923076923,
+        "frame_f2": 0.04204297726564934,
+        "sequence_balanced_recall": 0.033962264150943396,
+        "positive_sequences": 265,
+        "event_capture_rate": 0.07169811320754717,
+        "false_fire_rate": 0.012875536480686695,
+        "fire_rate": 0.022608695652173914,
+        "true_positives": 27,
+        "false_positives": 12,
+        "false_negatives": 766,
+        "positive_frames": 793,
+        "negative_frames": 932,
+        "average_precision": 0.5130544926738666
+      },
+      "support_aware_macro_f1": 0.14960902849985663,
+      "top1_accuracy": 0.1582608695652174,
+      "frames": 1725,
+      "sequences": 589
+    }
+  },
+  "selection_score": {
+    "primary": 0.31662959674093283,
+    "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+    "tiebreak_1_sequence_balanced_recall": 0.380314465408805,
+    "tiebreak_2_macro_f1": 0.38204634259248693
+  },
+  "predictions_npz": {
+    "path": "results/optimize/m3_prune/c45/predictions.npz",
+    "sha256": "f22d99a2be345356c5ff2042ed743e456699f38545728e9842e32ddd6ad336e0"
+  }
+}
