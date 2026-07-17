@@ -149,3 +149,8 @@ id_rsa*
 # E6 gate: the retained ALL/EXTENDED optimized graphs + profiles are bulky and
 # reproducible by scripts/run_e6_gate.sh. The committed evidence is e6_gate.json.
 /final_project/results/e6/graphs/
+
+# E7 deployment bundle: the staged bundle (models, ORT, images) is bulky and
+# reproducible by scripts/build_bundle.sh. Committed evidence: bundle_audit.json,
+# e7_bundle.json, clean_install.log.
+/final_project/results/e7/bundle/
