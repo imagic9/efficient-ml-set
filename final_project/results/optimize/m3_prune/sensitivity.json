@@ -1,0 +1,2489 @@
+{
+  "tool": "wildlife_trigger.optimize.prune --sensitivity",
+  "protocol": "results/optimize/m3_prune/sensitivity_protocol.md",
+  "config": {
+    "path": "configs/optimize/m3_prune.yaml",
+    "sha256": "5efd8f8d24a5dbc8fbc4a5f6495fbc0f461d6d36725c35024395883417c518a0",
+    "m0_run": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z",
+    "checkpoint_sha256": "42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074",
+    "ratios": [
+      0.125,
+      0.25,
+      0.375,
+      0.5
+    ],
+    "round_to": 8
+  },
+  "environment": {
+    "torch": "2.11.0+cu130",
+    "torch_pruning_dist": "1.6.1",
+    "device": "cuda",
+    "tf32_disabled": true
+  },
+  "baseline": {
+    "profile": {
+      "macs": 312467472,
+      "params": 2244368,
+      "counter": "torch_pruning.utils.count_ops_and_params"
+    },
+    "per_domain": {
+      "cis_val_clean": {
+        "frame_f2": 0.6279620853080569,
+        "frame_recall": 0.7361111111111112,
+        "frame_precision": 0.39552238805970147,
+        "sequence_balanced_recall": 0.7333333333333333,
+        "false_fire_rate": 0.05276872964169381
+      },
+      "trans_val": {
+        "frame_f2": 0.105440097799511,
+        "frame_recall": 0.08701134930643127,
+        "frame_precision": 0.69,
+        "sequence_balanced_recall": 0.08679245283018867,
+        "false_fire_rate": 0.033261802575107295
+      }
+    },
+    "primary": 0.36670109155378394
+  },
+  "analytic_macs_reference": {
+    "macs_at_256x192_16cls": 293402624,
+    "note": "the ladder's comparison.jsonl counts MACs analytically (input_cost.macs_at); this report's counter is torch_pruning.count_ops_and_params, used consistently before and after every mutation. The two conventions differ and are never mixed."
+  },
+  "group_verification": [
+    {
+      "block": 2,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 3,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 4,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 5,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 6,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 7,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 8,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 9,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 10,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 11,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 12,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 13,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 14,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 15,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 16,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "block": 17,
+      "members": [
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "BatchNorm2d",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "_ElementWiseOp",
+          "handler": "prune_out_channels"
+        },
+        {
+          "module": "Conv2d",
+          "handler": "prune_in_channels"
+        }
+      ],
+      "verified": true
+    }
+  ],
+  "groups": [
+    {
+      "block": 2,
+      "conv": "features.2.conv.0.0",
+      "width": 96,
+      "sensitivity_index": 0.2654646762689268,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 96,
+          "width_after": 80,
+          "realized_ratio": 0.166667,
+          "macs": 306962448,
+          "mac_reduction": 0.017618,
+          "primary": 0.2161555389039508,
+          "delta_primary": 0.15054555264983313,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.3415697674418604,
+              "frame_recall": 0.3263888888888889,
+              "frame_precision": 0.41964285714285715,
+              "sequence_balanced_recall": 0.32666666666666666,
+              "false_fire_rate": 0.021172638436482084
+            },
+            "trans_val": {
+              "frame_f2": 0.09074131036604122,
+              "frame_recall": 0.07440100882723834,
+              "frame_precision": 0.7468354430379747,
+              "sequence_balanced_recall": 0.07421383647798742,
+              "false_fire_rate": 0.02145922746781116
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 96,
+          "width_after": 72,
+          "realized_ratio": 0.25,
+          "macs": 304209936,
+          "mac_reduction": 0.026427,
+          "primary": 0.13878077647620146,
+          "delta_primary": 0.22792031507758248,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.23848684210526316,
+              "frame_recall": 0.2013888888888889,
+              "frame_precision": 0.90625,
+              "sequence_balanced_recall": 0.20666666666666667,
+              "false_fire_rate": 0.000977198697068404
+            },
+            "trans_val": {
+              "frame_f2": 0.03907471084713973,
+              "frame_recall": 0.031525851197982346,
+              "frame_precision": 0.9259259259259259,
+              "sequence_balanced_recall": 0.03144654088050314,
+              "false_fire_rate": 0.002145922746781116
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 96,
+          "width_after": 56,
+          "realized_ratio": 0.416667,
+          "macs": 298704912,
+          "mac_reduction": 0.044045,
+          "primary": 0.039286680788719774,
+          "delta_primary": 0.32741441076506417,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.066006600660066,
+              "frame_recall": 0.05555555555555555,
+              "frame_precision": 0.26666666666666666,
+              "sequence_balanced_recall": 0.06666666666666667,
+              "false_fire_rate": 0.0071661237785016286
+            },
+            "trans_val": {
+              "frame_f2": 0.012566760917373547,
+              "frame_recall": 0.01008827238335435,
+              "frame_precision": 0.7272727272727273,
+              "sequence_balanced_recall": 0.010062893081761006,
+              "false_fire_rate": 0.003218884120171674
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 96,
+          "width_after": 48,
+          "realized_ratio": 0.5,
+          "macs": 295952400,
+          "mac_reduction": 0.052854,
+          "primary": 0.010722664970556767,
+          "delta_primary": 0.3559784265832272,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.016722408026755852,
+              "frame_recall": 0.013888888888888888,
+              "frame_precision": 0.09090909090909091,
+              "sequence_balanced_recall": 0.013333333333333332,
+              "false_fire_rate": 0.006514657980456026
+            },
+            "trans_val": {
+              "frame_f2": 0.004722921914357682,
+              "frame_recall": 0.0037831021437578815,
+              "frame_precision": 0.75,
+              "sequence_balanced_recall": 0.0037735849056603774,
+              "false_fire_rate": 0.001072961373390558
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 3,
+      "conv": "features.3.conv.0.0",
+      "width": 144,
+      "sensitivity_index": 0.29970883167041273,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 144,
+          "width_after": 120,
+          "realized_ratio": 0.166667,
+          "macs": 307822608,
+          "mac_reduction": 0.014865,
+          "primary": 0.16860488894920495,
+          "delta_primary": 0.198096202604579,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.28443113772455086,
+              "frame_recall": 0.2638888888888889,
+              "frame_precision": 0.41304347826086957,
+              "sequence_balanced_recall": 0.28,
+              "false_fire_rate": 0.01758957654723127
+            },
+            "trans_val": {
+              "frame_f2": 0.052778640173859054,
+              "frame_recall": 0.04287515762925599,
+              "frame_precision": 0.6938775510204082,
+              "sequence_balanced_recall": 0.042767295597484274,
+              "false_fire_rate": 0.016094420600858368
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 144,
+          "width_after": 104,
+          "realized_ratio": 0.277778,
+          "macs": 304726032,
+          "mac_reduction": 0.024775,
+          "primary": 0.039053204010882636,
+          "delta_primary": 0.3276478875429013,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.07653061224489796,
+              "frame_recall": 0.0625,
+              "frame_precision": 0.75,
+              "sequence_balanced_recall": 0.07333333333333333,
+              "false_fire_rate": 0.000977198697068404
+            },
+            "trans_val": {
+              "frame_f2": 0.001575795776867318,
+              "frame_recall": 0.0012610340479192938,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.0012578616352201257,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 144,
+          "width_after": 88,
+          "realized_ratio": 0.388889,
+          "macs": 301629456,
+          "mac_reduction": 0.034685,
+          "primary": 0.060310946573397195,
+          "delta_primary": 0.30639014498038675,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.10961214165261383,
+              "frame_recall": 0.09027777777777778,
+              "frame_precision": 0.7647058823529411,
+              "sequence_balanced_recall": 0.11333333333333333,
+              "false_fire_rate": 0.0013029315960912053
+            },
+            "trans_val": {
+              "frame_f2": 0.011009751494180561,
+              "frame_recall": 0.008827238335435058,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.008805031446540879,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 144,
+          "width_after": 72,
+          "realized_ratio": 0.5,
+          "macs": 298532880,
+          "mac_reduction": 0.044595,
+          "primary": 0.0,
+          "delta_primary": 0.36670109155378394,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 4,
+      "conv": "features.4.conv.0.0",
+      "width": 144,
+      "sensitivity_index": 0.22195796505105503,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 144,
+          "width_after": 120,
+          "realized_ratio": 0.166667,
+          "macs": 309665808,
+          "mac_reduction": 0.008966,
+          "primary": 0.3198212953558484,
+          "delta_primary": 0.04687979619793553,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5791962174940899,
+              "frame_recall": 0.6805555555555556,
+              "frame_precision": 0.362962962962963,
+              "sequence_balanced_recall": 0.6799999999999998,
+              "false_fire_rate": 0.056026058631921824
+            },
+            "trans_val": {
+              "frame_f2": 0.06044637321760695,
+              "frame_recall": 0.04918032786885246,
+              "frame_precision": 0.7222222222222222,
+              "sequence_balanced_recall": 0.0490566037735849,
+              "false_fire_rate": 0.016094420600858368
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 144,
+          "width_after": 104,
+          "realized_ratio": 0.277778,
+          "macs": 307798032,
+          "mac_reduction": 0.014944,
+          "primary": 0.20074574205416837,
+          "delta_primary": 0.16595534949961557,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.28400597907324365,
+              "frame_recall": 0.2638888888888889,
+              "frame_precision": 0.40860215053763443,
+              "sequence_balanced_recall": 0.28,
+              "false_fire_rate": 0.017915309446254073
+            },
+            "trans_val": {
+              "frame_f2": 0.11748550503509309,
+              "frame_recall": 0.09709962168978563,
+              "frame_precision": 0.7333333333333333,
+              "sequence_balanced_recall": 0.09685534591194968,
+              "false_fire_rate": 0.030042918454935622
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 144,
+          "width_after": 88,
+          "realized_ratio": 0.388889,
+          "macs": 305930256,
+          "mac_reduction": 0.020921,
+          "primary": 0.05407271296831646,
+          "delta_primary": 0.3126283785854675,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.09243697478991598,
+              "frame_recall": 0.0763888888888889,
+              "frame_precision": 0.5789473684210527,
+              "sequence_balanced_recall": 0.08666666666666666,
+              "false_fire_rate": 0.0026058631921824105
+            },
+            "trans_val": {
+              "frame_f2": 0.015708451146716932,
+              "frame_recall": 0.012610340479192938,
+              "frame_precision": 0.9090909090909091,
+              "sequence_balanced_recall": 0.012578616352201257,
+              "false_fire_rate": 0.001072961373390558
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 144,
+          "width_after": 72,
+          "realized_ratio": 0.5,
+          "macs": 304062480,
+          "mac_reduction": 0.026899,
+          "primary": 0.004332755632582322,
+          "delta_primary": 0.3623683359212016,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.008665511265164644,
+              "frame_recall": 0.006944444444444444,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.02,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 5,
+      "conv": "features.5.conv.0.0",
+      "width": 192,
+      "sensitivity_index": 0.19419489892511319,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 192,
+          "width_after": 168,
+          "realized_ratio": 0.125,
+          "macs": 311011344,
+          "mac_reduction": 0.00466,
+          "primary": 0.2940123025677355,
+          "delta_primary": 0.07268878898604847,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5428954423592494,
+              "frame_recall": 0.5625,
+              "frame_precision": 0.4764705882352941,
+              "sequence_balanced_recall": 0.5666666666666667,
+              "false_fire_rate": 0.028990228013029317
+            },
+            "trans_val": {
+              "frame_f2": 0.045129162776221594,
+              "frame_recall": 0.03656998738965952,
+              "frame_precision": 0.7073170731707317,
+              "sequence_balanced_recall": 0.03647798742138365,
+              "false_fire_rate": 0.012875536480686695
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 192,
+          "width_after": 144,
+          "realized_ratio": 0.25,
+          "macs": 309555216,
+          "mac_reduction": 0.00932,
+          "primary": 0.2561066826234693,
+          "delta_primary": 0.11059440893031464,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.4794520547945205,
+              "frame_recall": 0.4861111111111111,
+              "frame_precision": 0.45454545454545453,
+              "sequence_balanced_recall": 0.4933333333333333,
+              "false_fire_rate": 0.02736156351791531
+            },
+            "trans_val": {
+              "frame_f2": 0.0327613104524181,
+              "frame_recall": 0.02648171500630517,
+              "frame_precision": 0.6363636363636364,
+              "sequence_balanced_recall": 0.02641509433962264,
+              "false_fire_rate": 0.012875536480686695
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 192,
+          "width_after": 120,
+          "realized_ratio": 0.375,
+          "macs": 308099088,
+          "mac_reduction": 0.01398,
+          "primary": 0.1391178874350446,
+          "delta_primary": 0.22758320411873934,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.25162337662337664,
+              "frame_recall": 0.2152777777777778,
+              "frame_precision": 0.775,
+              "sequence_balanced_recall": 0.23333333333333336,
+              "false_fire_rate": 0.0029315960912052116
+            },
+            "trans_val": {
+              "frame_f2": 0.026612398246712587,
+              "frame_recall": 0.021437578814627996,
+              "frame_precision": 0.7727272727272727,
+              "sequence_balanced_recall": 0.021383647798742137,
+              "false_fire_rate": 0.00536480686695279
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 192,
+          "width_after": 96,
+          "realized_ratio": 0.5,
+          "macs": 306642960,
+          "mac_reduction": 0.01864,
+          "primary": 0.000787897888433659,
+          "delta_primary": 0.3659131936653503,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.001575795776867318,
+              "frame_recall": 0.0012610340479192938,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.0012578616352201257,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 6,
+      "conv": "features.6.conv.0.0",
+      "width": 192,
+      "sensitivity_index": 0.07927884045141077,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 192,
+          "width_after": 168,
+          "realized_ratio": 0.125,
+          "macs": 311011344,
+          "mac_reduction": 0.00466,
+          "primary": 0.33360680963759476,
+          "delta_primary": 0.03309428191618918,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.602258469259724,
+              "frame_recall": 0.6666666666666666,
+              "frame_precision": 0.4343891402714932,
+              "sequence_balanced_recall": 0.6666666666666667,
+              "false_fire_rate": 0.04071661237785016
+            },
+            "trans_val": {
+              "frame_f2": 0.06495515001546551,
+              "frame_recall": 0.05296343001261034,
+              "frame_precision": 0.6885245901639344,
+              "sequence_balanced_recall": 0.052830188679245285,
+              "false_fire_rate": 0.0203862660944206
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 192,
+          "width_after": 144,
+          "realized_ratio": 0.25,
+          "macs": 309555216,
+          "mac_reduction": 0.00932,
+          "primary": 0.3408910198901227,
+          "delta_primary": 0.025810071663661227,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5397022332506203,
+              "frame_recall": 0.6041666666666666,
+              "frame_precision": 0.3782608695652174,
+              "sequence_balanced_recall": 0.6066666666666667,
+              "false_fire_rate": 0.04657980456026058
+            },
+            "trans_val": {
+              "frame_f2": 0.14207980652962515,
+              "frame_recall": 0.11853720050441362,
+              "frame_precision": 0.6911764705882353,
+              "sequence_balanced_recall": 0.11823899371069183,
+              "false_fire_rate": 0.045064377682403435
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 192,
+          "width_after": 120,
+          "realized_ratio": 0.375,
+          "macs": 308099088,
+          "mac_reduction": 0.01398,
+          "primary": 0.22683567537530205,
+          "delta_primary": 0.1398654161784819,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.363013698630137,
+              "frame_recall": 0.3680555555555556,
+              "frame_precision": 0.34415584415584416,
+              "sequence_balanced_recall": 0.37999999999999995,
+              "false_fire_rate": 0.032899022801302934
+            },
+            "trans_val": {
+              "frame_f2": 0.09065765212046711,
+              "frame_recall": 0.07440100882723834,
+              "frame_precision": 0.7195121951219512,
+              "sequence_balanced_recall": 0.07421383647798742,
+              "false_fire_rate": 0.02467811158798283
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 192,
+          "width_after": 96,
+          "realized_ratio": 0.5,
+          "macs": 306642960,
+          "mac_reduction": 0.01864,
+          "primary": 0.24835549950647315,
+          "delta_primary": 0.1183455920473108,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.40920716112531963,
+              "frame_recall": 0.4444444444444444,
+              "frame_precision": 0.3106796116504854,
+              "sequence_balanced_recall": 0.4533333333333333,
+              "false_fire_rate": 0.04625407166123779
+            },
+            "trans_val": {
+              "frame_f2": 0.08750383788762665,
+              "frame_recall": 0.07187894073139975,
+              "frame_precision": 0.6705882352941176,
+              "sequence_balanced_recall": 0.07169811320754717,
+              "false_fire_rate": 0.030042918454935622
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 7,
+      "conv": "features.7.conv.0.0",
+      "width": 192,
+      "sensitivity_index": 0.22160872807514728,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 192,
+          "width_after": 168,
+          "realized_ratio": 0.125,
+          "macs": 311472144,
+          "mac_reduction": 0.003185,
+          "primary": 0.27193463533679174,
+          "delta_primary": 0.0947664562169922,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5080213903743316,
+              "frame_recall": 0.5277777777777778,
+              "frame_precision": 0.4418604651162791,
+              "sequence_balanced_recall": 0.5333333333333333,
+              "false_fire_rate": 0.031270358306188926
+            },
+            "trans_val": {
+              "frame_f2": 0.035847880299251865,
+              "frame_recall": 0.029003783102143757,
+              "frame_precision": 0.6388888888888888,
+              "sequence_balanced_recall": 0.02893081761006289,
+              "false_fire_rate": 0.013948497854077254
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 192,
+          "width_after": 144,
+          "realized_ratio": 0.25,
+          "macs": 310476816,
+          "mac_reduction": 0.006371,
+          "primary": 0.26262705925274765,
+          "delta_primary": 0.10407403230103629,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.4865424430641822,
+              "frame_recall": 0.6527777777777778,
+              "frame_precision": 0.24102564102564103,
+              "sequence_balanced_recall": 0.6533333333333333,
+              "false_fire_rate": 0.09641693811074918
+            },
+            "trans_val": {
+              "frame_f2": 0.0387116754413131,
+              "frame_recall": 0.031525851197982346,
+              "frame_precision": 0.43859649122807015,
+              "sequence_balanced_recall": 0.03144654088050314,
+              "false_fire_rate": 0.034334763948497854
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 192,
+          "width_after": 120,
+          "realized_ratio": 0.375,
+          "macs": 309481488,
+          "mac_reduction": 0.009556,
+          "primary": 0.04580775932500722,
+          "delta_primary": 0.3208933322287767,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.08532423208191126,
+              "frame_recall": 0.06944444444444445,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.06666666666666667,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.006291286568103177,
+              "frame_recall": 0.005044136191677175,
+              "frame_precision": 0.5714285714285714,
+              "sequence_balanced_recall": 0.005031446540880503,
+              "false_fire_rate": 0.003218884120171674
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 192,
+          "width_after": 96,
+          "realized_ratio": 0.5,
+          "macs": 308486160,
+          "mac_reduction": 0.012742,
+          "primary": 0.0,
+          "delta_primary": 0.36670109155378394,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0003257328990228013
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 8,
+      "conv": "features.8.conv.0.0",
+      "width": 384,
+      "sensitivity_index": 0.09281329384908943,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 384,
+          "width_after": 336,
+          "realized_ratio": 0.125,
+          "macs": 311149584,
+          "mac_reduction": 0.004218,
+          "primary": 0.33089680879508027,
+          "delta_primary": 0.035804282758703676,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.6105990783410138,
+              "frame_recall": 0.7361111111111112,
+              "frame_precision": 0.363013698630137,
+              "sequence_balanced_recall": 0.7333333333333333,
+              "false_fire_rate": 0.06058631921824104
+            },
+            "trans_val": {
+              "frame_f2": 0.051194539249146756,
+              "frame_recall": 0.0416141235813367,
+              "frame_precision": 0.6470588235294118,
+              "sequence_balanced_recall": 0.04150943396226415,
+              "false_fire_rate": 0.019313304721030045
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 384,
+          "width_after": 288,
+          "realized_ratio": 0.25,
+          "macs": 309831696,
+          "mac_reduction": 0.008435,
+          "primary": 0.3252353860997438,
+          "delta_primary": 0.04146570545404016,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.6008583690987124,
+              "frame_recall": 0.7777777777777778,
+              "frame_precision": 0.3146067415730337,
+              "sequence_balanced_recall": 0.7733333333333333,
+              "false_fire_rate": 0.07947882736156352
+            },
+            "trans_val": {
+              "frame_f2": 0.0496124031007752,
+              "frame_recall": 0.0403530895334174,
+              "frame_precision": 0.6037735849056604,
+              "sequence_balanced_recall": 0.04025157232704402,
+              "false_fire_rate": 0.022532188841201718
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 384,
+          "width_after": 240,
+          "realized_ratio": 0.375,
+          "macs": 308513808,
+          "mac_reduction": 0.012653,
+          "primary": 0.25613651766657564,
+          "delta_primary": 0.1105645738872083,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.4903225806451613,
+              "frame_recall": 0.5277777777777778,
+              "frame_precision": 0.38190954773869346,
+              "sequence_balanced_recall": 0.5333333333333333,
+              "false_fire_rate": 0.04006514657980456
+            },
+            "trans_val": {
+              "frame_f2": 0.02195045468798997,
+              "frame_recall": 0.017654476670870115,
+              "frame_precision": 0.8235294117647058,
+              "sequence_balanced_recall": 0.017610062893081757,
+              "false_fire_rate": 0.003218884120171674
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 384,
+          "width_after": 192,
+          "realized_ratio": 0.5,
+          "macs": 307195920,
+          "mac_reduction": 0.016871,
+          "primary": 0.18328247825737837,
+          "delta_primary": 0.18341861329640557,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.3524229074889868,
+              "frame_recall": 0.3333333333333333,
+              "frame_precision": 0.45714285714285713,
+              "sequence_balanced_recall": 0.3466666666666666,
+              "false_fire_rate": 0.018566775244299675
+            },
+            "trans_val": {
+              "frame_f2": 0.014142049025769956,
+              "frame_recall": 0.011349306431273645,
+              "frame_precision": 0.9,
+              "sequence_balanced_recall": 0.011320754716981131,
+              "false_fire_rate": 0.001072961373390558
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 9,
+      "conv": "features.9.conv.0.0",
+      "width": 384,
+      "sensitivity_index": 0.05650855407718419,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 384,
+          "width_after": 336,
+          "realized_ratio": 0.125,
+          "macs": 311149584,
+          "mac_reduction": 0.004218,
+          "primary": 0.3082218592659584,
+          "delta_primary": 0.05847923228782553,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5652173913043478,
+              "frame_recall": 0.6319444444444444,
+              "frame_precision": 0.39737991266375544,
+              "sequence_balanced_recall": 0.6333333333333333,
+              "false_fire_rate": 0.04495114006514658
+            },
+            "trans_val": {
+              "frame_f2": 0.05122632722756908,
+              "frame_recall": 0.0416141235813367,
+              "frame_precision": 0.673469387755102,
+              "sequence_balanced_recall": 0.04150943396226415,
+              "false_fire_rate": 0.017167381974248927
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 384,
+          "width_after": 288,
+          "realized_ratio": 0.25,
+          "macs": 309831696,
+          "mac_reduction": 0.008435,
+          "primary": 0.3143187473701297,
+          "delta_primary": 0.05238234418365423,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5774111675126904,
+              "frame_recall": 0.6319444444444444,
+              "frame_precision": 0.42924528301886794,
+              "sequence_balanced_recall": 0.6333333333333333,
+              "false_fire_rate": 0.039413680781758956
+            },
+            "trans_val": {
+              "frame_f2": 0.05122632722756908,
+              "frame_recall": 0.0416141235813367,
+              "frame_precision": 0.673469387755102,
+              "sequence_balanced_recall": 0.04150943396226415,
+              "false_fire_rate": 0.017167381974248927
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 384,
+          "width_after": 240,
+          "realized_ratio": 0.375,
+          "macs": 308513808,
+          "mac_reduction": 0.012653,
+          "primary": 0.29820248310141295,
+          "delta_primary": 0.06849860845237099,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5529131985731273,
+              "frame_recall": 0.6458333333333334,
+              "frame_precision": 0.35094339622641507,
+              "sequence_balanced_recall": 0.6466666666666667,
+              "false_fire_rate": 0.056026058631921824
+            },
+            "trans_val": {
+              "frame_f2": 0.04349176762969866,
+              "frame_recall": 0.03530895334174023,
+              "frame_precision": 0.5957446808510638,
+              "sequence_balanced_recall": 0.035220125786163514,
+              "false_fire_rate": 0.0203862660944206
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 384,
+          "width_after": 192,
+          "realized_ratio": 0.5,
+          "macs": 307195920,
+          "mac_reduction": 0.016871,
+          "primary": 0.3200270601688979,
+          "delta_primary": 0.04667403138488602,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5841708542713568,
+              "frame_recall": 0.6458333333333334,
+              "frame_precision": 0.42272727272727273,
+              "sequence_balanced_recall": 0.6466666666666666,
+              "false_fire_rate": 0.041368078175895766
+            },
+            "trans_val": {
+              "frame_f2": 0.055883266066438994,
+              "frame_recall": 0.04539722572509458,
+              "frame_precision": 0.7346938775510204,
+              "sequence_balanced_recall": 0.045283018867924525,
+              "false_fire_rate": 0.013948497854077254
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 10,
+      "conv": "features.10.conv.0.0",
+      "width": 384,
+      "sensitivity_index": 0.0866739734124545,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 384,
+          "width_after": 336,
+          "realized_ratio": 0.125,
+          "macs": 311149584,
+          "mac_reduction": 0.004218,
+          "primary": 0.3091859780047132,
+          "delta_primary": 0.05751511354907074,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5701754385964911,
+              "frame_recall": 0.6319444444444444,
+              "frame_precision": 0.4099099099099099,
+              "sequence_balanced_recall": 0.6333333333333333,
+              "false_fire_rate": 0.04267100977198697
+            },
+            "trans_val": {
+              "frame_f2": 0.048196517412935326,
+              "frame_recall": 0.03909205548549811,
+              "frame_precision": 0.7045454545454546,
+              "sequence_balanced_recall": 0.0389937106918239,
+              "false_fire_rate": 0.013948497854077254
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 384,
+          "width_after": 288,
+          "realized_ratio": 0.25,
+          "macs": 309831696,
+          "mac_reduction": 0.008435,
+          "primary": 0.2772424017790956,
+          "delta_primary": 0.08945868977468835,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5263157894736842,
+              "frame_recall": 0.5694444444444444,
+              "frame_precision": 0.4039408866995074,
+              "sequence_balanced_recall": 0.5733333333333334,
+              "false_fire_rate": 0.039413680781758956
+            },
+            "trans_val": {
+              "frame_f2": 0.02816901408450704,
+              "frame_recall": 0.02269861286254729,
+              "frame_precision": 0.782608695652174,
+              "sequence_balanced_recall": 0.022641509433962263,
+              "false_fire_rate": 0.00536480686695279
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 384,
+          "width_after": 240,
+          "realized_ratio": 0.375,
+          "macs": 308513808,
+          "mac_reduction": 0.012653,
+          "primary": 0.2770877075290051,
+          "delta_primary": 0.08961338402477886,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5259975816203145,
+              "frame_recall": 0.6041666666666666,
+              "frame_precision": 0.3466135458167331,
+              "sequence_balanced_recall": 0.6066666666666667,
+              "false_fire_rate": 0.053420195439739415
+            },
+            "trans_val": {
+              "frame_f2": 0.02817783343769568,
+              "frame_recall": 0.02269861286254729,
+              "frame_precision": 0.8181818181818182,
+              "sequence_balanced_recall": 0.02264150943396226,
+              "false_fire_rate": 0.004291845493562232
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 384,
+          "width_after": 192,
+          "realized_ratio": 0.5,
+          "macs": 307195920,
+          "mac_reduction": 0.016871,
+          "primary": 0.2565923852525039,
+          "delta_primary": 0.11010870630128006,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.4865556978233035,
+              "frame_recall": 0.5277777777777778,
+              "frame_precision": 0.37073170731707317,
+              "sequence_balanced_recall": 0.5333333333333333,
+              "false_fire_rate": 0.04201954397394137
+            },
+            "trans_val": {
+              "frame_f2": 0.026629072681704263,
+              "frame_recall": 0.021437578814627996,
+              "frame_precision": 0.85,
+              "sequence_balanced_recall": 0.021383647798742137,
+              "false_fire_rate": 0.003218884120171674
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 11,
+      "conv": "features.11.conv.0.0",
+      "width": 384,
+      "sensitivity_index": 0.2186274015596876,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 384,
+          "width_after": 336,
+          "realized_ratio": 0.125,
+          "macs": 310854672,
+          "mac_reduction": 0.005161,
+          "primary": 0.2599623111152857,
+          "delta_primary": 0.10673878043849822,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.4716981132075472,
+              "frame_recall": 0.4861111111111111,
+              "frame_precision": 0.42168674698795183,
+              "sequence_balanced_recall": 0.49333333333333335,
+              "false_fire_rate": 0.031270358306188926
+            },
+            "trans_val": {
+              "frame_f2": 0.04822650902302427,
+              "frame_recall": 0.03909205548549811,
+              "frame_precision": 0.7380952380952381,
+              "sequence_balanced_recall": 0.0389937106918239,
+              "false_fire_rate": 0.011802575107296138
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 384,
+          "width_after": 288,
+          "realized_ratio": 0.25,
+          "macs": 309241872,
+          "mac_reduction": 0.010323,
+          "primary": 0.27633988110038654,
+          "delta_primary": 0.0903612104533974,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.48780487804878053,
+              "frame_recall": 0.5277777777777778,
+              "frame_precision": 0.37438423645320196,
+              "sequence_balanced_recall": 0.5333333333333333,
+              "false_fire_rate": 0.041368078175895766
+            },
+            "trans_val": {
+              "frame_f2": 0.06487488415199258,
+              "frame_recall": 0.05296343001261034,
+              "frame_precision": 0.6461538461538462,
+              "sequence_balanced_recall": 0.052830188679245285,
+              "false_fire_rate": 0.02467811158798283
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 384,
+          "width_after": 240,
+          "realized_ratio": 0.375,
+          "macs": 307629072,
+          "mac_reduction": 0.015484,
+          "primary": 0.05599256776071309,
+          "delta_primary": 0.31070852379307085,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.10726072607260728,
+              "frame_recall": 0.09027777777777778,
+              "frame_precision": 0.43333333333333335,
+              "sequence_balanced_recall": 0.08666666666666668,
+              "false_fire_rate": 0.005537459283387622
+            },
+            "trans_val": {
+              "frame_f2": 0.004724409448818898,
+              "frame_recall": 0.0037831021437578815,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.0037735849056603774,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 384,
+          "width_after": 192,
+          "realized_ratio": 0.5,
+          "macs": 306016272,
+          "mac_reduction": 0.020646,
+          "primary": 0.0,
+          "delta_primary": 0.36670109155378394,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 12,
+      "conv": "features.12.conv.0.0",
+      "width": 576,
+      "sensitivity_index": 0.06734911507868613,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 576,
+          "width_after": 504,
+          "realized_ratio": 0.125,
+          "macs": 309605904,
+          "mac_reduction": 0.009158,
+          "primary": 0.3446136733122273,
+          "delta_primary": 0.022087418241556633,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.6395995550611792,
+              "frame_recall": 0.7986111111111112,
+              "frame_precision": 0.3560371517027864,
+              "sequence_balanced_recall": 0.7933333333333334,
+              "false_fire_rate": 0.06775244299674267
+            },
+            "trans_val": {
+              "frame_f2": 0.04962779156327544,
+              "frame_recall": 0.0403530895334174,
+              "frame_precision": 0.6153846153846154,
+              "sequence_balanced_recall": 0.04025157232704402,
+              "false_fire_rate": 0.02145922746781116
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 576,
+          "width_after": 432,
+          "realized_ratio": 0.25,
+          "macs": 306744336,
+          "mac_reduction": 0.018316,
+          "primary": 0.32453387539706663,
+          "delta_primary": 0.04216721615671731,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.6101511879049676,
+              "frame_recall": 0.7847222222222222,
+              "frame_precision": 0.32285714285714284,
+              "sequence_balanced_recall": 0.78,
+              "false_fire_rate": 0.0771986970684039
+            },
+            "trans_val": {
+              "frame_f2": 0.038916562889165625,
+              "frame_recall": 0.031525851197982346,
+              "frame_precision": 0.625,
+              "sequence_balanced_recall": 0.03144654088050314,
+              "false_fire_rate": 0.016094420600858368
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 576,
+          "width_after": 360,
+          "realized_ratio": 0.375,
+          "macs": 303882768,
+          "mac_reduction": 0.027474,
+          "primary": 0.28184476118186164,
+          "delta_primary": 0.0848563303719223,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5449101796407185,
+              "frame_recall": 0.6319444444444444,
+              "frame_precision": 0.35135135135135137,
+              "sequence_balanced_recall": 0.6333333333333333,
+              "false_fire_rate": 0.05472312703583062
+            },
+            "trans_val": {
+              "frame_f2": 0.018779342723004695,
+              "frame_recall": 0.015132408575031526,
+              "frame_precision": 0.5217391304347826,
+              "sequence_balanced_recall": 0.01509433962264151,
+              "false_fire_rate": 0.011802575107296138
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 576,
+          "width_after": 288,
+          "realized_ratio": 0.5,
+          "macs": 301021200,
+          "mac_reduction": 0.036632,
+          "primary": 0.24641559600923568,
+          "delta_primary": 0.12028549554454826,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.4865556978233035,
+              "frame_recall": 0.5277777777777778,
+              "frame_precision": 0.37073170731707317,
+              "sequence_balanced_recall": 0.5333333333333333,
+              "false_fire_rate": 0.04201954397394137
+            },
+            "trans_val": {
+              "frame_f2": 0.00627549419516787,
+              "frame_recall": 0.005044136191677175,
+              "frame_precision": 0.26666666666666666,
+              "sequence_balanced_recall": 0.005031446540880503,
+              "false_fire_rate": 0.011802575107296138
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 13,
+      "conv": "features.13.conv.0.0",
+      "width": 576,
+      "sensitivity_index": 0.1275891967370852,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 576,
+          "width_after": 504,
+          "realized_ratio": 0.125,
+          "macs": 309605904,
+          "mac_reduction": 0.009158,
+          "primary": 0.2991621174046581,
+          "delta_primary": 0.06753897414912585,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5655526992287918,
+              "frame_recall": 0.6111111111111112,
+              "frame_precision": 0.43564356435643564,
+              "sequence_balanced_recall": 0.6133333333333333,
+              "false_fire_rate": 0.03713355048859935
+            },
+            "trans_val": {
+              "frame_f2": 0.03277153558052434,
+              "frame_recall": 0.02648171500630517,
+              "frame_precision": 0.65625,
+              "sequence_balanced_recall": 0.026415094339622643,
+              "false_fire_rate": 0.011802575107296138
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 576,
+          "width_after": 432,
+          "realized_ratio": 0.25,
+          "macs": 306744336,
+          "mac_reduction": 0.018316,
+          "primary": 0.3599032139097473,
+          "delta_primary": 0.006797877644036665,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5593385214007783,
+              "frame_recall": 0.7986111111111112,
+              "frame_precision": 0.25442477876106195,
+              "sequence_balanced_recall": 0.7933333333333333,
+              "false_fire_rate": 0.10977198697068404
+            },
+            "trans_val": {
+              "frame_f2": 0.16046790641871625,
+              "frame_recall": 0.13493064312736444,
+              "frame_precision": 0.6604938271604939,
+              "sequence_balanced_recall": 0.13459119496855348,
+              "false_fire_rate": 0.059012875536480686
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 576,
+          "width_after": 360,
+          "realized_ratio": 0.375,
+          "macs": 303882768,
+          "mac_reduction": 0.027474,
+          "primary": 0.25950346007360175,
+          "delta_primary": 0.10719763148018219,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.48153034300791553,
+              "frame_recall": 0.5069444444444444,
+              "frame_precision": 0.4010989010989011,
+              "sequence_balanced_recall": 0.5133333333333333,
+              "false_fire_rate": 0.03550488599348534
+            },
+            "trans_val": {
+              "frame_f2": 0.037476577139287946,
+              "frame_recall": 0.03026481715006305,
+              "frame_precision": 0.8,
+              "sequence_balanced_recall": 0.03018867924528302,
+              "false_fire_rate": 0.006437768240343348
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 576,
+          "width_after": 288,
+          "realized_ratio": 0.5,
+          "macs": 301021200,
+          "mac_reduction": 0.036632,
+          "primary": 0.03787878787878788,
+          "delta_primary": 0.32882230367499604,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.07575757575757576,
+              "frame_recall": 0.0625,
+              "frame_precision": 0.5,
+              "sequence_balanced_recall": 0.07333333333333333,
+              "false_fire_rate": 0.0029315960912052116
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 14,
+      "conv": "features.14.conv.0.0",
+      "width": 576,
+      "sensitivity_index": 0.2740710050059092,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 576,
+          "width_after": 504,
+          "realized_ratio": 0.125,
+          "macs": 310504464,
+          "mac_reduction": 0.006282,
+          "primary": 0.280803732149286,
+          "delta_primary": 0.08589735940449794,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5288461538461539,
+              "frame_recall": 0.5347222222222222,
+              "frame_precision": 0.506578947368421,
+              "sequence_balanced_recall": 0.54,
+              "false_fire_rate": 0.024429967426710098
+            },
+            "trans_val": {
+              "frame_f2": 0.0327613104524181,
+              "frame_recall": 0.02648171500630517,
+              "frame_precision": 0.6363636363636364,
+              "sequence_balanced_recall": 0.026415094339622643,
+              "false_fire_rate": 0.012875536480686695
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 576,
+          "width_after": 432,
+          "realized_ratio": 0.25,
+          "macs": 308541456,
+          "mac_reduction": 0.012565,
+          "primary": 0.08971661404221312,
+          "delta_primary": 0.27698447751157085,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.17470881863560733,
+              "frame_recall": 0.14583333333333334,
+              "frame_precision": 0.84,
+              "sequence_balanced_recall": 0.16666666666666663,
+              "false_fire_rate": 0.0013029315960912053
+            },
+            "trans_val": {
+              "frame_f2": 0.004724409448818898,
+              "frame_recall": 0.0037831021437578815,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.0037735849056603774,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 576,
+          "width_after": 360,
+          "realized_ratio": 0.375,
+          "macs": 306578448,
+          "mac_reduction": 0.018847,
+          "primary": 0.0,
+          "delta_primary": 0.36670109155378394,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 576,
+          "width_after": 288,
+          "realized_ratio": 0.5,
+          "macs": 304615440,
+          "mac_reduction": 0.025129,
+          "primary": 0.0,
+          "delta_primary": 0.36670109155378394,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 15,
+      "conv": "features.15.conv.0.0",
+      "width": 960,
+      "sensitivity_index": 0.29667201101530755,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 960,
+          "width_after": 840,
+          "realized_ratio": 0.125,
+          "macs": 310537872,
+          "mac_reduction": 0.006175,
+          "primary": 0.20956725801649712,
+          "delta_primary": 0.15713383353728683,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.4050279329608939,
+              "frame_recall": 0.4027777777777778,
+              "frame_precision": 0.4142857142857143,
+              "sequence_balanced_recall": 0.41333333333333333,
+              "false_fire_rate": 0.026710097719869708
+            },
+            "trans_val": {
+              "frame_f2": 0.014106583072100314,
+              "frame_recall": 0.011349306431273645,
+              "frame_precision": 0.5,
+              "sequence_balanced_recall": 0.011320754716981131,
+              "false_fire_rate": 0.009656652360515022
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 960,
+          "width_after": 720,
+          "realized_ratio": 0.25,
+          "macs": 308608272,
+          "mac_reduction": 0.012351,
+          "primary": 0.05756578947368421,
+          "delta_primary": 0.30913530208009976,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.11513157894736842,
+              "frame_recall": 0.09722222222222222,
+              "frame_precision": 0.4375,
+              "sequence_balanced_recall": 0.12,
+              "false_fire_rate": 0.005863192182410423
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 960,
+          "width_after": 600,
+          "realized_ratio": 0.375,
+          "macs": 306678672,
+          "mac_reduction": 0.018526,
+          "primary": 0.008650519031141867,
+          "delta_primary": 0.35805057252264205,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.017301038062283735,
+              "frame_recall": 0.013888888888888888,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.04,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 960,
+          "width_after": 480,
+          "realized_ratio": 0.5,
+          "macs": 304749072,
+          "mac_reduction": 0.024701,
+          "primary": 0.004332755632582322,
+          "delta_primary": 0.3623683359212016,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.008665511265164644,
+              "frame_recall": 0.006944444444444444,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.02,
+              "false_fire_rate": 0.0
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 16,
+      "conv": "features.16.conv.0.0",
+      "width": 960,
+      "sensitivity_index": 0.24216636408716058,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 960,
+          "width_after": 840,
+          "realized_ratio": 0.125,
+          "macs": 310537872,
+          "mac_reduction": 0.006175,
+          "primary": 0.28785178885412765,
+          "delta_primary": 0.07884930269965629,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.535230352303523,
+              "frame_recall": 0.5486111111111112,
+              "frame_precision": 0.4876543209876543,
+              "sequence_balanced_recall": 0.5533333333333333,
+              "false_fire_rate": 0.027035830618892507
+            },
+            "trans_val": {
+              "frame_f2": 0.040473225404732256,
+              "frame_recall": 0.03278688524590164,
+              "frame_precision": 0.65,
+              "sequence_balanced_recall": 0.03270440251572327,
+              "false_fire_rate": 0.015021459227467811
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 960,
+          "width_after": 720,
+          "realized_ratio": 0.25,
+          "macs": 308608272,
+          "mac_reduction": 0.012351,
+          "primary": 0.075345791110147,
+          "delta_primary": 0.29135530044363694,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.14754098360655737,
+              "frame_recall": 0.125,
+              "frame_precision": 0.5294117647058824,
+              "sequence_balanced_recall": 0.11999999999999998,
+              "false_fire_rate": 0.005211726384364821
+            },
+            "trans_val": {
+              "frame_f2": 0.0031505986137366103,
+              "frame_recall": 0.0025220680958385876,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.0025157232704402514,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 960,
+          "width_after": 600,
+          "realized_ratio": 0.375,
+          "macs": 306678672,
+          "mac_reduction": 0.018526,
+          "primary": 0.03800675675675676,
+          "delta_primary": 0.3286943347970272,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.07601351351351351,
+              "frame_recall": 0.0625,
+              "frame_precision": 0.5625,
+              "sequence_balanced_recall": 0.06,
+              "false_fire_rate": 0.002280130293159609
+            },
+            "trans_val": {
+              "frame_f2": 0.0,
+              "frame_recall": 0.0,
+              "frame_precision": 0.0,
+              "sequence_balanced_recall": 0.0,
+              "false_fire_rate": 0.0
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 960,
+          "width_after": 480,
+          "realized_ratio": 0.5,
+          "macs": 304749072,
+          "mac_reduction": 0.024701,
+          "primary": 0.09693457314546206,
+          "delta_primary": 0.2697665184083219,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.18914473684210523,
+              "frame_recall": 0.1597222222222222,
+              "frame_precision": 0.71875,
+              "sequence_balanced_recall": 0.1533333333333333,
+              "false_fire_rate": 0.0029315960912052116
+            },
+            "trans_val": {
+              "frame_f2": 0.004724409448818898,
+              "frame_recall": 0.0037831021437578815,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.0037735849056603774,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "block": 17,
+      "conv": "features.17.conv.0.0",
+      "width": 960,
+      "sensitivity_index": 0.15486333902592941,
+      "curve": [
+        {
+          "requested_ratio": 0.125,
+          "width_before": 960,
+          "width_after": 840,
+          "realized_ratio": 0.125,
+          "macs": 309616272,
+          "mac_reduction": 0.009125,
+          "primary": 0.3265662908520051,
+          "delta_primary": 0.04013480070177883,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.5897435897435896,
+              "frame_recall": 0.6388888888888888,
+              "frame_precision": 0.45098039215686275,
+              "sequence_balanced_recall": 0.64,
+              "false_fire_rate": 0.036482084690553744
+            },
+            "trans_val": {
+              "frame_f2": 0.06338899196042054,
+              "frame_recall": 0.05170239596469105,
+              "frame_precision": 0.6612903225806451,
+              "sequence_balanced_recall": 0.05157232704402515,
+              "false_fire_rate": 0.022532188841201718
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.25,
+          "width_before": 960,
+          "width_after": 720,
+          "realized_ratio": 0.25,
+          "macs": 306765072,
+          "mac_reduction": 0.01825,
+          "primary": 0.26192362211289916,
+          "delta_primary": 0.10477746944088479,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.467877094972067,
+              "frame_recall": 0.4652777777777778,
+              "frame_precision": 0.4785714285714286,
+              "sequence_balanced_recall": 0.4733333333333334,
+              "false_fire_rate": 0.023778501628664496
+            },
+            "trans_val": {
+              "frame_f2": 0.055970149253731345,
+              "frame_recall": 0.04539722572509458,
+              "frame_precision": 0.8181818181818182,
+              "sequence_balanced_recall": 0.045283018867924525,
+              "false_fire_rate": 0.008583690987124463
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.375,
+          "width_before": 960,
+          "width_after": 600,
+          "realized_ratio": 0.375,
+          "macs": 303913872,
+          "mac_reduction": 0.027374,
+          "primary": 0.2281586693435503,
+          "delta_primary": 0.13854242221023363,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.3780964797913951,
+              "frame_recall": 0.4027777777777778,
+              "frame_precision": 0.3036649214659686,
+              "sequence_balanced_recall": 0.41333333333333333,
+              "false_fire_rate": 0.043322475570032576
+            },
+            "trans_val": {
+              "frame_f2": 0.07822085889570551,
+              "frame_recall": 0.06431273644388398,
+              "frame_precision": 0.5795454545454546,
+              "sequence_balanced_recall": 0.06415094339622641,
+              "false_fire_rate": 0.03969957081545064
+            }
+          }
+        },
+        {
+          "requested_ratio": 0.5,
+          "width_before": 960,
+          "width_after": 480,
+          "realized_ratio": 0.5,
+          "macs": 301062672,
+          "mac_reduction": 0.036499,
+          "primary": 0.030702427802963575,
+          "delta_primary": 0.3359986637508204,
+          "per_domain": {
+            "cis_val_clean": {
+              "frame_f2": 0.05982905982905983,
+              "frame_recall": 0.04861111111111111,
+              "frame_precision": 0.7777777777777778,
+              "sequence_balanced_recall": 0.04666666666666666,
+              "false_fire_rate": 0.0006514657980456026
+            },
+            "trans_val": {
+              "frame_f2": 0.001575795776867318,
+              "frame_recall": 0.0012610340479192938,
+              "frame_precision": 1.0,
+              "sequence_balanced_recall": 0.0012578616352201257,
+              "false_fire_rate": 0.0
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "ranking": [
+    {
+      "block": 3,
+      "conv": "features.3.conv.0.0",
+      "width": 144,
+      "sensitivity_index": 0.29970883167041273
+    },
+    {
+      "block": 15,
+      "conv": "features.15.conv.0.0",
+      "width": 960,
+      "sensitivity_index": 0.29667201101530755
+    },
+    {
+      "block": 14,
+      "conv": "features.14.conv.0.0",
+      "width": 576,
+      "sensitivity_index": 0.2740710050059092
+    },
+    {
+      "block": 2,
+      "conv": "features.2.conv.0.0",
+      "width": 96,
+      "sensitivity_index": 0.2654646762689268
+    },
+    {
+      "block": 16,
+      "conv": "features.16.conv.0.0",
+      "width": 960,
+      "sensitivity_index": 0.24216636408716058
+    },
+    {
+      "block": 4,
+      "conv": "features.4.conv.0.0",
+      "width": 144,
+      "sensitivity_index": 0.22195796505105503
+    },
+    {
+      "block": 7,
+      "conv": "features.7.conv.0.0",
+      "width": 192,
+      "sensitivity_index": 0.22160872807514728
+    },
+    {
+      "block": 11,
+      "conv": "features.11.conv.0.0",
+      "width": 384,
+      "sensitivity_index": 0.2186274015596876
+    },
+    {
+      "block": 5,
+      "conv": "features.5.conv.0.0",
+      "width": 192,
+      "sensitivity_index": 0.19419489892511319
+    },
+    {
+      "block": 17,
+      "conv": "features.17.conv.0.0",
+      "width": 960,
+      "sensitivity_index": 0.15486333902592941
+    },
+    {
+      "block": 13,
+      "conv": "features.13.conv.0.0",
+      "width": 576,
+      "sensitivity_index": 0.1275891967370852
+    },
+    {
+      "block": 8,
+      "conv": "features.8.conv.0.0",
+      "width": 384,
+      "sensitivity_index": 0.09281329384908943
+    },
+    {
+      "block": 10,
+      "conv": "features.10.conv.0.0",
+      "width": 384,
+      "sensitivity_index": 0.0866739734124545
+    },
+    {
+      "block": 6,
+      "conv": "features.6.conv.0.0",
+      "width": 192,
+      "sensitivity_index": 0.07927884045141077
+    },
+    {
+      "block": 12,
+      "conv": "features.12.conv.0.0",
+      "width": 576,
+      "sensitivity_index": 0.06734911507868613
+    },
+    {
+      "block": 9,
+      "conv": "features.9.conv.0.0",
+      "width": 384,
+      "sensitivity_index": 0.05650855407718419
+    }
+  ]
+}
