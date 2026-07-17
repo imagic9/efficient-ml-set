@@ -1,0 +1,63 @@
+# M4 — INT8 QAT on the selected M3 pruned checkpoint (DESIGN §8.4, PLAN D5).
+#
+# The validated M2 recipe (results/optimize/m2_qat/preregistration.md), applied
+# to c30 — NOT a new search. One arm at lr 5e-5 (M2's winning rate); the
+# registration (results/optimize/m4_qat/registration.md) forbids any other LR.
+# Run with --lr 5e-5.
+
+# Source = the M3 c30 fine-tuned checkpoint, hash-pinned. `pruned_widths` must
+# equal the widths recorded in that checkpoint (the trainer refuses a mismatch),
+# so the pruned architecture is rebuilt exactly before the weights load.
+source_run_id: d4_m3_c30_20260717T052416Z
+source_checkpoint: results/optimize/m3_prune/runs/d4/d4_m3_c30_20260717T052416Z/best.pt
+source_checkpoint_sha256: 89bbb9e7e30b5938c0826ecdc73be80a80c28d37ff91690af944dc15ab881b88
+
+pruned_widths:
+  features.2: 48
+  features.3: 72
+  features.4: 104
+  features.5: 144
+  features.6: 144
+  features.7: 192
+  features.8: 192
+  features.9: 192
+  features.10: 192
+  features.11: 288
+  features.12: 288
+  features.13: 360
+  features.14: 504
+  features.15: 960
+  features.16: 840
+  features.17: 544
+
+# The frozen D1 corpus, shared with M1/M2 by registration: same scales' data.
+calibration_manifest: data/manifests/calibration_1024.jsonl
+calibration_manifest_sha256: 9fab904c6eb3a5501011fdd3277b3ee98655a906d6301da44364ef35d8a863c4
+
+# The frozen §7.2 data contract (identical to M0's training).
+manifests_dir: data/manifests
+images_dir: data/raw/extracted/eccv_18_all_images_sm
+supplement_manifest: data/manifests/cct_empty_train_v1.jsonl
+supplement_dir: data/images/empty_supplement
+cache_dir: data/cache
+classes_config: configs/data/classes.yaml
+width: 256
+height: 192
+
+# M2's recipe verbatim: 6 epochs, batch 64, AdamW wd 1e-4, AMP off (trainer),
+# observers frozen after epoch 1, seed 42.
+seed: 42
+epochs: 6
+batch_size: 64
+weight_decay: 0.0001
+workers: 8
+observer_freeze_after_epoch: 1
+
+# M4 identity, so the evidence differs from M2's without a second trainer.
+candidate_prefix: d5_m4_qat
+candidate_kind: pruned_qat
+candidate_model_id: M4-candidate
+candidate_design: "8.4"
+
+output_root: results/optimize/m4_qat
+phase: D5

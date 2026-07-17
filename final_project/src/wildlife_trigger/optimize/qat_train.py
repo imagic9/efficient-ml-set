@@ -34,7 +34,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -52,6 +52,7 @@ from ..models.mobilenet import build_mobilenet_v2, example_input
 from ..train import build_datasets, evaluate, score_of
 from ..validate import ort_coverage
 from .fold_qdq import fold_qdq_weights
+from .prune import apply_widths
 from .qat import (
     build_qat_model,
     set_export_mode,
@@ -73,6 +74,19 @@ class QatConfig:
     source_checkpoint_sha256: str = ""
     calibration_manifest: str = "data/manifests/calibration_1024.jsonl"
     calibration_manifest_sha256: str = ""
+
+    # M4 (D5): when set, the source is a *pruned* MobileNetV2 (the M3 c30
+    # checkpoint), so the architecture is rebuilt with these expansion widths
+    # before the weights load and before the QAT structure is inserted. Empty
+    # for M2, whose source is the unpruned M0 checkpoint.
+    pruned_widths: dict = field(default_factory=dict)
+
+    # Candidate identity — parameterized so M4 differs from M2 in the evidence
+    # without a second copy of the trainer. M2's defaults keep D2 byte-stable.
+    candidate_prefix: str = "d2_m2_qat"
+    candidate_kind: str = "int8_qat"
+    candidate_model_id: str = "M2-candidate"
+    candidate_design: str = "8.2"
 
     # Data (the frozen §7.2 contract; same defaults as TrainConfig)
     manifests_dir: str = "data/manifests"
@@ -114,15 +128,35 @@ def arm_label(lr: float) -> str:
     return f"lr{lr:.0e}".replace("e-0", "e-")
 
 
+def build_source_architecture(config: QatConfig, class_names: list[str]) -> nn.Module:
+    """The FP32 architecture the source weights load into.
+
+    Unpruned for M2 (the M0 checkpoint); the pruned c30 architecture for M4 —
+    `apply_widths` reproduces exactly the channel counts the checkpoint carries
+    before any weight loads, so the same trainer serves both. The QAT structure
+    inserted afterwards (`build_qat_model`) is shape-agnostic: it rewrites
+    convolutions by scanning children, not by their channel counts.
+    """
+    base = build_mobilenet_v2(num_classes=len(class_names), pretrained=False)
+    if config.pruned_widths:
+        apply_widths(base, dict(config.pruned_widths))
+    return base
+
+
 def load_m0_base(config: QatConfig, class_names: list[str]) -> tuple[nn.Module, dict]:
-    """The M0 checkpoint as a 16-class network, proven to be the M0 checkpoint."""
+    """The source checkpoint as a 16-class network, proven by hash.
+
+    Named for its M2 role; M4 passes a pruned source. The hash pin is the
+    contract either way — the fake-quant scales are trained against whatever
+    these weights are, so the wrong file would poison every scale silently.
+    """
     checkpoint_path = Path(config.source_checkpoint)
     measured = runs.sha256_file(checkpoint_path)
     if measured != config.source_checkpoint_sha256:
         raise RuntimeError(
             f"{checkpoint_path} hashes to {measured[:12]}… but the config pins "
-            f"{config.source_checkpoint_sha256[:12]}…; M2 initializes from M0's "
-            "selected checkpoint and nothing else (DESIGN §8.2)"
+            f"{config.source_checkpoint_sha256[:12]}…; QAT initializes from the "
+            "pinned checkpoint and nothing else (DESIGN §8.2/§8.4)"
         )
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
     if checkpoint.get("class_names") and checkpoint["class_names"] != class_names:
@@ -130,13 +164,21 @@ def load_m0_base(config: QatConfig, class_names: list[str]) -> tuple[nn.Module, 
             "the checkpoint's class order differs from the frozen classes config; "
             "every fake-quant scale would be trained against the wrong animal"
         )
-    base = build_mobilenet_v2(num_classes=len(class_names), pretrained=False)
+    if config.pruned_widths and checkpoint.get("widths") not in (None, {}):
+        if checkpoint["widths"] != dict(config.pruned_widths):
+            raise RuntimeError(
+                "the config's pruned_widths differ from the checkpoint's own "
+                "recorded widths; M4's architecture must be exactly the M3 "
+                "checkpoint's, not a re-derived one"
+            )
+    base = build_source_architecture(config, class_names)
     base.load_state_dict(checkpoint["model"])
     return base, {
         "path": str(checkpoint_path),
         "sha256": measured,
         "epoch": checkpoint.get("epoch"),
         "run_id": checkpoint.get("run_id"),
+        "pruned_widths": dict(config.pruned_widths) or None,
     }
 
 
@@ -362,7 +404,7 @@ def export_candidate(
             f"{best['epoch']}; refusing to export a different model than selected"
         )
 
-    base = build_mobilenet_v2(num_classes=len(class_names), pretrained=False)
+    base = build_source_architecture(config, class_names)
     model, _ = build_qat_model(base=base)
     model.load_state_dict(checkpoint["model"])
     model.eval().cpu()
@@ -398,21 +440,26 @@ def export_candidate(
     )
 
     description = describe(model_path)
-    coverage = ort_coverage.analyse(model_path, candidate_dir, f"m2_qat_{label}")
+    coverage = ort_coverage.analyse(
+        model_path, candidate_dir, f"{config.candidate_prefix}_{label}"
+    )
     runs.atomic_write_json(candidate_dir / "coverage.json", coverage)
 
     candidate = {
         "tool": "wildlife_trigger.optimize.qat_train",
-        "design": "8.2",
-        "candidate_id": f"d2_m2_qat_{label}",
-        "model_id": "M2-candidate",
-        "kind": "int8_qat",
+        "design": config.candidate_design,
+        "candidate_id": f"{config.candidate_prefix}_{label}",
+        "model_id": config.candidate_model_id,
+        "kind": config.candidate_kind,
         "method": label,
         "lr": lr,
         "source_run_id": config.source_run_id,
         "source_checkpoint": checkpoint_info,
         "qat_run_id": ctx.run_id,
         "best_epoch": best["epoch"],
+        # M4 carries the pruned widths so its comparison row and P-gates can see
+        # the architecture is c30's; empty for M2.
+        "pruned_widths": dict(config.pruned_widths) or None,
         "calibration": {
             "manifest": calibration["manifest"],
             "sha256": calibration["sha256"],
