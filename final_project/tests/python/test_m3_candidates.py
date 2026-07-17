@@ -88,6 +88,20 @@ class TestAllocateGreedy:
         for width in allocation["widths"].values():
             assert width >= 8 and width % 8 == 0
 
+    def test_key_conventions_agree(self):
+        """removals/ratios/widths all use the features.N convention — the
+        first gx10 run crashed on ratios being keyed by bare ints."""
+        allocation = P.allocate_greedy(synthetic_report(), 0.15)
+        assert set(allocation["ratios"]) <= set(allocation["widths"])
+        assert all(k.startswith("features.") for k in allocation["ratios"])
+        for name, ratio in allocation["ratios"].items():
+            width = next(
+                g["width"] for g in synthetic_report()["groups"]
+                if g["conv"].startswith(name + ".")
+            )
+            assert allocation["widths"][name] == width - allocation["removals"][name]
+            assert ratio == pytest.approx(allocation["removals"][name] / width)
+
     def test_refuses_a_report_not_measured_to_the_cap(self):
         report = synthetic_report()
         for group in report["groups"]:
