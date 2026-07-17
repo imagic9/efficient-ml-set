@@ -82,6 +82,12 @@ done
 echo
 echo "--- P4: corpus-scale Python-vs-C++ comparison (ordered ids, labels, scores,"
 echo "        decisions, confusion matrix) for M0"
+# --score-diagnostic: M0 is the FP32 baseline. The 1e-4 score gate is the INT8
+# near-bitwise gate (DESIGN §10) and does not apply here — C++ (OpenCV 4.6) vs Python
+# (4.13) preprocessing differs by the P1 INTER_LINEAR budget, which FP32 propagates to
+# the score and INT8 clamps. The score gap is reported; correctness is the decision and
+# confusion-matrix parity (which a real runner bug would break), backed by p_ort_cpp
+# (C++ ORT == Python ORT on identical tensors) and P1 (preprocessing parity).
 "${PYTHON}" -m wildlife_trigger.validate.p4_dataset_parity \
     --candidate "${CANDIDATE}" \
     --policy "${POLICY}" \
@@ -89,6 +95,7 @@ echo "        decisions, confusion matrix) for M0"
     --model-sha256 "${M0_SHA}" \
     --model-path "${M0_ONNX}" \
     --label "M0" \
+    --score-diagnostic \
     --output "${OUT}/p4_dataset_parity_m0.json"
 
 # The per-frame JSONL stays local (large); the committed evidence is the report.

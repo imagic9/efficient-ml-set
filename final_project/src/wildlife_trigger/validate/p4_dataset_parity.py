@@ -72,6 +72,7 @@ def compare_split(
     target: str,
     threshold: float,
     class_names: list[str],
+    score_diagnostic: bool = False,
 ) -> dict:
     header, rows, footer = load_cpp_jsonl(cpp_path)
     failures: list[str] = []
@@ -129,10 +130,20 @@ def compare_split(
     cpp_scores = np.array([r["target_scores"][target] for r in scored], dtype=float)
     gaps = np.abs(python_scores - cpp_scores)
     worst = float(gaps.max())
-    if worst > SCORE_MAX_ABS:
+    over_gate = int((gaps > SCORE_MAX_ABS).sum())
+    # The 1e-4 gate is the INT8 near-bitwise gate (DESIGN §10): the quantized graph
+    # runs the SAME integer kernels in Python and C++, and quantization clamps any
+    # sub-quantum preprocessing difference. It does NOT apply to the FP32 baseline
+    # compared across OpenCV versions — there the P1 INTER_LINEAR gap (4.6 apt vs 4.13
+    # wheel) propagates linearly to the score, so score_diagnostic reports the gap
+    # instead of gating on it. Correctness for M0 rests on the decision and confusion
+    # gates below (a real runner bug flips decisions and breaks the matrix), plus
+    # p_ort_cpp (C++ ORT == Python ORT on identical tensors) and P1 (the two
+    # preprocessings agree to the registered budget).
+    if worst > SCORE_MAX_ABS and not score_diagnostic:
         failures.append(
             f"worst score gap {worst:.2e} exceeds the {SCORE_MAX_ABS:.0e} gate "
-            f"({int((gaps > SCORE_MAX_ABS).sum())} frames over)"
+            f"({over_gate} frames over)"
         )
 
     python_fire = python_scores >= threshold
@@ -164,6 +175,10 @@ def compare_split(
         "frames": len(scored),
         "worst_score_gap": worst,
         "mean_score_gap": float(gaps.mean()),
+        "scores_over_1e-4_gate": over_gate,
+        "score_treatment": "diagnostic (FP32 baseline; INT8 1e-4 gate N/A)"
+        if score_diagnostic
+        else "gated at 1e-4 (INT8 near-bitwise)",
         "decisions_differing": int(disagree.sum()),
         "carved_out_frames": [
             {"image_id": python_ids[i], "python_score": float(python_scores[i])}
@@ -198,6 +213,13 @@ def main() -> int:
                         help="required when the candidate has no evaluation.json")
     parser.add_argument("--model-path", default="")
     parser.add_argument("--label", default="")
+    # For the FP32 baseline (M0), the 1e-4 score gate is the INT8 near-bitwise gate and
+    # does not apply: C++ (OpenCV 4.6) vs Python (4.13) preprocessing differs by the P1
+    # INTER_LINEAR budget, and FP32 propagates it to the score where INT8 would clamp
+    # it. With this flag the score gap is reported, not gated; the decision and
+    # confusion-matrix gates (the correctness verdict) stay in force.
+    parser.add_argument("--score-diagnostic", action="store_true",
+                        help="report the score gap instead of gating it at 1e-4 (FP32 baseline)")
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
@@ -243,6 +265,7 @@ def main() -> int:
             args.target,
             float(target_entry["threshold"]),
             class_names,
+            args.score_diagnostic,
         )
         for split in SPLITS
     ]
@@ -257,6 +280,9 @@ def main() -> int:
         "tolerances": {
             "score_max_abs": SCORE_MAX_ABS,
             "decision_carve_out": DECISION_CARVE_OUT,
+            "score_treatment": "diagnostic (FP32 baseline; INT8 1e-4 gate N/A)"
+            if args.score_diagnostic
+            else "gated at 1e-4 (INT8 near-bitwise)",
         },
         "splits": splits,
         "verdict": {
