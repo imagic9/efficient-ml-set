@@ -1,0 +1,80 @@
+{
+  "gate": "P4 \u2014 C++ dataset parity (DESIGN \u00a710)",
+  "candidate_id": "d4_m3_c30",
+  "onnx": {
+    "path": "results/optimize/m3_prune/c30/model.onnx",
+    "sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50"
+  },
+  "policy_id": "bobcat_m3_prune_c30_v1",
+  "threshold": 0.8000255823135376,
+  "tolerances": {
+    "score_max_abs": 0.0001,
+    "decision_carve_out": 0.0001
+  },
+  "splits": [
+    {
+      "split": "cis_val_clean",
+      "frames": 3214,
+      "worst_score_gap": 5.960464477539063e-08,
+      "mean_score_gap": 9.30695774476679e-10,
+      "decisions_differing": 0,
+      "carved_out_frames": [],
+      "near_threshold_frames": 0,
+      "confusion_python": {
+        "true_fire": 85,
+        "false_fire": 153,
+        "missed": 59,
+        "true_quiet": 2917
+      },
+      "confusion_cpp": {
+        "true_fire": 85,
+        "false_fire": 153,
+        "missed": 59,
+        "true_quiet": 2917
+      },
+      "cpp_header": {
+        "model_sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50",
+        "policy_id": "bobcat_m3_prune_c30_v1",
+        "manifest_sha256": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",
+        "threads": 1,
+        "onnxruntime_version": "1.27.0"
+      },
+      "passed": true,
+      "failures": []
+    },
+    {
+      "split": "trans_val",
+      "frames": 1725,
+      "worst_score_gap": 5.960464477539063e-08,
+      "mean_score_gap": 1.8599597433236518e-09,
+      "decisions_differing": 0,
+      "carved_out_frames": [],
+      "near_threshold_frames": 1,
+      "confusion_python": {
+        "true_fire": 13,
+        "false_fire": 4,
+        "missed": 779,
+        "true_quiet": 928
+      },
+      "confusion_cpp": {
+        "true_fire": 13,
+        "false_fire": 4,
+        "missed": 779,
+        "true_quiet": 928
+      },
+      "cpp_header": {
+        "model_sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50",
+        "policy_id": "bobcat_m3_prune_c30_v1",
+        "manifest_sha256": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a",
+        "threads": 1,
+        "onnxruntime_version": "1.27.0"
+      },
+      "passed": true,
+      "failures": []
+    }
+  ],
+  "verdict": {
+    "passed": true,
+    "failed": []
+  }
+}
