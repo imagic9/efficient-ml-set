@@ -135,6 +135,7 @@ print(f"    {len(uniq)} frames across {len({r['benchmark_stratum'] for r in uniq
 PY
 
 # --- 4. installer, demo, readme ----------------------------------------------
+install -m 0755 "${PROJECT_ROOT}/deploy/pi/preflight.sh" "${STAGING}/preflight.sh"
 install -m 0755 "${PROJECT_ROOT}/deploy/pi/install.sh" "${STAGING}/install.sh"
 install -m 0755 "${PROJECT_ROOT}/deploy/pi/run_demo.sh" "${STAGING}/run_demo.sh"
 install -m 0755 "${PROJECT_ROOT}/deploy/pi/run_benchmark.sh" "${STAGING}/run_benchmark.sh"

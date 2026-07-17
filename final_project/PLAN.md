@@ -1619,8 +1619,20 @@ apt-installs the OpenCV 4.6.0 runtime, which on Pi OS Bookworm is the byte-compa
 checksums + glibc (2.34), and the clean-install test proves it runs without the
 training env.
 
+**Hardened for F1 by issue #77 (2026-07-17):** a **fail-closed host preflight**
+(`deploy/pi/preflight.sh`, run first by `install.sh`) refuses a host outside the Pi 5 /
+Bookworm contract *before* anything is mutated — non-aarch64, non-Bookworm, or a CPU
+without `asimddp` (the ARMv8.2 dot-product feature Cortex-A76/Pi 5 has and Cortex-A72/
+Pi 4 lacks). The gate is the ISA feature, not the literal CPU part, so it still accepts
+gx10 for the E8 dry run; whether the host is a *literal* Pi 5 (`is_pi5_a76`) is recorded
+in the machine-readable `environment.json` a successful install writes, never confused
+with a Pi result (§12.4). `scripts/run_e7_preflight.sh` + `validate/preflight_check.py`
+prove the success path and all refusal paths (Pi 4 / Trixie / x86_64) without a physical
+Pi — **all 6 checks pass** (`results/e7/preflight.json`).
+
 **Output:** versioned ARM64 deployment archive (staged at `results/e7/bundle/`,
-gitignored; `bundle_audit.json` + `e7_bundle.json` + `clean_install.log` committed).
+gitignored; `bundle_audit.json` + `e7_bundle.json` + `preflight.json` +
+`clean_install.log` committed).
 
 ### E8 — Full ARM64 dry run
 
@@ -1664,9 +1676,14 @@ never replace Pi measurements with `gx10` timings.
 ### F1 — Day 1: provision and smoke test
 
 - [ ] Use `gx10` as the control/evidence host and verify the remote Pi connection.
-- [ ] Record hardware/OS/kernel/governor/compiler/ORT/OpenCV/environment.
+- [ ] Record hardware/OS/kernel/governor/compiler/ORT/OpenCV/environment. *(The
+      bundle's `install.sh` runs `preflight.sh` first and writes `environment.json` —
+      OS/kernel/arch, CPU identity+features, glibc, OpenCV/ORT versions — automatically;
+      on a real Pi 5 it records `is_pi5_a76=true`. Issue #77.)*
 - [ ] Record exposed frequency, temperature, and throttling interfaces.
-- [ ] Install the frozen bundle.
+- [ ] Install the frozen bundle. *(The fail-closed preflight refuses a non-Pi-5 /
+      non-Bookworm / Cortex-A72 host before any change — so a provisioning mismatch is a
+      message in the first minute, not a lost rental day. Issue #77.)*
 - [ ] Run self-test and a short validation smoke test.
 - [ ] Do not tune models or inspect test labels.
 

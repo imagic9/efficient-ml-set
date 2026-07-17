@@ -1,0 +1,51 @@
+{
+  "gate": "E7/F1 fail-closed host preflight (issue #77)",
+  "exit_codes": {
+    "R1": 0,
+    "R2": 0,
+    "R3": 1,
+    "R4": 1,
+    "R5": 1
+  },
+  "is_pi5_a76": {
+    "R1_real_host": "0",
+    "R2_pi5_sim": "1"
+  },
+  "checks": [
+    {
+      "check": "R1 success on the real host",
+      "passed": true,
+      "detail": "exit 0, asimddp=1"
+    },
+    {
+      "check": "R1 records a dev host (is_pi5_a76=0)",
+      "passed": true,
+      "detail": "is_pi5_a76=0"
+    },
+    {
+      "check": "R2 simulated Pi 5 passes and is flagged (is_pi5_a76=1)",
+      "passed": true,
+      "detail": "exit 0, is_pi5_a76=1"
+    },
+    {
+      "check": "R3 Pi 4 (no asimddp) refused with reason",
+      "passed": true,
+      "detail": "exit 1"
+    },
+    {
+      "check": "R4 Trixie refused with reason",
+      "passed": true,
+      "detail": "exit 1"
+    },
+    {
+      "check": "R5 non-aarch64 refused with reason",
+      "passed": true,
+      "detail": "exit 1"
+    }
+  ],
+  "note": "The gate accepts any asimddp-capable aarch64 Bookworm host (so the E8 dry run runs on gx10) and records whether it is a literal Pi 5; it refuses Pi 4 / Trixie / non-aarch64 before any mutation.",
+  "verdict": {
+    "passed": true,
+    "failures": []
+  }
+}
