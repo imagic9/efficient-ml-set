@@ -40,6 +40,15 @@ struct PreprocessConfig {
     int width = 256;
     int height = 192;
 
+    // JPEG decode reduction (E6 optimization knob). 1 = full decode (IMREAD_COLOR);
+    // 2 = IMREAD_REDUCED_COLOR_2 (half each side); 4 = IMREAD_REDUCED_COLOR_4
+    // (quarter). libjpeg does this in the DCT domain during decode, so it is much
+    // cheaper than decoding full and downscaling -- but it changes the pixels the
+    // letterbox then resamples, so it is NOT preprocessing parity: DESIGN §11 keeps
+    // it only if validation bobcat metrics hold within a predeclared tolerance
+    // (E6's decode-drift check). Any other value is rejected by the Preprocessor.
+    int decode_reduction = 1;
+
     // The letterbox fill. Not black: a black bar is a plausible night-time pixel
     // value, whereas mid-grey is not confusable with content.
     uint8_t pad_value = 114;
@@ -88,6 +97,13 @@ class Preprocessor {
     // corrupt-image policy, and silently returning a grey tensor would make a
     // corrupt frame indistinguishable from a legitimately empty one.
     PreprocessResult from_file(const std::string &path);
+
+    // Just step 1: decode the JPEG to 8-bit BGR, honouring config.decode_reduction.
+    // Split out so the benchmark and dataset runner can time decode separately from
+    // the rest of preprocessing (E6 attributes the reduced-decode gain to this
+    // stage) and reuse one decode across the fused and reference paths. Throws on an
+    // undecodable file, same contract as from_file.
+    cv::Mat decode(const std::string &path) const;
 
     // Steps 2-7 on an already-decoded BGR image, so the dataset runner can reuse a
     // decode and tests can supply a synthetic frame.
