@@ -311,6 +311,110 @@ def build_candidate_row(
     }
 
 
+def pruned_params_and_macs(candidate: dict) -> tuple[int, int]:
+    """A pruned candidate's own params/MACs, re-derived from its checkpoint.
+
+    The M0-row copy is wrong for M3/M4 — pruning is precisely a change of
+    params and MACs — so the numbers are measured the way M0's were: load the
+    hash-verified best checkpoint into the candidate's recorded architecture
+    and count. The ladder MAC convention (`macs_of_model`) keeps the column
+    comparable with every other row.
+    """
+    import torch
+
+    from .models.mobilenet import build_mobilenet_v2
+    from .optimize.prune import apply_widths
+    from .validate.input_cost import macs_of_model
+
+    run_dir = Path(candidate["finetune_run_dir"])
+    checkpoint_path = run_dir / BEST_CHECKPOINT
+    measured = sha256_file(checkpoint_path)
+    if measured != candidate["best_checkpoint_sha256"]:
+        raise RuntimeError(
+            f"{checkpoint_path} does not hash to the candidate's record; its "
+            "parameter count would describe an unknown file"
+        )
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    if checkpoint.get("epoch") != candidate["best_epoch"]:
+        raise RuntimeError(
+            f"best.pt holds epoch {checkpoint.get('epoch')} but the candidate "
+            f"selected {candidate['best_epoch']}; not this candidate's model"
+        )
+    model = build_mobilenet_v2(
+        num_classes=len(checkpoint["class_names"]), pretrained=False
+    )
+    apply_widths(model, candidate["pruning"]["widths"])
+    model.load_state_dict(checkpoint["model"])
+    params = sum(parameter.numel() for parameter in model.parameters())
+    width = candidate["input"]["width"]
+    height = candidate["input"]["height"]
+    return params, macs_of_model(model, width, height)
+
+
+def build_pruned_row(
+    model_id: str,
+    kind: str,
+    candidate: dict,
+    evaluation: dict,
+    policy: dict,
+    policy_path: Path,
+    artifact: Path,
+    onnx_sha256: str,
+    parity_path: Path,
+    params: int,
+    macs: int,
+) -> dict:
+    calibration = policy["calibration"]
+    domains = evaluation["domains"]
+    pruning = candidate["pruning"]
+
+    return {
+        "model_id": model_id,
+        "kind": kind,
+        "run_id": candidate["candidate_id"],
+        "source_run_id": candidate["source_run_id"],
+        "seed": candidate["seed"],
+        "input": evaluation["regime"]["input"],
+        "params": params,
+        "macs": macs,
+        "pruning": {
+            "method": candidate["method"],
+            "target_fraction": pruning["target_fraction"],
+            "realized_mac_reduction_tp": pruning["realized_mac_reduction_tp"],
+            "param_reduction": pruning["param_reduction"],
+            "widths": pruning["widths"],
+            "pre_finetune_primary": pruning["pre_finetune_primary"],
+            "finetune_run_id": candidate["finetune_run_id"],
+            "best_epoch": candidate["best_epoch"],
+        },
+        "model": {
+            "artifact": policy["model"]["artifact"],
+            "sha256": onnx_sha256,
+            "bytes": artifact.stat().st_size,
+        },
+        "evaluation_regime": evaluation["regime"],
+        "validation_at_0p5": {
+            "cis_f2": domains["cis_val_clean"]["target"]["frame_f2"],
+            "trans_f2": domains["trans_val"]["target"]["frame_f2"],
+            "cis_ap": domains["cis_val_clean"]["target"]["average_precision"],
+            "trans_ap": domains["trans_val"]["target"]["average_precision"],
+            "selection_score": evaluation["selection_score"]["primary"],
+        },
+        "operating_point": {
+            "threshold": policy["targets"][0]["threshold"],
+            "status": calibration["status"],
+            "primary_rule_met": calibration["primary_rule_met"],
+            "per_domain": calibration["per_domain"],
+        },
+        "policy": {
+            "policy_id": policy["policy_id"],
+            "path": str(policy_path),
+            "sha256": sha256_file(policy_path),
+        },
+        "parity": {"report": str(parity_path), "passed": True},
+    }
+
+
 def update_table(table_path: Path, row: dict) -> list[dict]:
     """Replace this model's row, keep everyone else's, keep the table ordered."""
     rows: list[dict] = []
@@ -359,11 +463,19 @@ def main() -> int:
         artifact, onnx_sha256 = verify_artifact(policy)
         parity_path = args.parity or Path(policy["model"]["parity"])
         verify_parity(parity_path, onnx_sha256)
-        base = base_row(args.table, args.base_model_id)
-        row = build_candidate_row(
-            args.model_id, args.kind, candidate, evaluation, policy, args.policy,
-            artifact, onnx_sha256, parity_path, base,
-        )
+        if candidate.get("kind") in ("pruned_fp32", "pruned_qat"):
+            # Pruning changes params/MACs — the base-row copy would be a lie.
+            params, macs = pruned_params_and_macs(candidate)
+            row = build_pruned_row(
+                args.model_id, args.kind, candidate, evaluation, policy,
+                args.policy, artifact, onnx_sha256, parity_path, params, macs,
+            )
+        else:
+            base = base_row(args.table, args.base_model_id)
+            row = build_candidate_row(
+                args.model_id, args.kind, candidate, evaluation, policy,
+                args.policy, artifact, onnx_sha256, parity_path, base,
+            )
     else:
         history, policy = load_row_inputs(args.run, args.policy)
         artifact, onnx_sha256 = verify_artifact(policy)

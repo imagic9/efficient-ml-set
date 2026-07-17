@@ -1,9 +1,9 @@
 # D3/D4 — structured pruning of M0's expansion channels (DESIGN §8.3).
 #
 # D3 uses `m0_run`, `ratios`, `round_to`: the registered per-group sensitivity
-# measurement (results/optimize/m3_prune/sensitivity_protocol.md). D4 will add
-# its candidate section here once its allocation rule is registered — the same
-# config file so the run explains itself, per DESIGN §9.1.
+# measurement (results/optimize/m3_prune/sensitivity_protocol.md). D4's
+# candidate recipe below is fixed by results/optimize/m3_prune/m3_registration.md
+# — the same config file so the run explains itself, per DESIGN §9.1.
 
 m0_run: results/training/c2/c2_m0_fp32_seed42_20260716T061203Z
 # best.pt must hash to the run's recorded checkpoint (enforced at load):
@@ -13,3 +13,29 @@ m0_run: results/training/c2/c2_m0_fp32_seed42_20260716T061203Z
 # and the evidence records requested vs realized separately (§8.3 step 4).
 ratios: [0.125, 0.25, 0.375, 0.5]
 round_to: 8
+
+# --- D4 (optimize.m3_finetune) -----------------------------------------------
+
+source_run_id: c2_m0_fp32_seed42_20260716T061203Z
+source_checkpoint: results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/best.pt
+source_checkpoint_sha256: 42079c362013898c3354a65bbf8ced4524504c0dfc20cb6efaa00dabe9209074
+
+# The committed D3 evidence the allocation reads — hash-pinned, refused on drift.
+sensitivity_report: results/optimize/m3_prune/sensitivity.json
+sensitivity_report_sha256: 692053324e08bad688198fc2d97f89f22843f2993234c28c251eb333de6765cd
+
+# Registered targets (m3_registration §1). c45 exceeds the measured envelope
+# (42.99%) and is the envelope candidate by registration.
+targets: {c15: 0.15, c30: 0.30, c45: 0.45}
+cap: 0.5
+quantum: 8
+
+# Fine-tune recipe (m3_registration §2): M0's own full-phase LR, no search.
+seed: 42
+lr: 3.0e-4
+weight_decay: 1.0e-4
+max_epochs: 15
+early_stopping_patience: 4
+amp: true
+batch_size: 64
+workers: 8

@@ -383,6 +383,152 @@ def prune_expansion(
 
 
 # ---------------------------------------------------------------------------
+# D4 allocation: sensitivity curves -> per-group removals for one MAC target.
+# ---------------------------------------------------------------------------
+
+
+def _damage_at(points: list[tuple[int, float]], removed: int) -> float:
+    """Linear interpolation of a group's measured damage curve.
+
+    `points` are (channels_removed, delta_primary), sorted, starting at (0, 0).
+    Queries beyond the last measured point are refused by the cap upstream —
+    extrapolation is exactly what the registration forbids.
+    """
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        if removed <= x1:
+            if x1 == x0:
+                return y1
+            return y0 + (y1 - y0) * (removed - x0) / (x1 - x0)
+    raise ValueError(f"query {removed} beyond the measured curve (max {points[-1][0]})")
+
+
+def allocation_envelope(report: dict) -> float:
+    """The maximum reachable MAC reduction with every group at the cap."""
+    return float(sum(g["curve"][-1]["mac_reduction"] for g in report["groups"]))
+
+
+def allocate_greedy(
+    report: dict,
+    target_fraction: float,
+    cap: float = 0.5,
+    quantum: int = 8,
+) -> dict:
+    """The registered D4 allocation (m3_registration.md §1), deterministic.
+
+    Repeatedly removes the `quantum` of channels with the lowest marginal
+    measured damage per MAC saved, capped at realized ratio `cap` per group,
+    until the target reduction (in the sensitivity report's own MAC counter)
+    is reached or the envelope is exhausted. Ties break on block index, so the
+    result is a pure function of the committed report.
+    """
+    base_macs = report["baseline"]["profile"]["macs"]
+    groups: dict[int, dict] = {}
+    for g in report["groups"]:
+        curve = sorted(g["curve"], key=lambda p: p["requested_ratio"])
+        last = curve[-1]
+        if last["requested_ratio"] != cap:
+            raise ValueError(
+                f"block {g['block']}: the report's largest measured ratio is "
+                f"{last['requested_ratio']}, not the cap {cap}; the registered "
+                "allocation cannot exceed measurement"
+            )
+        removed_at_cap = last["width_before"] - last["width_after"]
+        groups[g["block"]] = {
+            "width": g["width"],
+            "points": [(0, 0.0)]
+            + [(p["width_before"] - p["width_after"], p["delta_primary"]) for p in curve],
+            "macs_per_channel": last["mac_reduction"] * base_macs / removed_at_cap,
+            "max_removed": removed_at_cap,
+        }
+
+    target_macs = target_fraction * base_macs
+    removed = {block: 0 for block in groups}
+    saved = 0.0
+    exhausted = False
+    while saved < target_macs:
+        best_block, best_cost = None, None
+        for block in sorted(groups):
+            entry = groups[block]
+            if removed[block] + quantum > entry["max_removed"]:
+                continue
+            marginal = _damage_at(entry["points"], removed[block] + quantum) - _damage_at(
+                entry["points"], removed[block]
+            )
+            cost = marginal / (entry["macs_per_channel"] * quantum)
+            if best_cost is None or cost < best_cost:
+                best_block, best_cost = block, cost
+        if best_block is None:
+            exhausted = True
+            break
+        removed[best_block] += quantum
+        saved += groups[best_block]["macs_per_channel"] * quantum
+
+    ratios = {
+        block: removed[block] / groups[block]["width"]
+        for block in groups
+        if removed[block]
+    }
+    return {
+        "target_fraction": target_fraction,
+        "cap": cap,
+        "quantum": quantum,
+        "base_macs": base_macs,
+        "predicted_saved_macs": round(saved),
+        "predicted_reduction": round(saved / base_macs, 6),
+        "predicted_damage": round(
+            sum(
+                _damage_at(groups[b]["points"], n)
+                for b, n in removed.items()
+                if n
+            ),
+            6,
+        ),
+        "envelope_exhausted": exhausted,
+        "removals": {f"features.{b}": n for b, n in sorted(removed.items()) if n},
+        "ratios": ratios,
+        "widths": {
+            f"features.{b}": groups[b]["width"] - removed[b] for b in sorted(groups)
+        },
+    }
+
+
+def apply_widths(model: nn.Module, widths: dict[str, int]) -> nn.Module:
+    """Reproduce a pruned architecture so a pruned checkpoint can load.
+
+    Shapes are what matter here, not channel identity: the structural cut uses
+    the same solver path as the original prune, and `load_state_dict` then
+    overwrites every value. Exactness is asserted, not assumed — a width the
+    solver could not realize exactly would corrupt the reload silently.
+    """
+    plan = classify(model)
+    ratios: dict[int, float] = {}
+    for name, width in widths.items():
+        block = int(name.split(".")[1])
+        if block not in plan.expansion:
+            raise ValueError(f"{name} is not an expansion block")
+        current = plan.expansion[block].out_channels
+        if width == current:
+            continue
+        if width > current or width < 8 or width % 8:
+            raise ValueError(
+                f"{name}: cannot realize width {width} from {current} "
+                "(must be a smaller positive multiple of 8)"
+            )
+        ratios[block] = (current - width) / current
+    if ratios:
+        build_pruner(model, plan, ratios, round_to=8).step()
+    for name, width in widths.items():
+        block = int(name.split(".")[1])
+        actual = plan.expansion[block].out_channels
+        if actual != width:
+            raise RuntimeError(
+                f"{name}: solver realized {actual}, wanted {width}; refusing a "
+                "silently different architecture"
+            )
+    return model
+
+
+# ---------------------------------------------------------------------------
 # D3 sensitivity: one group at a time, measured on validation at the yardstick.
 # ---------------------------------------------------------------------------
 

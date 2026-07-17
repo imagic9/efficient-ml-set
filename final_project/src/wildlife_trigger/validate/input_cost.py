@@ -78,16 +78,31 @@ def macs_at(width: int, height: int, num_classes: int) -> int:
     here so the number means what DESIGN and the literature mean by MACs when they
     quote MobileNetV2 at 300M.
     """
+    from ..models.mobilenet import build_mobilenet_v2
+
+    model = build_mobilenet_v2(num_classes=num_classes, pretrained=False)
+    return macs_of_model(model, width, height)
+
+
+def macs_of_model(model, width: int, height: int) -> int:
+    """The same ladder MAC convention, for an arbitrary module.
+
+    Split out of `macs_at` for D4: a pruned candidate's row must count MACs in
+    the convention every other row uses, and `macs_at` can only build the
+    unpruned architecture. Same counter, same halving, same meaning.
+    """
     import torch
     from torch.utils.flop_counter import FlopCounterMode
 
-    from ..models.mobilenet import build_mobilenet_v2
-
-    model = build_mobilenet_v2(num_classes=num_classes, pretrained=False).eval()
-    inputs = torch.zeros(1, 3, height, width)
-    with torch.inference_mode(), FlopCounterMode(display=False) as counter:
-        model(inputs)
-    return counter.get_total_flops() // 2
+    was_training = model.training
+    model.eval()
+    try:
+        inputs = torch.zeros(1, 3, height, width)
+        with torch.inference_mode(), FlopCounterMode(display=False) as counter:
+            model(inputs)
+        return counter.get_total_flops() // 2
+    finally:
+        model.train(was_training)
 
 
 def parse_shape(text: str) -> tuple[int, int]:
