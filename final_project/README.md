@@ -1,8 +1,11 @@
 # Wildlife Trigger — Efficient ML Final Project
 
-Status: **Phases A, B and C complete — M0 is trained, calibrated, exported,
-parity-proven, documented, and confirmed across seeds. Phase D (the optimization
-ladder M1-M4) is next.**
+Status: **Phases A, B, C and the entire Phase D complete — Gate D PASSED.** The
+full optimization ladder (M0 FP32 / M1 INT8 PTQ / M2 INT8 QAT / M3 structured-
+pruned FP32 / M4 pruned+QAT) is trained, gated (P3/P4), carded, and compared;
+the deployable pre-Pi shortlist **M0 · M2 · M4** and the fixed
+`benchmark_val_1000.jsonl` are frozen. **Phase E (C++ application + deployment
+bundle) is next**, then the conditional Phase F Pi trial.
 
 **Trans-domain bobcat recall is poor and is reported as such**, per DESIGN §18's registered
 decision rule. M0 catches 86% of bobcat visits at cameras it has seen and 18% at the
@@ -23,7 +26,27 @@ showed it is a property of the frozen recipe, not of seed 42: trans F2 is
 | C3 (calibrate the operating point) | **done** — `recall_floor_infeasible`: ships threshold 0.5381 inside the fire budget, but the 90% recall floor is out of reach (trans 7.9%); **not a pass** |
 | C4 (export and parity) | **done** — ONNX `c3102764…` at opset 17; P1 bit-exact, P2 and ORT py↔cpp passed; policy re-bound to the ONNX after proof |
 | C5 (seeds 17/73, model card) | **done** — trans F2 0.1142±0.0175 across three seeds: the gap is the recipe, not the seed (#18); model card `artifacts/model_cards/m0_fp32.md`; comparison table opened with the M0 row |
-| Phases D, E, F, G | not started |
+| Phase D (M1-M4 optimization ladder) | **Gate D PASSES** — see the ladder table below; all five candidates past P3/P4; shortlist and benchmark frozen |
+| Phases E, F, G | not started |
+
+### The optimization ladder (Phase D, validation / deployment ORT)
+
+| model | kind | primary (mean bobcat F2@0.5) | MACs | bytes | on shortlist |
+|---|---|---:|---:|---:|:--:|
+| M0 | FP32 baseline | 0.3663 | 293.4M | 8,950,645 | ✅ (baseline) |
+| M1 | INT8 PTQ (percentile) | 0.3527 | 293.4M | 2,620,130 | — (dominated) |
+| M2 | INT8 QAT (lr5e-5) | **0.3832** | 293.4M | 2,536,267 | ✅ |
+| M3 | structured-pruned FP32 (c30) | 0.3583 | **205.6M** | 7,035,950 | — (dominated) |
+| M4 | pruned + QAT | 0.3730 | **205.6M** | **2,014,806** | ✅ |
+
+Every operating point is `recall_floor_infeasible` (the trans-domain recall floor
+is out of reach for the whole ladder, as for M0 — a measured property of the
+recipe, never described as a pass). The non-dominated deployment front is **{M2
+(accuracy), M4 (MACs + size)}** with M0 as the FP32 baseline; the final model is
+chosen by **Pi latency** (Phase F), never gx10 timing. Per-candidate detail:
+`artifacts/model_cards/m{1,2,3,4}_*.md`; the machine-readable table is
+`results/model_selection/comparison.jsonl`; the shortlist and frozen bundle are
+`results/model_selection/pre_pi_{shortlist.md,freeze.json}`.
 
 The Core input is **frozen at 256x192** and the head contract at **16 outputs with a
 5,000-frame empty supplement** — decided by C1a on measured data, not assumed:
