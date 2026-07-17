@@ -5,12 +5,14 @@ full optimization ladder (M0 FP32 / M1 INT8 PTQ / M2 INT8 QAT / M3 structured-
 pruned FP32 / M4 pruned+QAT) is trained, gated (P3/P4), carded, and compared;
 the deployable pre-Pi shortlist **M0 · M2 · M4** and the fixed
 `benchmark_val_1000.jsonl` are frozen. **Phase E (C++ application + deployment
-bundle) is underway — E1 is done, Gate E1 PASSED**: the C++ foundation is
-hardened (leveled logging convention, `schema_version` on every output) and,
-for the first time, exercised against the real M0 baseline — build + ctest +
-self-test / infer (native and QEMU `cortex-a76`) / benchmark / dataset runner all
-green in the pinned target container (`results/e1/e1_gate.json`). **E2 is next**,
-then the conditional Phase F Pi trial.
+bundle) is underway — E1–E5 done, E6 in progress.** The C++ foundation is hardened
+and, for the first time, exercised against the real M0 baseline (Gate E1 PASSED):
+the preprocessor, session/policy, dataset runner and benchmark/monitor are each
+certified against DESIGN §11, and the pre-rental QEMU `cortex-a76` ISA parity is
+bit-identical across the shortlist. See the phase table below for per-task evidence.
+E6's remaining work is the inference-pipeline optimization matrix (ref-vs-fused,
+reduced JPEG decode, ORT graph/threads/arena) and the native-vs-target build; then
+Gate E6, E7 (bundle), E8 (dry run), and the conditional Phase F Pi trial.
 
 **Trans-domain bobcat recall is poor and is reported as such**, per DESIGN §18's registered
 decision rule. M0 catches 86% of bobcat visits at cameras it has seen and 18% at the
