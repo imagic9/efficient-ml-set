@@ -1463,17 +1463,24 @@ E5 closed the two remaining boxes:
 Depends on: E5, Gate D.
 
 - [ ] Pass P1-P4 for M0 and every shortlisted optimized model.
-- [ ] Measure reference-vs-fused preprocessing with model/config held constant.
-- [ ] Compare full JPEG decode against reduced 1/2 and 1/4 decode; test 1/8 only
-      with explicit validation accuracy/decision-drift evidence.
-- [ ] Measure supported ORT graph levels, threads 1/2/4, memory arena on/off, and
-      stable CPU affinity if exposed; change one factor at a time.
-- [ ] Treat `ORT_ENABLE_ALL` as the default and `ORT_ENABLE_EXTENDED` as a measured
-      alternative; retain optimized graphs and profiles for both rather than
-      inferring execution type from node names alone.
-- [ ] Keep reduced decode only if validation bobcat metrics meet the predeclared
-      tolerance; it is not preprocessing parity.
-- [ ] Run Python-vs-C++ validation dataset parity.
+- [x] Measure reference-vs-fused preprocessing with model/config held constant.
+      *(optimization matrix, PR pending: `--preprocess reference` vs `fused` on M0,
+      identical decisions to 1e-6, latency within noise on gx10.)*
+- [x] Compare full JPEG decode against reduced 1/2 and 1/4 decode; test 1/8 only
+      with explicit validation accuracy/decision-drift evidence. *(decode-drift gate:
+      1/2 and 1/4 both REJECTED — see below; 1/8 not tested, already unsafe at 1/2.)*
+- [x] Measure supported ORT graph levels, threads 1/2/4, memory arena on/off, and
+      stable CPU affinity if exposed; change one factor at a time. *(optimization
+      matrix; CPU affinity not exposed in the container, recorded as not-measured.)*
+- [x] Treat `ORT_ENABLE_ALL` as the default and `ORT_ENABLE_EXTENDED` as a measured
+      alternative *(both measured; ALL is the shipping default, EXTENDED within noise
+      on gx10)*; **still open:** retain optimized graphs and profiles for both rather
+      than inferring execution type from node names alone.
+- [x] Keep reduced decode only if validation bobcat metrics meet the predeclared
+      tolerance; it is not preprocessing parity. *(Decided per the rule: metrics do
+      NOT hold — reduced decode NOT adopted, shipping pipeline stays full decode.)*
+- [ ] Run Python-vs-C++ validation dataset parity. *(P4: done for M0 in E4, M2/M4 in
+      D-phase; needs the E6 consolidation summary.)*
 - [ ] On `gx10`, run all unit/integration/self-tests under both a clean native
       CPU-only build and the target-compatible ARM64 build.
 - [x] **Run P1-P4 for M0 and every shortlisted model under
@@ -1499,10 +1506,39 @@ move: ORT's MLAS kernels for this MobileNetV2 produce identical output with and 
 `i8mm`/`sve2` (FP32 on the deterministic NEON path, INT8 on the shared `asimddp`
 dot-product), so there is no ISA-dispatch divergence to surface. Favorable — no Pi-ISA
 surprise is expected — but QEMU is *functional* emulation; the real Pi stays the
-arbiter (§12.4), and no emulated latency was recorded. **Still open in E6:** P1–P4
-consolidation for the shortlist; reference-vs-fused; reduced JPEG decode (1/2, 1/4) +
-its accuracy check; the ORT graph-level / threads / arena matrix; native-vs-target
-build-and-test. Next E6 piece: the inference-pipeline optimization matrix.
+arbiter (§12.4), and no emulated latency was recorded.
+
+Second piece landed 2026-07-17: the **inference-pipeline optimization matrix** and
+the **reduced-decode drift gate**. New C++ knobs, each a measured alternative that is
+reachable but never a silent default: `--decode full|half|quarter`
+(`IMREAD_REDUCED_COLOR_2/4`), `--graph-opt all|extended`, `--arena on|off`, and
+`--preprocess` now wired into `benchmark`/`run-dataset`; decode is timed as its own
+stage and every command emits a resolved `pipeline_config`.
+
+- **Latency matrix** (`scripts/run_e6_optimization_matrix.sh`,
+  `validate/optimization_matrix.py`, `results/e6/optimization_matrix.json`): `benchmark`
+  M0 one factor at a time off the shipping baseline (fused, full decode,
+  `ORT_ENABLE_ALL`, arena on, 1 thread). The collator asserts each cell moves exactly
+  one factor and that every cell is `measured_on_pi:false`. Finding (gx10, DIAGNOSTIC):
+  **decode is the only knob with real headroom** — half 1.10×, quarter 1.17× — while
+  `threads=4` *regresses* to 0.88× (intra-op overhead exceeds the gain on this
+  MobileNetV2), `threads=2` ≈1.03×, and preprocess/graph/arena land within noise
+  (inference dominates at ~9.6 ms on gx10). These rank which knobs to carry to the Pi;
+  Phase F measures the latency that counts (§12.4).
+- **Reduced-decode drift gate** (`scripts/run_e6_decode_drift.sh`,
+  `validate/decode_drift.py`, `results/e6/decode_drift.json`): reduced decode changes
+  the tensor, so it is not parity — kept only if bobcat metrics hold within a
+  *predeclared* tolerance (zero lost true detections; ≤1% new false fires). Over the
+  full `benchmark_val_1000` for M0/M2/M4, **every reduced variant is REJECTED**: half
+  and quarter lose real bobcat detections (M0 17–18, M2 10–12, M4 17–19) and add
+  1.1–3.2% new false fires, score Δ up to ~0.99. The 1.1–1.2× decode saving is not
+  worth losing the target animal — this is DESIGN §11's "measure first, then decide"
+  returning a principled negative, and the shipping pipeline stays full decode. (The
+  gate exits 0: a correctly-rejected optimization is a finding, not a defect.)
+
+**Still open in E6:** P1–P4 consolidation for the shortlist (cite M0's E4 P4 + M2/M4's
+D-phase P3/P4 into one E6 summary); retain optimized ALL-vs-EXTENDED graphs/profiles;
+native-vs-target build-and-test on gx10; then **Gate E6**.
 
 **Gate E6:** the C++ application is correct before performance claims are made.
 
