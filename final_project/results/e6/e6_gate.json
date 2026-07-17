@@ -1,0 +1,142 @@
+{
+  "gate": "E6 \u2014 the C++ application is correct before performance claims (PLAN E6)",
+  "shipping_pipeline": {
+    "preprocess": "fused",
+    "decode": "full",
+    "graph_optimization": "all",
+    "cpu_arena": "on",
+    "note": "unchanged by the optimization experiments; reduced decode measured and rejected."
+  },
+  "parity_chains": [
+    {
+      "model": "M0",
+      "kind": "fp32_baseline",
+      "sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+      "chain": {
+        "P1_preprocess": {
+          "path": "results/parity/c2_m0_fp32_seed42_20260716T061203Z/p1_preprocess.json",
+          "exists": true,
+          "gate": "P1 preprocessing parity (DESIGN 10, tolerances registered 2026-07-16)",
+          "passed": true
+        },
+        "P2_fp32": {
+          "path": "results/parity/c2_m0_fp32_seed42_20260716T061203Z/p2_fp32.json",
+          "exists": true,
+          "gate": "P2 FP32 parity (DESIGN 10, tolerances registered 2026-07-16; npz guard corrected same day, issue #30)",
+          "passed": true,
+          "sha_bound": true
+        },
+        "p_ort_cpp": {
+          "path": "results/parity/c2_m0_fp32_seed42_20260716T061203Z/p_ort_cpp.json",
+          "exists": true,
+          "gate": "initial ORT python-vs-C++ parity (DESIGN 10, registered 2026-07-16)",
+          "passed": true
+        },
+        "P4_dataset": {
+          "path": "results/e4/p4_dataset_parity_m0.json",
+          "exists": true,
+          "gate": "P4 \u2014 C++ dataset parity (DESIGN \u00a710)",
+          "passed": true,
+          "sha_bound": true
+        }
+      },
+      "shared_p1": "results/parity/c2_m0_fp32_seed42_20260716T061203Z/p1_preprocess.json",
+      "passed": true
+    },
+    {
+      "model": "M2",
+      "kind": "int8_qat",
+      "sha256": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+      "chain": {
+        "P3_quantized": {
+          "path": "results/optimize/m2_qat/lr5e-5/p3_quantized.json",
+          "exists": true,
+          "gate": "P3 \u2014 quantized-model validation (DESIGN \u00a710)",
+          "passed": true,
+          "sha_bound": true
+        },
+        "P4_dataset": {
+          "path": "results/optimize/m2_qat/lr5e-5/p4_dataset_parity.json",
+          "exists": true,
+          "gate": "P4 \u2014 C++ dataset parity (DESIGN \u00a710)",
+          "passed": true,
+          "sha_bound": true
+        }
+      },
+      "shared_p1": "M0 P1 (shared preprocessing contract)",
+      "passed": true
+    },
+    {
+      "model": "M4",
+      "kind": "pruned_qat",
+      "sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+      "chain": {
+        "P3_quantized": {
+          "path": "results/optimize/m4_qat/lr5e-5/p3_quantized.json",
+          "exists": true,
+          "gate": "P3 \u2014 quantized-model validation (DESIGN \u00a710)",
+          "passed": true,
+          "sha_bound": true
+        },
+        "P4_dataset": {
+          "path": "results/optimize/m4_qat/lr5e-5/p4_dataset_parity.json",
+          "exists": true,
+          "gate": "P4 \u2014 C++ dataset parity (DESIGN \u00a710)",
+          "passed": true,
+          "sha_bound": true
+        }
+      },
+      "shared_p1": "M0 P1 (shared preprocessing contract)",
+      "passed": true
+    }
+  ],
+  "experiments": {
+    "qemu_isa_parity": {
+      "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e6/qemu_parity.json",
+      "exists": true,
+      "passed": true
+    },
+    "native_vs_target": {
+      "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e6/native_vs_target.json",
+      "exists": true,
+      "passed": true
+    },
+    "optimization_matrix_diagnostic": {
+      "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e6/optimization_matrix.json",
+      "exists": true,
+      "passed": true
+    },
+    "reduced_decode_drift": {
+      "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e6/decode_drift.json",
+      "exists": true,
+      "experiment_valid": true,
+      "reduced_decode_adopted": false,
+      "conclusion": "reduced decode NOT adopted: no variant holds the predeclared bobcat tolerance on any shortlisted model; the shipping pipeline stays full decode."
+    }
+  },
+  "retained_graphs": {
+    "levels": {
+      "all": {
+        "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e6/graphs/opt_all.onnx",
+        "exists": true,
+        "sha256": "5398d7dfeb475b60659720f390bf03dc180aa573d9ca64f188a69ec6dca90b8c",
+        "bytes": 8932761
+      },
+      "extended": {
+        "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e6/graphs/opt_extended.onnx",
+        "exists": true,
+        "sha256": "dfa2c8961bd46719091ba58b569968059984f4b59ab788a34a69b1c355bf7175",
+        "bytes": 8933876
+      }
+    },
+    "profiles": [
+      "/home/deploy/efficientml/efficient-ml-set/final_project/results/e6/graphs/prof_all_2026-07-17_10-53-27_873.json",
+      "/home/deploy/efficientml/efficient-ml-set/final_project/results/e6/graphs/prof_extended_2026-07-17_10-53-28_282.json"
+    ],
+    "integer_execution_proof": "P0 ort_coverage (cited); the retained graphs are for inspection, never shipped"
+  },
+  "verdict": {
+    "passed": true,
+    "failures": []
+  }
+}

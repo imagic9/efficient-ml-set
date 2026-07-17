@@ -1,0 +1,35 @@
+{
+  "gate": "E6 native-vs-target build-and-test (DESIGN \u00a711, PLAN E6)",
+  "toolchains": {
+    "native": {
+      "image": "wildlife-trigger-native:ubuntu2404 (gcc 13 / glibc 2.39)",
+      "ctest": {
+        "passed": 5,
+        "total": 5
+      },
+      "self_test": "PASSED"
+    },
+    "target": {
+      "image": "wildlife-trigger-target:bookworm (gcc 12 / glibc 2.36)",
+      "ctest": {
+        "passed": 5,
+        "total": 5
+      },
+      "self_test": "PASSED"
+    }
+  },
+  "cross_toolchain_parity": {
+    "frames": 1000,
+    "decisions_differing": 0,
+    "max_score_delta": 0.0,
+    "mean_score_delta": 0.0,
+    "disagreements": [],
+    "sanity_bound": 0.001,
+    "note": "both builds share OpenCV 4.6.0 and the pinned ORT; only gcc/glibc differ, so decisions must match and the score delta be ~0."
+  },
+  "ort_version": "1.27.0",
+  "verdict": {
+    "passed": true,
+    "failures": []
+  }
+}
