@@ -463,14 +463,18 @@ def main() -> int:
         artifact, onnx_sha256 = verify_artifact(policy)
         parity_path = args.parity or Path(policy["model"]["parity"])
         verify_parity(parity_path, onnx_sha256)
-        if candidate.get("kind") in ("pruned_fp32", "pruned_qat"):
-            # Pruning changes params/MACs — the base-row copy would be a lie.
+        if candidate.get("kind") == "pruned_fp32":
+            # M3 changed params/MACs — the base-row copy would be a lie; measure
+            # them from the hash-verified pruned checkpoint.
             params, macs = pruned_params_and_macs(candidate)
             row = build_pruned_row(
                 args.model_id, args.kind, candidate, evaluation, policy,
                 args.policy, artifact, onnx_sha256, parity_path, params, macs,
             )
         else:
+            # M1/M2 copy M0's params/MACs (quantization preserves shape); M4
+            # (pruned_qat) copies M3's, for the same reason — QAT preserves the
+            # pruned shape. Pass --base-model-id M3 for M4.
             base = base_row(args.table, args.base_model_id)
             row = build_candidate_row(
                 args.model_id, args.kind, candidate, evaluation, policy,
