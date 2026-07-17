@@ -1,9 +1,10 @@
 #!/bin/sh
-# Wildlife Trigger — Raspberry Pi installer (E7).
+# Wildlife Trigger — Raspberry Pi installer (E7, hardened for F1 by issue #77).
 #
 # Runs ON the Pi (or any clean glibc-2.36+ ARM64 host), with no access to the
-# training machine. It proves the bundle arrived intact, proves the binary can load
-# on this glibc, resolves OpenCV, and leaves a ready-to-run install.
+# training machine. It fails closed on a host outside the Pi 5 / Bookworm contract
+# BEFORE touching the system, then proves the bundle arrived intact, installs OpenCV,
+# resolves libraries, and records a machine-readable environment.json.
 #
 # What it installs and why:
 #   - libonnxruntime.so travels IN the bundle (no apt package exists for the pinned
@@ -14,7 +15,7 @@
 #     this installs the OpenCV 4.6.0 runtime from apt. Raspberry Pi OS Bookworm is
 #     Debian bookworm, so its libopencv-*406 packages are the SAME version the binary
 #     was linked against — a byte-compatible soname (.406). (A Trixie Pi ships a
-#     different soname; see README for that contingency.)
+#     different soname; preflight refuses it. See README for that contingency.)
 #
 # POSIX sh, no bashisms: a fresh Pi OS /bin/sh is dash.
 #
@@ -34,27 +35,35 @@ echo "--- verifying MANIFEST.sha256"
     && echo "    all files verified" \
     || { echo "    FAIL: checksum mismatch — the bundle is corrupt or altered" >&2; exit 1; }
 
-# 2. Loadability: prove the binary's required GLIBC symbols exist on THIS host before
-#    the first run, not during a field deployment.
-echo "--- checking the binary loads on this glibc"
-HOST_GLIBC="$(ldd --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+$' || echo unknown)"
-echo "    host glibc: ${HOST_GLIBC}"
-if command -v objdump >/dev/null 2>&1; then
-    NEED="$(objdump -T "${HERE}/bin/wildlife_trigger" "${HERE}/lib/"libonnxruntime.so.* 2>/dev/null \
-            | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sed 's/GLIBC_//' | sort -V | tail -1)"
-    echo "    highest GLIBC symbol required: ${NEED:-none}"
-else
-    echo "    objdump absent; skipping symbol scan (ldd below still gates)"
+# 2. FAIL-CLOSED preflight (issue #77): refuse a host outside the Pi 5 / Bookworm
+#    contract BEFORE apt mutates anything. preflight.sh prints KEY=VALUE facts on
+#    stdout and the human summary / refusal reason on stderr.
+echo "--- host preflight (fail closed)"
+if ! facts="$("${HERE}/preflight.sh")"; then
+    echo "    install refused: this host is not the validated Pi 5 / Bookworm target." >&2
+    echo "    Nothing was changed. See the reasons above and deploy/pi/README.md." >&2
+    exit 1
 fi
+eval "${facts}"
 
-# 3. OpenCV runtime from apt (unless suppressed). The exact 4.6.0 .406 soname.
+# 3. OpenCV runtime from apt (unless suppressed). The exact 4.6.0 .406 soname; the
+#    preflight already proved this host is Bookworm, where it is available.
+DID_APT=false
 if [ "${NO_APT}" -eq 0 ]; then
     echo "--- installing the OpenCV 4.6.0 runtime (apt)"
     if command -v apt-get >/dev/null 2>&1; then
         SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
         ${SUDO} apt-get update -qq
+        # Confirm the .406 candidate exists before mutating (belt-and-suspenders on
+        # top of the Bookworm gate).
+        if ! apt-cache policy libopencv-core406 2>/dev/null | grep -q 'Candidate:'; then
+            echo "    FAIL: libopencv-core406 has no apt candidate on this host" >&2
+            echo "    (expected on Bookworm; if you see this, the apt sources are wrong)" >&2
+            exit 1
+        fi
         ${SUDO} apt-get install -y --no-install-recommends \
             libopencv-core406 libopencv-imgproc406 libopencv-imgcodecs406
+        DID_APT=true
         echo "    OpenCV runtime installed"
     else
         echo "    apt-get absent; install libopencv-{core,imgproc,imgcodecs}406 by hand" >&2
@@ -66,14 +75,41 @@ fi
 # 4. Resolve every NEEDED library now, so a missing dep is a message here, not a
 #    cryptic loader failure later. run.sh supplies the bundle's lib/ for ORT.
 echo "--- resolving shared libraries"
+LIBS_OK=true
 if LD_LIBRARY_PATH="${HERE}/lib" ldd "${HERE}/bin/wildlife_trigger" | grep -q 'not found'; then
+    LIBS_OK=false
     echo "    FAIL: unresolved libraries:" >&2
     LD_LIBRARY_PATH="${HERE}/lib" ldd "${HERE}/bin/wildlife_trigger" | grep 'not found' >&2
     echo "    (on Bookworm run without --no-apt; on Trixie see README)" >&2
-    exit 1
 fi
-echo "    all libraries resolve"
+${LIBS_OK} && echo "    all libraries resolve"
 
+# 5. Machine-readable host-environment record (issue #77): OS, kernel, arch, CPU
+#    identity/features, glibc, OpenCV/ORT versions, and the install outcome. This is
+#    the artifact a real F1 install leaves for the Phase F evidence.
+ORT_VER="$(grep -m1 '"onnxruntime_version"' "${HERE}/BUNDLE.json" 2>/dev/null | sed 's/.*: *"//; s/".*//')"
+OPENCV_VER="$(dpkg-query -W -f='${Version}' libopencv-core406 2>/dev/null || echo 'not-installed')"
+bool() { if [ "$1" = "1" ] || [ "$1" = "true" ]; then echo true; else echo false; fi; }
+OUTCOME=installed; ${LIBS_OK} || OUTCOME=libraries_unresolved
+cat > "${HERE}/environment.json" <<EOF
+{
+  "kind": "f1_host_environment",
+  "os": {"id": "${WT_OS_ID}", "version_id": "${WT_OS_VERSION}", "codename": "${WT_OS_CODENAME}"},
+  "kernel": "${WT_KERNEL}",
+  "arch": "${WT_ARCH}",
+  "cpu": {"implementer": "${WT_CPU_IMPL}", "part": "${WT_CPU_PART}", "model": "${WT_CPU_MODEL}",
+          "asimddp": $(bool "${WT_HAS_ASIMDDP}"), "is_pi5_a76": $(bool "${WT_IS_PI5_A76}")},
+  "glibc": "${WT_GLIBC}",
+  "onnxruntime_version": "${ORT_VER}",
+  "opencv_runtime_installed": "${OPENCV_VER}",
+  "preflight": {"passed": $(bool "${WT_PREFLIGHT_PASSED}"), "reasons": "${WT_PREFLIGHT_REASONS}"},
+  "install": {"outcome": "${OUTCOME}", "opencv_apt": ${DID_APT}, "libraries_resolved": ${LIBS_OK}},
+  "note": "A latency is a Pi result only when measured on a Pi (DESIGN 12.4). is_pi5_a76=false is a diagnostic host, never a Pi verdict."
+}
+EOF
+echo "    wrote environment.json (is_pi5_a76=$(bool "${WT_IS_PI5_A76}"), opencv=${OPENCV_VER})"
+
+${LIBS_OK} || { echo "install FAILED: unresolved libraries" >&2; exit 1; }
 echo
 echo "=== installed. Try the demo:"
 echo "      ${HERE}/run_demo.sh"

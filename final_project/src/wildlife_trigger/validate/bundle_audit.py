@@ -46,6 +46,7 @@ REQUIRED_PATHS = (
     "policies/M2.json",
     "policies/M4.json",
     "data/manifest.jsonl",
+    "preflight.sh",
     "install.sh",
     "run_demo.sh",
     "run_benchmark.sh",

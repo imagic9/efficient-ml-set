@@ -154,3 +154,7 @@ id_rsa*
 # reproducible by scripts/build_bundle.sh. Committed evidence: bundle_audit.json,
 # e7_bundle.json, clean_install.log.
 /final_project/results/e7/bundle/
+
+# E7/F1 preflight: raw per-scenario docker outputs are reproducible by
+# scripts/run_e7_preflight.sh. Committed evidence: preflight.json.
+/final_project/results/e7/preflight_raw/

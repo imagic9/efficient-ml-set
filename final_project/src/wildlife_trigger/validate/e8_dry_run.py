@@ -93,6 +93,24 @@ def main() -> int:
     if not demo_ok:
         failures.append("demo produced no predictions")
 
+    # The fail-closed preflight (issue #77) ran inside install.sh and must have left a
+    # machine-readable environment.json with a passing verdict. On gx10 the host is a
+    # dev host (is_pi5_a76=false) — recorded, never a Pi verdict.
+    env_path = args.bundle / "environment.json"
+    environment = {}
+    if not env_path.exists():
+        failures.append("install.sh left no environment.json (F1 preflight record)")
+    else:
+        env = json.loads(env_path.read_text())
+        environment = {
+            "preflight_passed": env.get("preflight", {}).get("passed"),
+            "is_pi5_a76": env.get("cpu", {}).get("is_pi5_a76"),
+            "os_codename": env.get("os", {}).get("codename"),
+            "opencv_runtime_installed": env.get("opencv_runtime_installed"),
+        }
+        if environment["preflight_passed"] is not True:
+            failures.append("environment.json preflight.passed is not true")
+
     passed = not failures
     report = {
         "gate": "E — deployment bundle + one-command benchmark work end to end (PLAN E8)",
@@ -101,6 +119,7 @@ def main() -> int:
         "models_benchmarked": models,
         "benchmarks": benchmarks,
         "demo_produced_predictions": demo_ok,
+        "f1_preflight": environment,
         "provenance": "gx10 dry-run latency is diagnostic only; a latency is a Pi "
                       "result only when measured on a Pi (DESIGN §12.4). Phase F is "
                       "still mandatory.",
@@ -118,6 +137,10 @@ def main() -> int:
                   f"p95={s['end_to_end_p95_ms']}ms ({s['measured_iterations']} iters)"
                   f"{' PROBLEMS ' + str(s['problems']) if s['problems'] else ''}")
     print(f"demo predictions: {demo_ok}")
+    if environment:
+        print(f"F1 preflight: passed={environment['preflight_passed']}, "
+              f"is_pi5_a76={environment['is_pi5_a76']} (dev host on gx10), "
+              f"os={environment['os_codename']}, opencv={environment['opencv_runtime_installed']}")
     for f in failures:
         print(f"    FAIL: {f}")
     print(f"\nGATE E {'PASSED' if passed else 'FAILED'}; wrote {args.output}")

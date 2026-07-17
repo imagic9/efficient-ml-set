@@ -14,11 +14,30 @@ policies/{M0,M2,M4}.json   the bobcat policy bound by sha256 to each model
 policies/class_map.json    the 16-class map
 data/manifest.jsonl    a stratified sample slice of benchmark_val_1000
 data/images/*.jpg      the frames the manifest references (so run_demo works offline)
-install.sh             verify, glibc-check, apt-install OpenCV, resolve libraries
+preflight.sh           fail-closed host check (arch / Bookworm / Cortex-A76 ISA)
+install.sh             preflight, verify, apt-install OpenCV, resolve libs, environment.json
 run_demo.sh            self-test + infer + short benchmark + run-dataset
+run_benchmark.sh       one-command benchmark matrix (M0 baseline + M2 + M4)
 BUNDLE.json            provenance: git commit, per-artifact sha256, ORT version, glibc
 MANIFEST.sha256        checksums of every file
 ```
+
+## Fail-closed host preflight (issue #77)
+
+The prebuilt binary is built `-mcpu=cortex-a76` and links OpenCV `.406`; that is proven
+for a **Pi 5 on Raspberry Pi OS Bookworm**. `install.sh` runs `preflight.sh` first and
+**refuses, before changing anything**, a host outside that contract:
+
+- not `aarch64`;
+- not **Bookworm** (a Trixie Pi ships OpenCV `.410`; see the contingency below);
+- a CPU without **`asimddp`** — the ARMv8.2 dot-product feature Cortex-A76 (Pi 5) has and
+  Cortex-A72 (Pi 4) lacks. The gate is the ISA feature, not the literal CPU part, so it
+  also accepts a dev host (e.g. gx10) for the E8 dry run; whether the host is a *literal*
+  Pi 5 (`is_pi5_a76`) is recorded in `environment.json`, never confused with a Pi result.
+
+A successful install writes **`environment.json`**: OS/kernel/arch, CPU identity and
+features, glibc, the installed OpenCV and bundled ORT versions, and the preflight verdict
+— the machine-readable host record Phase F cites.
 
 ## Install and run
 
