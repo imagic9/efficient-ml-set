@@ -16,9 +16,12 @@ graph, `mode: any` + hash binding, the full policy/threshold test matrix incl. t
 `empty`-target rejection). E4 proved the dataset runner on M0 at corpus scale — **P4
 PASSED** (`results/e4/p4_dataset_parity_m0.json`): confusion matrix identical on
 cis_val_clean + trans_val, 0 hard decision disagreements; the residual FP32 score gap
-is the P1 OpenCV-version drift (diagnosed, reported, not a bug). **Next: E5 (benchmark
-and system monitor).** Phase E is a consolidation — much of the C++ already exists from
-A4/C4/P4 and needs verifying and hardening, not writing from scratch. The Pi trial (Phase F) stays conditional, unscheduled,
+is the P1 OpenCV-version drift (diagnosed, reported, not a bug). E5 closed the benchmark
++ system monitor (percentile-calculation unit test; the `performance_targets` report
+with `measured_on_pi:false`; `results/e5/benchmark_m0.json`). **Next: E6 (correctness +
+C++ optimization experiment — the real Phase-E work: P1–P4 for the shortlist, the
+inference-pipeline matrix, and the pre-rental QEMU parity).** E1–E5 were consolidation
+of A4/C4/P4; E6 is new measurement. The Pi trial (Phase F) stays conditional, unscheduled,
 one-shot, never early. The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
@@ -1419,15 +1422,36 @@ disagreements** (1 carved cis frame sits exactly on the 0.5381 threshold); the
 
 Depends on: E4.
 
-- [ ] Implement warm-up, repetitions, p50/p95/p99, inference/end-to-end FPS, and
+- [x] Implement warm-up, repetitions, p50/p95/p99, inference/end-to-end FPS, and
       per-stage timings.
-- [ ] Implement peak RSS and CPU-utilization capture.
-- [ ] Capture available frequency/temperature/throttling signals and explicit
+- [x] Implement peak RSS and CPU-utilization capture.
+- [x] Capture available frequency/temperature/throttling signals and explicit
       `unavailable` values.
-- [ ] Validate output schemas and percentile calculations.
-- [ ] Report whether Pi p95 end-to-end meets the primary 200 ms / 5 FPS target
+- [x] Validate output schemas and percentile calculations.
+- [x] Report whether Pi p95 end-to-end meets the primary 200 ms / 5 FPS target
       and the aspirational 100 ms / 10 FPS target; do not treat them as measured
       until Phase F.
+
+**DONE 2026-07-17** (PR #71). `BenchmarkRunner` + `SystemMonitor` (DESIGN §11
+components 5/6) were built in A4 — warm-up discarded, per-iteration p50/p95/p99 from a
+sorted sample (never mean±sd), FPS from the median, peak RSS + CPU seconds, and
+`unavailable` for a sensor the host lacks (a4_gate checked the schema and the ordering).
+E5 closed the two remaining boxes:
+- **Percentile calculation** — `test_benchmark.cpp` (new, CTest #5) pins `summarise()`
+  to numpy's default linear-interpolation quantile on known inputs: empty→zeros, single
+  value, `[1,2,3,4]` p50=2.5, `1..100` → 50.5 / 95.05 / 99.01, and the
+  `p50≤p95≤p99` / `min≤p50≤max` ordering. The calculation itself is now tested, not just
+  its shape.
+- **Target report** — the benchmark output gained a `performance_targets` block: the
+  200 ms / 5 FPS primary and 100 ms / 10 FPS aspirational targets with
+  `measured_on_pi:false` and `met_on_this_host` flags. The number is reported and
+  checkable but explicitly **not a Pi verdict until Phase F** (§12.4);
+  `schema_version` stays 1 (additive; a4_gate unaffected).
+- **Evidence** (`scripts/run_e5_benchmark.sh`, `results/e5/benchmark_m0.json`):
+  ctest 5/5 green in the target container; benchmark on M0 p50 12.39 ms / p95 13.11 ms;
+  targets block well-formed; system monitor honest (peak RSS 99 MiB, temp 45.9 °C where
+  the host exposes it, throttling `unavailable`). **This is a gx10 timing-path smoke,
+  not a Pi result.**
 
 ### E6 — Correctness and C++ optimization experiment
 
