@@ -33,7 +33,8 @@ showed it is a property of the frozen recipe, not of seed 42: trans F2 is
 | C5 (seeds 17/73, model card) | **done** — trans F2 0.1142±0.0175 across three seeds: the gap is the recipe, not the seed (#18); model card `artifacts/model_cards/m0_fp32.md`; comparison table opened with the M0 row |
 | Phase D (M1-M4 optimization ladder) | **Gate D PASSES** — see the ladder table below; all five candidates past P3/P4; shortlist and benchmark frozen |
 | E1 (C++ project foundation) | **done** — Gate E1 PASSES: foundation hardened (logging convention, `schema_version`) and exercised against real M0; build + 4/4 ctest + self-test/infer(native+QEMU)/benchmark/run-dataset green in the target container (`results/e1/e1_gate.json`) |
-| Phase E (E2-E8), F, G | not started |
+| E2 (preprocessing) | **done** — `Preprocessor` fused + reference paths agree ≤1e-6 on six geometries and match the Python golden tensors (P1: python↔fused 0.0, python↔reference 7e-7); BGR-as-RGB rejected; corrupt image raises |
+| Phase E (E3-E8), F, G | not started |
 
 ### The optimization ladder (Phase D, validation / deployment ORT)
 

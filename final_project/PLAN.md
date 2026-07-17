@@ -5,14 +5,15 @@ comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 / M3
 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
 `recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
 (M1 dominated by M2/M4, M3 by M4), with `benchmark_val_1000.jsonl` and the
-hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1 is DONE —
-Gate E1 PASSED** (the C++ foundation hardened and exercised against the real M0:
-leveled logging convention, `schema_version` on every output, build + ctest +
+hash-locked `pre_pi_freeze.json` built. **Phase E is underway: E1 + E2 DONE.**
+E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the real
+M0 (leveled logging convention, `schema_version` on every output, build + ctest +
 self-test/infer(native+QEMU)/benchmark/run-dataset all green on M0 in the target
-container; `results/e1/e1_gate.json`). **Next: E2 (preprocessing).** Phase E is a
-consolidation — much of the C++ (session, preprocess, policy, dataset/benchmark
-runners) already exists from A4/C4/P4 and needs verifying and hardening, not
-writing from scratch. The Pi trial (Phase F) stays conditional, unscheduled,
+container; `results/e1/e1_gate.json`). E2 certified the `Preprocessor` (fused +
+reference paths, golden-fixture parity both ways, BGR-as-RGB rejected).
+**Next: E3 (model session and policy).** Phase E is a consolidation — much of the
+C++ (session, preprocess, policy, dataset/benchmark runners) already exists from
+A4/C4/P4 and needs verifying and hardening, not writing from scratch. The Pi trial (Phase F) stays conditional, unscheduled,
 one-shot, never early. The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
@@ -1310,10 +1311,29 @@ p50) is a timing-path smoke, **not a Pi result** (§12.4), and the output says s
 
 Depends on: E1, C0; smoke path is provisional until C1a freezes the input.
 
-- [ ] Implement correct reference preprocessing.
-- [ ] Implement fused/preallocated preprocessing.
-- [ ] Pass golden tensor fixtures for both paths.
-- [ ] Reject the old BGR-as-RGB behavior.
+- [x] Implement correct reference preprocessing.
+- [x] Implement fused/preallocated preprocessing.
+- [x] Pass golden tensor fixtures for both paths.
+- [x] Reject the old BGR-as-RGB behavior.
+
+**DONE 2026-07-17** (PR #68). A verify-and-close: the `Preprocessor` (DESIGN §11
+component 2) was built and tested in A4 and validated against golden Python tensors
+in C4/P1; E2 certifies it against its checklist, no new code. Evidence:
+- **Reference path** — `Preprocessor::from_bgr_reference` / `from_file_reference`
+  (unfused OpenCV primitives, DESIGN §11's "correct reference implementation");
+  refuses an empty/undecodable image (`test_preprocess.test_reference_rejects…`).
+- **Fused + preallocated path** — `from_bgr` single pass over the reused `resized_` /
+  `canvas_` buffers (no 147 KB per-frame alloc in the hot path).
+- **Golden fixtures, both paths** — `test_preprocess.test_reference_and_fused_agree`
+  holds the two C++ paths to **≤1e-6** across six geometries (landscape, portrait
+  left-pad, square, odd dims, upscale, exact-fit); P1
+  (`results/parity/c2_m0_fp32_seed42…/p1_preprocess.json`) holds each against the
+  Python golden tensors — **python↔fused max_abs 0.0**, **python↔reference 7.15e-7**,
+  both under the 1e-6 same-host gate and the 0.035 cross-version budget.
+- **BGR-as-RGB rejected** — `test_preprocess.test_channels_are_rgb_not_bgr` asserts a
+  pure-blue BGR frame lands its 255 on channel 2 (R), the one bug invisible to every
+  metric but colour accuracy. Plus whole-frame-survives (no crop), grey-pad value,
+  and corrupt-image-raises. All green in E1's target-container ctest (test #4).
 
 ### E3 — Model session and policy
 
