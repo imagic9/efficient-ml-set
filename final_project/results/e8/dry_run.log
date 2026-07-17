@@ -1,9 +1,11 @@
 === Wildlife Trigger install (bundle at /opt/bundle) ===
 --- verifying MANIFEST.sha256
     all files verified
---- checking the binary loads on this glibc
-    host glibc: 2.36
-    objdump absent; skipping symbol scan (ldd below still gates)
+--- host preflight (fail closed)
+  preflight: arch=aarch64 os=debian/bookworm cpu=part 0xd87
+             asimddp=1 is_pi5_a76=0 glibc=2.36
+  preflight PASSED (host satisfies the Pi 5 / Bookworm ISA contract)
+  note: this is NOT a literal Cortex-A76 Pi 5 — a run here is diagnostic, never a Pi result (DESIGN 12.4)
 --- installing the OpenCV 4.6.0 runtime (apt)
 Reading package lists...
 Building dependency tree...
@@ -202,7 +204,7 @@ Get:134 http://deb.debian.org/debian bookworm/main arm64 libopencv-imgproc406 ar
 Get:135 http://deb.debian.org/debian bookworm/main arm64 libopenexr-3-1-30 arm64 3.1.5-5 [843 kB]
 Get:136 http://deb.debian.org/debian bookworm/main arm64 libopencv-imgcodecs406 arm64 4.6.0+dfsg-12 [110 kB]
 debconf: delaying package configuration, since apt-utils is not installed
-Fetched 90.5 MB in 3s (33.9 MB/s)
+Fetched 90.5 MB in 3s (33.7 MB/s)
 Selecting previously unselected package fonts-dejavu-core.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6090 files and directories currently installed.)
 Preparing to unpack .../000-fonts-dejavu-core_2.37-6_all.deb ...
@@ -762,6 +764,7 @@ Processing triggers for libc-bin (2.36-9+deb12u14) ...
     OpenCV runtime installed
 --- resolving shared libraries
     all libraries resolve
+    wrote environment.json (is_pi5_a76=false, opencv=4.6.0+dfsg-12)
 
 === installed. Try the demo:
       /opt/bundle/run_demo.sh
@@ -769,11 +772,11 @@ Processing triggers for libc-bin (2.36-9+deb12u14) ...
     sample: /opt/bundle/data/images/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg
     NOTE: a Pi result only if this host is a Pi (DESIGN §12.4).
 --- M0
-    end-to-end p50=12.36ms p95=12.87ms  (80.90 FPS)
+    end-to-end p50=12.74ms p95=13.13ms  (78.46 FPS)
 --- M2
-    end-to-end p50=6.69ms p95=8.29ms  (149.41 FPS)
+    end-to-end p50=6.77ms p95=6.94ms  (147.79 FPS)
 --- M4
-    end-to-end p50=5.45ms p95=5.62ms  (183.54 FPS)
+    end-to-end p50=5.59ms p95=5.70ms  (178.77 FPS)
 
 === wrote benchmark_matrix.json +3 per-model files
 === Wildlife Trigger demo — model M0 ===
@@ -800,7 +803,7 @@ self-test PASSED
           "score": 0.9992573857307434
 
 --- benchmark (SMOKE CHECK — a Pi result only if this is a Pi; DESIGN §12.4)
-    end-to-end p50=12.36ms p95=13.32ms  (80.89 FPS)
+    end-to-end p50=12.42ms p95=14.39ms  (80.50 FPS)
 
 --- run-dataset over the sample slice (47 frames)
     run-dataset: 47 frames (0 skipped), 5 fired -> /opt/bundle/demo_predictions.jsonl

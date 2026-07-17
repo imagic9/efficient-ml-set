@@ -2,7 +2,7 @@
   "gate": "E7 deployment bundle (PLAN E7)",
   "audit_passed": true,
   "audit": {
-    "file_count": 62,
+    "file_count": 64,
     "checksums_verified": true,
     "max_glibc": "2.34",
     "missing_paths": []

@@ -13,15 +13,17 @@
     "policies/M2.json",
     "policies/M4.json",
     "data/manifest.jsonl",
+    "preflight.sh",
     "install.sh",
     "run_demo.sh",
+    "run_benchmark.sh",
     "README.md",
     "BUNDLE.json",
     "MANIFEST.sha256"
   ],
   "missing_paths": [],
   "checksums_verified": true,
-  "file_count": 62,
+  "file_count": 64,
   "max_glibc": "2.34",
   "max_glibc_allowed": "2.36",
   "glibc_per_object": {
