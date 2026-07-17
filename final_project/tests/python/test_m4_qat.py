@@ -128,6 +128,7 @@ class TestConfigIdentity:
         assert config.candidate_prefix == "d5_m4_qat"
         assert config.candidate_kind == "pruned_qat"
         assert config.candidate_design == "8.4"
+        assert config.run_name_stem == "m4_qat"
         assert config.pruned_widths["features.2"] == 48
         assert config.pruned_widths["features.17"] == 544
         assert config.source_run_id == "d4_m3_c30_20260717T052416Z"
@@ -139,4 +140,5 @@ class TestConfigIdentity:
         assert config.candidate_kind == "int8_qat"
         assert config.candidate_model_id == "M2-candidate"
         assert config.candidate_design == "8.2"
+        assert config.run_name_stem == "m2_qat"
         assert config.pruned_widths == {}

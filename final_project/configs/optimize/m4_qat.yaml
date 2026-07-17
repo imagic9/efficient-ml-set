@@ -58,6 +58,7 @@ candidate_prefix: d5_m4_qat
 candidate_kind: pruned_qat
 candidate_model_id: M4-candidate
 candidate_design: "8.4"
+run_name_stem: m4_qat
 
 output_root: results/optimize/m4_qat
 phase: D5

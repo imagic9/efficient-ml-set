@@ -1,0 +1,85 @@
+{
+  "gate": "P4 \u2014 C++ dataset parity (DESIGN \u00a710)",
+  "candidate_id": "d5_m4_qat_lr5e-5",
+  "onnx": {
+    "path": "results/optimize/m4_qat/lr5e-5/model.onnx",
+    "sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da"
+  },
+  "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+  "threshold": 0.5439130067825317,
+  "tolerances": {
+    "score_max_abs": 0.0001,
+    "decision_carve_out": 0.0001
+  },
+  "splits": [
+    {
+      "split": "cis_val_clean",
+      "frames": 3214,
+      "worst_score_gap": 5.960464477539063e-08,
+      "mean_score_gap": 6.01211324507008e-10,
+      "decisions_differing": 0,
+      "carved_out_frames": [],
+      "near_threshold_frames": 0,
+      "confusion_python": {
+        "true_fire": 111,
+        "false_fire": 152,
+        "missed": 33,
+        "true_quiet": 2918
+      },
+      "confusion_cpp": {
+        "true_fire": 111,
+        "false_fire": 152,
+        "missed": 33,
+        "true_quiet": 2918
+      },
+      "cpp_header": {
+        "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+        "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+        "manifest_sha256": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",
+        "threads": 1,
+        "onnxruntime_version": "1.27.0"
+      },
+      "passed": true,
+      "failures": []
+    },
+    {
+      "split": "trans_val",
+      "frames": 1725,
+      "worst_score_gap": 5.960464477539063e-08,
+      "mean_score_gap": 1.2639129340875648e-09,
+      "decisions_differing": 1,
+      "carved_out_frames": [
+        {
+          "image_id": "592de62a-23d2-11e8-a6a3-ec086b02610b",
+          "python_score": 0.5439130067825317
+        }
+      ],
+      "near_threshold_frames": 1,
+      "confusion_python": {
+        "true_fire": 58,
+        "false_fire": 43,
+        "missed": 734,
+        "true_quiet": 889
+      },
+      "confusion_cpp": {
+        "true_fire": 58,
+        "false_fire": 43,
+        "missed": 734,
+        "true_quiet": 889
+      },
+      "cpp_header": {
+        "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+        "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+        "manifest_sha256": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a",
+        "threads": 1,
+        "onnxruntime_version": "1.27.0"
+      },
+      "passed": true,
+      "failures": []
+    }
+  ],
+  "verdict": {
+    "passed": true,
+    "failed": []
+  }
+}
