@@ -463,9 +463,11 @@ def allocate_greedy(
         removed[best_block] += quantum
         saved += groups[best_block]["macs_per_channel"] * quantum
 
+    # Keyed like removals/widths ("features.N"): these dicts are serialized
+    # into candidate.json, where an int key silently becomes a string anyway.
     ratios = {
-        block: removed[block] / groups[block]["width"]
-        for block in groups
+        f"features.{block}": removed[block] / groups[block]["width"]
+        for block in sorted(groups)
         if removed[block]
     }
     return {
