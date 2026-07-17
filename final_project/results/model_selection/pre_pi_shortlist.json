@@ -1,0 +1,89 @@
+{
+  "tool": "wildlife_trigger.optimize.pre_pi_shortlist",
+  "design": "8.5",
+  "recall_rule": {
+    "met_by": [],
+    "fallback_branch": true,
+    "note": "no candidate meets the 90% sequence-balanced bobcat-recall rule (all recall_floor_infeasible); \u00a78.5 step 2 fallback \u2014 retain the best documented candidates by dominance"
+  },
+  "baseline": [
+    {
+      "model_id": "M0",
+      "kind": "fp32_baseline",
+      "primary": 0.3663295163553768,
+      "cis_f2": 0.6272189349112426,
+      "trans_f2": 0.105440097799511,
+      "macs": 293402624,
+      "bytes": 8950645,
+      "operating_status": "recall_floor_infeasible",
+      "primary_rule_met": false,
+      "parity_passed": true
+    }
+  ],
+  "non_dominated": [
+    {
+      "model_id": "M2",
+      "kind": "int8_qat",
+      "primary": 0.3832218031865149,
+      "cis_f2": 0.6498829039812647,
+      "trans_f2": 0.11656070239176508,
+      "macs": 293402624,
+      "bytes": 2536267,
+      "operating_status": "recall_floor_infeasible",
+      "primary_rule_met": false,
+      "parity_passed": true
+    },
+    {
+      "model_id": "M4",
+      "kind": "pruned_qat",
+      "primary": 0.37297866996752954,
+      "cis_f2": 0.6529411764705882,
+      "trans_f2": 0.09301616346447088,
+      "macs": 205614080,
+      "bytes": 2014806,
+      "operating_status": "recall_floor_infeasible",
+      "primary_rule_met": false,
+      "parity_passed": true
+    }
+  ],
+  "rejected": [
+    {
+      "model_id": "M1",
+      "kind": "int8_ptq",
+      "primary": 0.35268503031725423,
+      "cis_f2": 0.6014580801944107,
+      "trans_f2": 0.10391198044009779,
+      "macs": 293402624,
+      "bytes": 2620130,
+      "operating_status": "recall_floor_infeasible",
+      "primary_rule_met": false,
+      "parity_passed": true,
+      "dominated_by": [
+        "M2",
+        "M4"
+      ]
+    },
+    {
+      "model_id": "M3",
+      "kind": "pruned_fp32",
+      "primary": 0.35833629639708564,
+      "cis_f2": 0.5879237288135594,
+      "trans_f2": 0.12874886398061192,
+      "macs": 205614080,
+      "bytes": 7035950,
+      "operating_status": "recall_floor_infeasible",
+      "primary_rule_met": false,
+      "parity_passed": true,
+      "dominated_by": [
+        "M4"
+      ]
+    }
+  ],
+  "shortlist": [
+    "M0",
+    "M2",
+    "M4"
+  ],
+  "latency_ranking_used": false,
+  "float_fallback_evidence": "integer execution is proven per-candidate by the committed coverage verdicts (P3 check 1); gx10 latency is not used to rank Cortex-A76 (\u00a712.4)"
+}

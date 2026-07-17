@@ -1,0 +1,84 @@
+{
+  "tool": "wildlife_trigger.data.benchmark_manifest",
+  "design": "12.2",
+  "output": "data/manifests/benchmark_val_1000.jsonl",
+  "output_sha256": "c6297263b8656b1c76d633eda569db9eaf9c2b4ba4bc0526cdf37fa4dac8b833",
+  "frames": 1000,
+  "seed": 42,
+  "operating_point": {
+    "source": "M0 FP32 (bobcat_v1 policy)",
+    "threshold": 0.5380880236625671,
+    "policy_sha256": "15e8958da3626e46d92845b6c5bc80f0f25882c032e058c439f7e39ab56c6c09"
+  },
+  "m0_predictions_sha256": "66fa673c5d7470d78a2509d34c71213bd295e372527f89013ba72642b30f4ec4",
+  "inputs": {
+    "cis_val_clean": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",
+    "trans_val": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a"
+  },
+  "accounting": {
+    "total": 1000,
+    "requested_total": 1000,
+    "eps": 0.1,
+    "threshold": 0.5380880236625671,
+    "strata_priority_partition": {
+      "threshold_adjacent": {
+        "available": 101,
+        "target": null,
+        "taken": 101
+      },
+      "bobcat": {
+        "available": 899,
+        "target": 250,
+        "taken": 250
+      },
+      "multi_label": {
+        "available": 2,
+        "target": null,
+        "taken": 2
+      },
+      "rare": {
+        "available": 294,
+        "target": 150,
+        "taken": 150
+      },
+      "preprocessing_edge": {
+        "available": 0,
+        "target": null,
+        "taken": 0
+      },
+      "empty": {
+        "available": 1024,
+        "target": 250,
+        "taken": 250
+      },
+      "other": {
+        "available": 2619,
+        "target": 0,
+        "taken": 0
+      }
+    },
+    "fill": {
+      "count": 247,
+      "from_strata": {
+        "bobcat": 43,
+        "empty": 43,
+        "other": 153,
+        "rare": 8
+      }
+    },
+    "final_stratum_counts": {
+      "bobcat": 293,
+      "empty": 293,
+      "multi_label": 2,
+      "other": 153,
+      "rare": 158,
+      "threshold_adjacent": 101
+    },
+    "threshold_adjacent_natural_fraction": 0.02045,
+    "threshold_adjacent_benchmark_fraction": 0.101
+  },
+  "notes": {
+    "preprocessing_edge": "0 available: CCT-20 validation is geometrically uniform (all \u22481.37 aspect ratio), so there are no letterbox edge cases to sample. Recorded, not faked.",
+    "identical_for_every_model": "built from M0's operating point and scored once; every model, M0 included, is benchmarked on this same ordered list (\u00a712.2)."
+  }
+}
