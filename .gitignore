@@ -102,6 +102,13 @@ onnxruntime_profile_*.json
 /final_project/results/e4/cpp_cis_val_clean.jsonl
 /final_project/results/e4/cpp_trans_val.jsonl
 
+# E6 pre-rental QEMU parity: the slice and the per-frame native/qemu predictions are
+# reproducible by scripts/run_e6_qemu_parity.sh. The committed evidence is
+# qemu_parity.json.
+/final_project/results/e6/e6_slice.jsonl
+/final_project/results/e6/native_*.jsonl
+/final_project/results/e6/qemu_*.jsonl
+
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being
 # swept up by `git add -A`.
