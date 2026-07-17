@@ -190,14 +190,38 @@ def main() -> int:
                         help="holds cpp_<split>.jsonl from run-dataset")
     parser.add_argument("--manifests-dir", type=Path, default=Path("data/manifests"))
     parser.add_argument("--target", default="bobcat")
+    # For a candidate that predates the optimize-candidate layout (M0's C2 evaluate
+    # writes predictions.npz but no evaluation.json, and its npz carries no
+    # model_sha256), the identity is supplied explicitly. The optimize candidates
+    # (M1-M4) still resolve it from evaluation.json + npz, unchanged.
+    parser.add_argument("--model-sha256", default="",
+                        help="required when the candidate has no evaluation.json")
+    parser.add_argument("--model-path", default="")
+    parser.add_argument("--label", default="")
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
-    evaluation = json.loads((args.candidate / "evaluation.json").read_text())
     npz = np.load(args.candidate / "predictions.npz", allow_pickle=False)
-    model_sha256 = str(npz["model_sha256"])
-    if model_sha256 != evaluation["model"]["sha256"]:
-        raise RuntimeError("candidate directory is inconsistent (npz vs evaluation.json)")
+    npz_has_sha = "model_sha256" in set(npz.keys())
+    evaluation_path = args.candidate / "evaluation.json"
+    if evaluation_path.exists():
+        evaluation = json.loads(evaluation_path.read_text())
+        model_sha256 = str(npz["model_sha256"]) if npz_has_sha else str(evaluation["model"]["sha256"])
+        if npz_has_sha and model_sha256 != evaluation["model"]["sha256"]:
+            raise RuntimeError("candidate directory is inconsistent (npz vs evaluation.json)")
+        label = evaluation["label"]
+        model_path = evaluation["model"]["path"]
+    else:
+        if not args.model_sha256:
+            raise RuntimeError(
+                "the candidate has no evaluation.json; pass --model-sha256 "
+                "(and optionally --model-path/--label) to name the model under test"
+            )
+        model_sha256 = args.model_sha256
+        if npz_has_sha and str(npz["model_sha256"]) != model_sha256:
+            raise RuntimeError("npz model_sha256 disagrees with --model-sha256")
+        label = args.label or args.candidate.name
+        model_path = args.model_path
 
     policy = json.loads(args.policy.read_text())
     if policy["model_sha256"] != model_sha256:
@@ -226,8 +250,8 @@ def main() -> int:
     passed = all(s["passed"] for s in splits)
     report = {
         "gate": "P4 — C++ dataset parity (DESIGN §10)",
-        "candidate_id": evaluation["label"],
-        "onnx": {"path": evaluation["model"]["path"], "sha256": model_sha256},
+        "candidate_id": label,
+        "onnx": {"path": model_path, "sha256": model_sha256},
         "policy_id": policy["policy_id"],
         "threshold": float(target_entry["threshold"]),
         "tolerances": {
