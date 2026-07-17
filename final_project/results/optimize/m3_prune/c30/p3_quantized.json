@@ -1,0 +1,278 @@
+{
+  "gate": "P3-equivalent \u2014 pruned FP32 candidate validation (m3_registration \u00a75)",
+  "candidate_id": "d4_m3_c30",
+  "onnx": {
+    "path": "results/optimize/m3_prune/c30/model.onnx",
+    "sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50"
+  },
+  "policy_id": "bobcat_m3_prune_c30_v1",
+  "ort_version_python": "1.27.0",
+  "tolerances": {
+    "logits_max_abs": 0.0001,
+    "decision_carve_out": 0.0001,
+    "metrics": "exact equality"
+  },
+  "checks": {
+    "graph_and_coverage": {
+      "onnx_checker": "passed",
+      "pruned_shapes_match": true,
+      "conv_weights": 52,
+      "integer_execution": false,
+      "coverage_report": {
+        "label": "d4_m3_c30",
+        "model": "results/optimize/m3_prune/c30/model.onnx",
+        "onnxruntime_version": "1.27.0",
+        "exported_graph": {
+          "op_types": {
+            "Add": 10,
+            "Clip": 35,
+            "Constant": 70,
+            "Conv": 52,
+            "Flatten": 1,
+            "Gemm": 1,
+            "GlobalAveragePool": 1
+          },
+          "node_count": 170,
+          "domains": {
+            "ai.onnx": 170
+          },
+          "initializer_dtypes": {
+            "float": 106
+          }
+        },
+        "optimized_graph": {
+          "op_types": {
+            "Conv": 7,
+            "Flatten": 1,
+            "FusedConv": 45,
+            "Gemm": 1,
+            "GlobalAveragePool": 1
+          },
+          "node_count": 55,
+          "domains": {
+            "ai.onnx": 10,
+            "com.microsoft": 45
+          },
+          "initializer_dtypes": {
+            "float": 106
+          }
+        },
+        "optimized_graph_path": "results/optimize/m3_prune/c30/p3_coverage/d4_m3_c30.optimized.onnx",
+        "execution": {
+          "profile": "results/optimize/m3_prune/c30/p3_coverage/d4_m3_c30.profile_2026-07-17_08-44-04_772.json",
+          "executed_ops": {
+            "Conv": {
+              "float": 21
+            },
+            "Flatten": {
+              "float": 1
+            },
+            "FusedConv": {
+              "float": 145
+            },
+            "Gemm": {
+              "float": 2
+            },
+            "GlobalAveragePool": {
+              "float": 1
+            }
+          },
+          "execution_providers": {
+            "CPUExecutionProvider": 55
+          },
+          "node_events": 170
+        },
+        "input_fixture": "<generated, seed 0>",
+        "output_summary": {
+          "shape": [
+            1,
+            16
+          ],
+          "dtype": "float32",
+          "mean": -3.3620715141296387,
+          "std": 2.724562644958496,
+          "argmax": 11
+        },
+        "verdict": {
+          "integer_kernels_in_graph": {},
+          "integer_kernels_executed": {},
+          "float_compute_in_graph": {
+            "Conv": 7,
+            "FusedConv": 45,
+            "Gemm": 1
+          },
+          "float_compute_executed": {
+            "Conv": {
+              "float": 21
+            },
+            "FusedConv": {
+              "float": 145
+            },
+            "Gemm": {
+              "float": 2
+            }
+          },
+          "float_compute_input_dtypes": [
+            "float"
+          ],
+          "qdq_nodes_remaining": {},
+          "integer_execution": false,
+          "explanation": "integer_execution is true only when at least one integer kernel actually executed AND no Conv/Gemm/MatMul float kernel executed. Presence of QuantizeLinear/DequantizeLinear proves nothing on its own: ORT can dequantize, compute in float, and requantize."
+        }
+      },
+      "failures": [],
+      "passed": true
+    },
+    "metrics_reproduce": {
+      "recorded_primary": 0.35833629639708564,
+      "rerun_primary": 0.35833629639708564,
+      "mismatches": [],
+      "passed": true
+    },
+    "logits_layer": {
+      "fixtures": 10,
+      "worst_max_abs": 8.940696716308594e-06,
+      "passed": true,
+      "results": [
+        {
+          "fixture": "5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 3.814697265625e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 4.76837158203125e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "585c02ec-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 4.76837158203125e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "586e2db9-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 8.940696716308594e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "5883ea9d-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 6.67572021484375e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58995b28-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 8.58306884765625e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58adc360-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 7.62939453125e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58c34c6f-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 5.7220458984375e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58d7a1e4-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 4.76837158203125e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "58e93a4e-23d2-11e8-a6a3-ec086b02610b",
+          "logits_max_abs": 7.62939453125e-06,
+          "argmax_match": true,
+          "passed": true,
+          "failures": []
+        }
+      ]
+    },
+    "decision_layer": {
+      "fixtures": 4,
+      "worst_max_abs": 7.62939453125e-06,
+      "passed": true,
+      "results": [
+        {
+          "fixture": "infer_5858bfa6-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 3.814697265625e-06,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 0.14735828340053558,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m3_prune_c30_v1",
+          "model_sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_5858bfc0-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/5858bfc0-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 4.76837158203125e-06,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 0.35027819871902466,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m3_prune_c30_v1",
+          "model_sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_585c02ec-23d2-11e8-a6a3-ec086b02610b",
+          "image": "data/raw/extracted/eccv_18_all_images_sm/585c02ec-23d2-11e8-a6a3-ec086b02610b.jpg",
+          "logits_max_abs": 4.76837158203125e-06,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 5.140408099180149e-09,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m3_prune_c30_v1",
+          "model_sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50",
+          "passed": true,
+          "failures": []
+        },
+        {
+          "fixture": "infer_frame_1024x747",
+          "image": "tests/fixtures/frame_1024x747.jpg",
+          "logits_max_abs": 7.62939453125e-06,
+          "cpp_shutter_trigger": false,
+          "python_shutter_trigger": false,
+          "python_bobcat_probability": 0.010564466938376427,
+          "within_threshold_tolerance": false,
+          "policy_id": "bobcat_m3_prune_c30_v1",
+          "model_sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50",
+          "passed": true,
+          "failures": []
+        }
+      ]
+    },
+    "binding": {
+      "records": 4,
+      "wrong_bindings": [],
+      "passed": true
+    }
+  },
+  "verdict": {
+    "passed": true,
+    "failed": []
+  }
+}
