@@ -141,3 +141,7 @@ id_rsa*
 # the real index holds 3,897. A cache that disagrees with the code it indexes is worse
 # than no cache: it answers questions confidently about a repository that is gone.
 .codebase-memory/
+
+# E6 native-vs-target: per-toolchain run-dataset/self-test are reproducible by
+# scripts/run_e6_native_vs_target.sh. The committed evidence is native_vs_target.json.
+/final_project/results/e6/native_vs_target/

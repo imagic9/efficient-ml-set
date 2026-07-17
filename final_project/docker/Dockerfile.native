@@ -1,0 +1,71 @@
+# gx10-host-equivalent "native" build/test environment (E6 native-vs-target).
+#
+# Why this exists, separate from Dockerfile.target: E6 requires the tests to pass
+# under a clean NATIVE CPU-only build as well as the target-compatible one. gx10's
+# host is Ubuntu 24.04 (glibc 2.39, gcc 13) but ships no OpenCV/ORT dev, so this
+# image reproduces that toolchain exactly rather than mutating the host. It is the
+# SECOND, newer toolchain -- gcc 13 vs bookworm's 12, glibc 2.39 vs 2.36 -- whose
+# job is to surface any compiler- or glibc-version-specific breakage before the Pi.
+#
+# It carries the SAME pinned ORT and the SAME OpenCV 4.6.0 as the target (Ubuntu
+# 24.04 apt also offers 4.6.0), so a decision difference between the two builds
+# isolates a compiler/glibc effect, not a library gap. This build is NOT
+# deployable: it links glibc 2.39, which a Bookworm Pi cannot resolve. Only the
+# target build ships (see Dockerfile.target). qemu-user is deliberately absent --
+# native runs directly on aarch64 gx10, and emulation is the target image's job.
+#
+# Build with scripts/build_native_container.sh, which passes the pins from
+# configs/env/pins.env so this file and the scripts cannot drift apart.
+
+ARG NATIVE_BASE_IMAGE=ubuntu:24.04
+ARG NATIVE_BASE_DIGEST=sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
+FROM ${NATIVE_BASE_IMAGE}@${NATIVE_BASE_DIGEST}
+
+ARG ORT_VERSION
+ARG ORT_SHA256
+ARG ORT_URL
+ARG ORT_PREFIX=/opt/onnxruntime
+ARG UID=1000
+ARG GID=1000
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# The same toolset as the target minus qemu-user: build-essential/cmake at Ubuntu
+# 24.04's versions (g++ 13, cmake 3.28), libopencv-dev 4.6.0, and the audit tools.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        pkg-config \
+        libopencv-dev \
+        ca-certificates \
+        curl \
+        file \
+        binutils \
+        python3 \
+        python3-venv \
+        git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Same pinned ORT, hash-verified before it is trusted. The aarch64 tarball needs
+# at most GLIBC_2.27, so it loads under 2.39 exactly as it does under 2.36.
+RUN curl -fsSL -o /tmp/ort.tgz "${ORT_URL}" \
+    && echo "${ORT_SHA256}  /tmp/ort.tgz" | sha256sum -c - \
+    && mkdir -p "${ORT_PREFIX}" \
+    && tar xzf /tmp/ort.tgz -C "${ORT_PREFIX}" --strip-components=1 \
+    && rm /tmp/ort.tgz \
+    && ldconfig
+
+ENV ORT_PREFIX=${ORT_PREFIX}
+ENV LD_LIBRARY_PATH=${ORT_PREFIX}/lib
+
+RUN echo "=== ORT under glibc $(ldd --version | head -1 | grep -oE '[0-9]+\.[0-9]+$') ===" \
+    && ldd "${ORT_PREFIX}/lib/libonnxruntime.so" \
+    && ! ldd "${ORT_PREFIX}/lib/libonnxruntime.so" | grep -q "not found" \
+    && echo "ORT loads cleanly on the native glibc"
+
+RUN groupadd -g ${GID} builder 2>/dev/null || true \
+    && useradd -m -u ${UID} -g ${GID} builder 2>/dev/null || true
+USER ${UID}:${GID}
+
+WORKDIR /work
+CMD ["/bin/bash"]
