@@ -1,0 +1,153 @@
+{
+  "tool": "wildlife_trigger.optimize.qat_train",
+  "design": "8.4",
+  "candidate_id": "d5_m4_qat_lr5e-5",
+  "model_id": "M4-candidate",
+  "kind": "pruned_qat",
+  "method": "lr5e-5",
+  "lr": 5e-05,
+  "source_run_id": "d4_m3_c30_20260717T052416Z",
+  "source_checkpoint": {
+    "path": "results/optimize/m3_prune/runs/d4/d4_m3_c30_20260717T052416Z/best.pt",
+    "sha256": "89bbb9e7e30b5938c0826ecdc73be80a80c28d37ff91690af944dc15ab881b88",
+    "epoch": 2,
+    "run_id": "d4_m3_c30_20260717T052416Z",
+    "pruned_widths": {
+      "features.2": 48,
+      "features.3": 72,
+      "features.4": 104,
+      "features.5": 144,
+      "features.6": 144,
+      "features.7": 192,
+      "features.8": 192,
+      "features.9": 192,
+      "features.10": 192,
+      "features.11": 288,
+      "features.12": 288,
+      "features.13": 360,
+      "features.14": 504,
+      "features.15": 960,
+      "features.16": 840,
+      "features.17": 544
+    }
+  },
+  "qat_run_id": "d5_m2_qat_lr5e-5_20260717T060301Z",
+  "best_epoch": 3,
+  "pruned_widths": {
+    "features.2": 48,
+    "features.3": 72,
+    "features.4": 104,
+    "features.5": 144,
+    "features.6": 144,
+    "features.7": 192,
+    "features.8": 192,
+    "features.9": 192,
+    "features.10": 192,
+    "features.11": 288,
+    "features.12": 288,
+    "features.13": 360,
+    "features.14": 504,
+    "features.15": 960,
+    "features.16": 840,
+    "features.17": 544
+  },
+  "calibration": {
+    "manifest": "data/manifests/calibration_1024.jsonl",
+    "sha256": "9fab904c6eb3a5501011fdd3277b3ee98655a906d6301da44364ef35d8a863c4",
+    "images": 1024,
+    "order": "observer warm-up, manifest order; observed through epoch 1"
+  },
+  "input": {
+    "width": 256,
+    "height": 192
+  },
+  "qat_structure": {
+    "conv_bn_pairs_folded": 52,
+    "residual_adds_quantized": 10,
+    "linears_quantized": 1,
+    "convolutions_quantized": 52,
+    "relu6_absorbed": 35
+  },
+  "qdq_scalar_fix": {
+    "input": "results/optimize/m4_qat/lr5e-5/model.raw.onnx",
+    "output": "results/optimize/m4_qat/lr5e-5/model.fakequant.onnx",
+    "scalarized_tensors": 53,
+    "per_channel_tensors_left_alone": 72
+  },
+  "weight_fold": {
+    "tool": "wildlife_trigger.optimize.fold_qdq",
+    "source_bytes": 7167080,
+    "folded_bytes": 2014806,
+    "initializer_dtypes": {
+      "float": 138,
+      "int32": 53,
+      "int8": 93
+    },
+    "pruned_unused_opset_domains": [
+      "ai.onnx.ml",
+      "ai.onnx.preview.training",
+      "ai.onnx.training",
+      "com.microsoft",
+      "com.microsoft.experimental",
+      "com.microsoft.nchwc",
+      "org.pytorch.aten"
+    ],
+    "opset": {
+      "": 17
+    },
+    "equivalence": {
+      "probes": 8,
+      "worst_abs_diff": 0.0,
+      "exact": true
+    }
+  },
+  "model": {
+    "path": "results/optimize/m4_qat/lr5e-5/model.onnx",
+    "sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+    "size_bytes": 2014806,
+    "ir_version": 8,
+    "producer": "pytorch 2.11.0",
+    "opset_import": {
+      "": 17
+    },
+    "inputs": [
+      {
+        "name": "input",
+        "dtype": "FLOAT",
+        "shape": [
+          1,
+          3,
+          192,
+          256
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "logits",
+        "dtype": "FLOAT",
+        "shape": [
+          1,
+          16
+        ]
+      }
+    ],
+    "node_count": 313,
+    "op_types": {
+      "Add": 10,
+      "Conv": 52,
+      "DequantizeLinear": 182,
+      "Flatten": 1,
+      "Gemm": 1,
+      "GlobalAveragePool": 1,
+      "QuantizeLinear": 66
+    },
+    "quantization": {
+      "format": "QDQ",
+      "scheme": "S8S8",
+      "per_channel": true,
+      "calibration_method": "qat_lr5e-5"
+    }
+  },
+  "integer_execution": true
+}

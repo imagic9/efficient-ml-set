@@ -1,0 +1,61 @@
+{
+  "calibration": {
+    "datasets": {
+      "cis_val_clean": "1786e4b00adb863c3988cb0b2e75c1fc7663e535601060b0f3b82c8d3e665b15",
+      "trans_val": "39d10053393b132ef66ab0436105b5dc277d0416b811bd0d74f40092e5a6017a"
+    },
+    "max_false_fire_rate_allowed": 0.05,
+    "min_sequence_recall_required": 0.9,
+    "per_domain": {
+      "cis_val_clean": {
+        "event_capture_rate": 0.86,
+        "false_fire_rate": 0.049511400651465795,
+        "fire_rate": 0.08182949595519602,
+        "frame_f2": 0.6615017878426699,
+        "frame_precision": 0.4220532319391635,
+        "frame_recall": 0.7708333333333334,
+        "sequence_balanced_recall": 0.7666666666666667
+      },
+      "trans_val": {
+        "event_capture_rate": 0.15471698113207547,
+        "false_fire_rate": 0.046137339055793994,
+        "fire_rate": 0.059130434782608696,
+        "frame_f2": 0.0901038485033598,
+        "frame_precision": 0.5784313725490197,
+        "frame_recall": 0.07440100882723834,
+        "sequence_balanced_recall": 0.07421383647798742
+      }
+    },
+    "primary_rule_met": false,
+    "record": "results/optimize/m4_qat/lr5e-5/calibration.json",
+    "replicates": 1000,
+    "rule": "fallback: no threshold inside the 5% false-fire budget reached the 90% sequence-balanced recall floor on both domains; maximised mean frame F2 within the budget. The primary rule is NOT satisfied",
+    "run_id": "d5_m4_qat_lr5e-5",
+    "seed": 42,
+    "status": "recall_floor_infeasible",
+    "threshold_ci95": [
+      0.44451072812080383,
+      0.7354503870010376
+    ],
+    "unmet_constraint": {
+      "cis_val_clean": 0.7666666666666667,
+      "trans_val": 0.07421383647798742
+    }
+  },
+  "class_map_sha256": "b38e8bb9ef6188871dba247cde4eb152c73755d2c8dd37cfdba1bcdb6c0a9128",
+  "mode": "any",
+  "model": {
+    "artifact": "results/optimize/m4_qat/lr5e-5/model.onnx",
+    "binding": "model_sha256 names the quantized ONNX directly: the calibration scores are that artifact's own ORT outputs (optimize.evaluate_onnx), so there is no checkpoint\u2192ONNX re-bind step. P3 attaches its parity report after it passes.",
+    "kind": "onnx"
+  },
+  "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+  "policy_id": "bobcat_m4_qat_lr5e-5_v1",
+  "schema_version": 1,
+  "targets": [
+    {
+      "class": "bobcat",
+      "threshold": 0.5439130067825317
+    }
+  ]
+}
