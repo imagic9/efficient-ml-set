@@ -4,8 +4,8 @@
 # Three steps, each answering a question the Pi rental cannot afford to answer late:
 #   1. build_bundle.sh stages the bundle in the target container;
 #   2. bundle_audit.py proves completeness, checksums, and target glibc;
-#   3. the clean-install test copies the bundle into a fresh debian:bookworm-slim
-#      container with NO OpenCV, NO ORT, and NO access to the repo, then runs
+#   3. the clean-install test copies the bundle into a fresh ubuntu:24.04 container
+#      (the rented Pi's OS) with NO OpenCV, NO ORT, and NO access to the repo, then runs
 #      install.sh + run_demo.sh — proving the bundle installs and runs on a clean
 #      target-compatible host without the training environment or unbundled artifacts.
 #
@@ -40,7 +40,8 @@ echo
 echo "--- 2/3 bundle_audit.py (completeness, checksums, glibc)"
 "${PYTHON}" -m wildlife_trigger.validate.bundle_audit \
     --bundle "${STAGING}" --project-root "${PROJECT_ROOT}" \
-    --image-tag "${TARGET_IMAGE_TAG}" --report "${OUT}/bundle_audit.json" | sed 's/^/    /'
+    --image-tag "${TARGET_IMAGE_TAG}" --max-glibc "${TARGET_GLIBC}" \
+    --report "${OUT}/bundle_audit.json" | sed 's/^/    /'
 
 echo
 echo "--- 3/3 clean-install test in a fresh ${TARGET_BASE_IMAGE} (no OpenCV/ORT, no repo)"

@@ -8,8 +8,9 @@ expensive to discover in the field:
   - is every file the launcher needs actually staged, including the soname symlinks
     the loader follows (a dangling link stages fine and fails at exec);
   - does MANIFEST.sha256 verify, so what arrives can be proved to be what left;
-  - does every ELF object need at most GLIBC 2.36? gx10 is 2.39, and a binary built
-    natively there requests symbols Pi OS Bookworm's loader simply does not have.
+  - does every ELF object need at most the target's glibc (Ubuntu 24.04 = 2.39)? A
+    binary that requests a symbol newer than the target's loader has will not load at
+    all. The ceiling comes from pins.env TARGET_GLIBC via --max-glibc.
 
 Runs the ELF checks inside the target container, because that is where the objects'
 own toolchain lives — `objdump` on the host would be a different binutils inspecting
@@ -27,9 +28,10 @@ import re
 import subprocess
 from pathlib import Path
 
-# Pi OS Bookworm ships glibc 2.36 (measured, A2). Any versioned symbol above this is
-# a binary the Pi's loader refuses outright — not a warning, a hard failure at exec.
-MAX_TARGET_GLIBC = (2, 36)
+# The target Pi runs Ubuntu 24.04 = glibc 2.39 (pins.env TARGET_GLIBC). Any versioned
+# symbol above the target's glibc is a binary the loader refuses outright — a hard
+# failure at exec, not a warning. Overridable via --max-glibc so it tracks the pin.
+DEFAULT_MAX_TARGET_GLIBC = "2.39"
 
 # What a working bundle must contain. The symlinks matter as much as the payload: the
 # loader looks for libonnxruntime.so.1, not for the versioned filename.
@@ -105,9 +107,12 @@ def main() -> int:
     parser.add_argument("--bundle", required=True, type=Path)
     parser.add_argument("--project-root", required=True, type=Path)
     parser.add_argument("--image-tag", required=True)
+    parser.add_argument("--max-glibc", default=DEFAULT_MAX_TARGET_GLIBC,
+                        help="target glibc ceiling, from pins.env TARGET_GLIBC")
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
 
+    max_target_glibc = tuple(int(p) for p in args.max_glibc.split("."))
     rel_bundle = str(args.bundle.relative_to(args.project_root))
 
     missing = [p for p in REQUIRED_PATHS if not (args.bundle / p).exists()]
@@ -121,7 +126,7 @@ def main() -> int:
     file_count = len(manifest.read_text().splitlines()) if manifest.exists() else 0
 
     highest, per_object = max_glibc_requirement(args.project_root, args.image_tag, rel_bundle)
-    glibc_ok = highest <= MAX_TARGET_GLIBC
+    glibc_ok = highest <= max_target_glibc
 
     report = {
         "bundle": str(args.bundle),
@@ -130,7 +135,7 @@ def main() -> int:
         "checksums_verified": checksums.returncode == 0,
         "file_count": file_count,
         "max_glibc": f"{highest[0]}.{highest[1]}",
-        "max_glibc_allowed": f"{MAX_TARGET_GLIBC[0]}.{MAX_TARGET_GLIBC[1]}",
+        "max_glibc_allowed": f"{max_target_glibc[0]}.{max_target_glibc[1]}",
         "glibc_per_object": per_object,
         "passed": glibc_ok and not missing and checksums.returncode == 0,
         "note": (
@@ -138,8 +143,8 @@ def main() -> int:
             "graph serialized above ORT_ENABLE_EXTENDED is only valid in the "
             "environment that optimized it. The Pi optimizes the ordinary model "
             "itself. OpenCV is not bundled either — install.sh apt-installs the "
-            "matching 4.6.0 runtime (E7 decision; Debian's imgcodecs closure is "
-            "impractical to carry)."
+            "matching 4.6.0 runtime on Ubuntu 24.04 (E7 decision; the imgcodecs "
+            "closure is impractical to carry)."
         ),
     }
 

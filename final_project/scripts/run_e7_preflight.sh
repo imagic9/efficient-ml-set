@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # E7/F1 — prove the fail-closed host preflight (issue #77).
 #
-# The preflight refuses a host outside the Pi 5 / Bookworm contract BEFORE install.sh
-# mutates anything. This exercises the success path and every refusal path — without a
-# physical Pi 4 or Trixie host — by feeding preflight.sh synthetic CPU/OS/arch inputs
-# (its testing overrides) and a real Trixie container. Each refusal must exit non-zero
-# with an actionable reason and change nothing.
+# The preflight refuses a host outside the Pi 5 / Ubuntu 24.04 contract BEFORE
+# install.sh mutates anything. This exercises the success path and every refusal path —
+# without a physical Pi 4 or a wrong-OS host — by feeding preflight.sh synthetic
+# CPU/OS/arch inputs (its testing overrides) and a real non-Ubuntu container. Each
+# refusal must exit non-zero with an actionable reason and change nothing.
 #
 # Scenarios:
-#   R1 success  — real gx10 host in a bookworm container: PASS, is_pi5_a76=0 (a dev host)
+#   R1 success  — real gx10 host in an Ubuntu 24.04 container: PASS, is_pi5_a76=0 (dev host)
 #   R2 pi5-sim  — A76 cpuinfo fixture:                    PASS, is_pi5_a76=1
 #   R3 pi4      — A72 cpuinfo fixture (no asimddp):        REFUSE
-#   R4 trixie   — real debian:trixie-slim /etc/os-release: REFUSE
+#   R4 wrong-os — real debian:bookworm-slim /etc/os-release: REFUSE (not Ubuntu 24.04)
 #   R5 arch     — WT_UNAME_M=x86_64:                       REFUSE
 #
 # Usage:  scripts/run_e7_preflight.sh [output_dir]
@@ -55,7 +55,7 @@ echo "--- running scenarios"
 scenario R1 "${TARGET}"
 scenario R2 "${TARGET}" "WT_CPUINFO=${FX}/cpuinfo_pi5_a76"
 scenario R3 "${TARGET}" "WT_CPUINFO=${FX}/cpuinfo_pi4_a72"
-scenario R4 "debian:trixie-slim"
+scenario R4 "debian:bookworm-slim"
 scenario R5 "${TARGET}" "WT_UNAME_M=x86_64"
 
 echo
