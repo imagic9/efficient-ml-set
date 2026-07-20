@@ -164,3 +164,4 @@ id_rsa*
 # E7/F1 preflight: raw per-scenario docker outputs are reproducible by
 # scripts/run_e7_preflight.sh. Committed evidence: preflight.json.
 /final_project/results/e7/preflight_raw/
+/final_project/report/final_report.html

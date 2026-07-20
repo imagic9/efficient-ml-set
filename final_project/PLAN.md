@@ -1988,11 +1988,21 @@ what we tried" section.
 
 Depends on: G2.
 
-- [ ] Write all sections specified by DESIGN §15.
-- [ ] Include public repository/release placeholders and later replace them.
-- [ ] Separate measured, published, and estimated values.
-- [ ] Include what worked, what failed, bottlenecks, limitations, and next steps.
-- [ ] Export and visually inspect `final_report.pdf`.
+- [x] Write all sections specified by DESIGN §15.
+- [x] Include public repository/release placeholders and later replace them.
+- [x] Separate measured, published, and estimated values.
+- [x] Include what worked, what failed, bottlenecks, limitations, and next steps.
+- [x] Export and visually inspect `final_report.pdf`.
+
+**DONE 2026-07-20 — `report/final_report.{md,pdf}`** (13 pp; source `.md`, `report.css`, built
+via pandoc → self-contained HTML → Chrome headless → PDF). All 16 DESIGN §15 sections, every
+number pulled from `canonical_results.json`, the 10 G2 figures embedded. Covers what worked
+(INT8 QAT 2.27× on-device, parity bit-identical), what didn't (trans-domain recall,
+`recall_floor_infeasible`, PTQ negative, M4 not selected), bottlenecks (inference → decode),
+limitations (remote Pi, no camera/GPIO/power, CCT domain), next steps, and a reproducibility
+statement with repo/release placeholders (filled at G5). Written in English (matches the repo's
+DESIGN/README/PLAN); can be translated to Ukrainian on request. Visually inspected — headers,
+tables, figures render cleanly.
 
 ### G4 — Slide deck
 
