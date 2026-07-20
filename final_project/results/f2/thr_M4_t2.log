@@ -1,0 +1,4 @@
+[0;93m2026-07-20 14:19:25.345763827 [W:onnxruntime:wildlife_trigger, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card1": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card1/device/vendor"[m
+[0;93m2026-07-20 14:19:25.345896401 [W:onnxruntime:wildlife_trigger, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card0": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m
+end-to-end p50=14.33ms p95=14.48ms  (69.76 FPS)
+wrote /opt/bundle/f2/thr_M4_t2.json

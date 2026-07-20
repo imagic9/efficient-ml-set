@@ -1,0 +1,187 @@
+{
+  "baseline_threads1": {
+    "M0": {
+      "decode_preprocess_share": 0.146,
+      "e2e_ms_p50": 48.226,
+      "fps": 20.74,
+      "inference_share": 0.854,
+      "kind": "fp32_baseline",
+      "model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+      "peak_rss_mb": 96.5,
+      "stages_ms_p50": {
+        "decode": 6.016,
+        "inference": 41.206,
+        "policy": 0.003,
+        "preprocess": 1.001
+      }
+    },
+    "M2": {
+      "decode_preprocess_share": 0.332,
+      "e2e_ms_p50": 21.298,
+      "fps": 46.95,
+      "inference_share": 0.668,
+      "kind": "int8_qat",
+      "model_sha256": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+      "peak_rss_mb": 89.1,
+      "stages_ms_p50": {
+        "decode": 6.049,
+        "inference": 14.219,
+        "policy": 0.003,
+        "preprocess": 1.023
+      }
+    },
+    "M4": {
+      "decode_preprocess_share": 0.41,
+      "e2e_ms_p50": 17.538,
+      "fps": 57.02,
+      "inference_share": 0.59,
+      "kind": "pruned_qat_int8",
+      "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+      "peak_rss_mb": 82.2,
+      "stages_ms_p50": {
+        "decode": 6.075,
+        "inference": 10.342,
+        "policy": 0.004,
+        "preprocess": 1.116
+      }
+    }
+  },
+  "decisions": {
+    "bottleneck": "Inference dominates the FP32 baseline (85%); INT8+pruning cut it 4x (41.2->10.3 ms), shifting the bottleneck toward the fixed ~6 ms JPEG decode (decode+preprocess ~41% of M4). Further latency gains lie in the decode path, not the model.",
+    "reduced_decode": "REJECTED on accuracy at E6 (decode-drift gate); on the Pi it saves only ~1.08x latency (decode is ~6 ms of a 17-48 ms pipeline), not worth lost bobcats.",
+    "shipping_knobs_confirmed": "fused preprocess, full decode, ORT_ENABLE_ALL, arena on (graph_extended/arena_off/preprocess_reference all within noise).",
+    "threads": "threads=3 optimal for ALL three models on the 4-core A76 (t4 regresses via core contention). INT8 (M2/M4) is thread-invariant (int32 accumulation) so threads=3 is parity-safe for the INT8 winner; for FP32 M0 it changes reduction order and would need a threads-matched parity re-check, so the FP32 baseline is reported at the frozen shipping default threads=1."
+  },
+  "governor": "performance (pinned; documented DVFS control, not model tuning)",
+  "host": "Raspberry Pi CM5 (BCM2712 / Cortex-A76 @ 2.4 GHz, 8 GB), Ubuntu 24.04",
+  "iterations": 300,
+  "kind": "f2_pi_profiling_summary",
+  "m0_knob_matrix": {
+    "arena_off": {
+      "e2e_ms_p50": 47.849,
+      "fps": 20.9,
+      "speedup_vs_baseline": 1.008
+    },
+    "baseline": {
+      "e2e_ms_p50": 48.226,
+      "fps": 20.74,
+      "speedup_vs_baseline": 1.0
+    },
+    "decode_half": {
+      "e2e_ms_p50": 45.989,
+      "fps": 21.74,
+      "speedup_vs_baseline": 1.049
+    },
+    "decode_quarter": {
+      "e2e_ms_p50": 44.555,
+      "fps": 22.44,
+      "speedup_vs_baseline": 1.082
+    },
+    "graph_extended": {
+      "e2e_ms_p50": 49.238,
+      "fps": 20.31,
+      "speedup_vs_baseline": 0.979
+    },
+    "preprocess_reference": {
+      "e2e_ms_p50": 50.162,
+      "fps": 19.94,
+      "speedup_vs_baseline": 0.961
+    },
+    "threads2": {
+      "e2e_ms_p50": 35.822,
+      "fps": 27.92,
+      "speedup_vs_baseline": 1.346
+    },
+    "threads3": {
+      "e2e_ms_p50": 32.541,
+      "fps": 30.73,
+      "speedup_vs_baseline": 1.482
+    },
+    "threads4": {
+      "e2e_ms_p50": 34.897,
+      "fps": 28.66,
+      "speedup_vs_baseline": 1.382
+    }
+  },
+  "measured_on_pi": true,
+  "note": "Real Pi results; host certified is_pi5_a76=true by results/f1/environment.json.",
+  "schema_version": 1,
+  "speedup_decomposition": {
+    "baseline": {
+      "e2e_ms": 48.408,
+      "fps": 20.66,
+      "model": "M0",
+      "threads": 1
+    },
+    "combined_speedup_M0t1_to_M4t3": 3.505,
+    "model_speedup_M0t1_to_M4t1": 2.801,
+    "note": "Model part = INT8 QAT + structured pruning; inference part = intra-op threads=3 on 4-core A76.",
+    "thread_speedup_M4t1_to_M4t3": 1.251,
+    "winner_candidate": {
+      "e2e_ms": 13.812,
+      "fps": 72.4,
+      "model": "M4",
+      "threads": 3
+    }
+  },
+  "thread_matrix": {
+    "M0": {
+      "best": "t3",
+      "t1": {
+        "e2e_ms_p50": 48.408,
+        "fps": 20.66
+      },
+      "t2": {
+        "e2e_ms_p50": 35.842,
+        "fps": 27.9
+      },
+      "t3": {
+        "e2e_ms_p50": 34.725,
+        "fps": 28.8
+      },
+      "t4": {
+        "e2e_ms_p50": 36.601,
+        "fps": 27.32
+      }
+    },
+    "M2": {
+      "best": "t3",
+      "t1": {
+        "e2e_ms_p50": 21.322,
+        "fps": 46.9
+      },
+      "t2": {
+        "e2e_ms_p50": 20.502,
+        "fps": 48.78
+      },
+      "t3": {
+        "e2e_ms_p50": 20.281,
+        "fps": 49.31
+      },
+      "t4": {
+        "e2e_ms_p50": 21.245,
+        "fps": 47.07
+      }
+    },
+    "M4": {
+      "best": "t3",
+      "t1": {
+        "e2e_ms_p50": 17.283,
+        "fps": 57.86
+      },
+      "t2": {
+        "e2e_ms_p50": 14.334,
+        "fps": 69.76
+      },
+      "t3": {
+        "e2e_ms_p50": 13.812,
+        "fps": 72.4
+      },
+      "t4": {
+        "e2e_ms_p50": 14.424,
+        "fps": 69.33
+      }
+    }
+  },
+  "warmup": 20
+}

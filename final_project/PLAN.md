@@ -2,8 +2,10 @@
 
 Status: **Phases A–E complete (Gate E PASSED); the deployment bundle is re-targeted to
 Ubuntu Server 24.04 (E9, 2026-07-20 — the rented Pi's OS) with all three gates re-passed;
-the Pi trial (Phase F) is UNDERWAY — F1 PASSED 2026-07-20 on the real Raspberry Pi CM5
-(Ubuntu 24.04, Cortex-A76, `is_pi5_a76=true`); F2 (validation profiling) is next.**
+the Pi trial (Phase F) is UNDERWAY — F1+F2 PASSED 2026-07-20 on the real Raspberry Pi CM5
+(Ubuntu 24.04, Cortex-A76, `is_pi5_a76=true`): M4 pruned+QAT runs **3.50× faster** than the
+M0 FP32 baseline end-to-end (48.4→13.8 ms, 20.7→72.4 FPS). F3 (freeze + final-model selection)
+is next.**
 comparison.jsonl holds all five (M0 FP32 /
 M1 PTQ 0.3527 / M2 QAT 0.3832 /
 M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
@@ -47,9 +49,9 @@ re-targeted Bookworm → Ubuntu Server 24.04 (2026-07-20)** because the rented P
 Ubuntu 24.04 (the provider offers no other image); build-env == deploy-env now, and all
 three gates re-passed on `ubuntu:24.04` (E7 preflight 6/6, E7 bundle max GLIBC 2.38 ≤
 2.39, Gate E dry run — diagnostic M0 13.62 → M2 7.25 → M4 6.10 ms p50 on gx10).
-**Next: Phase F is underway** — F1 (provision + smoke) PASSED on the real CM5 2026-07-20;
-F2 (validation profiling) is next, then F3–F5, then Phase G (analysis, report, release). The
-next task is always the first `[ ]` in phase order.
+**Next: Phase F is underway** — F1 (provision + smoke) and F2 (validation profiling) PASSED on
+the real CM5 2026-07-20; F3 (freeze + final-model selection) is next, then F4–F5, then Phase G
+(analysis, report, release). The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1787,10 +1789,35 @@ in `results/f1/` (`f1_install.log`, `f1_demo_M0.log`, `f1_host_interfaces.txt`,
 
 Depends on: F1.
 
-- [ ] Run the same fixed validation benchmark for M0 and every shortlisted model.
-- [ ] Measure the bounded decode/preprocessing/ORT/thread/runtime matrix from E6.
-- [ ] Run ORT/C++ profiles and identify bottlenecks; do not open test labels.
-- [ ] Make only safe runtime fixes validated against parity tests.
+- [x] Run the same fixed validation benchmark for M0 and every shortlisted model.
+- [x] Measure the bounded decode/preprocessing/ORT/thread/runtime matrix from E6.
+- [x] Run ORT/C++ profiles and identify bottlenecks; do not open test labels.
+- [x] Make only safe runtime fixes validated against parity tests.
+
+**DONE 2026-07-20 — F2 PASSED on the real CM5** (performance governor pinned, no throttling).
+Drivers `deploy/pi/run_f2_profile.sh` + `run_f2_threads.sh`, consolidated by
+`scripts/summarize_f2.py` → `results/f2/f2_summary.json`; full write-up in
+`results/f2/F2_ANALYSIS.md`. All numbers generated, never hand-typed.
+
+- **Baseline (threads=1, shipping):** M0 FP32 48.23 ms / 20.7 FPS, M2 QAT 21.30 ms / 47.0 FPS,
+  M4 pruned+QAT 17.54 ms / 57.0 FPS — model optimization alone gives **M2 2.26× / M4 2.75×**
+  and pruning cuts peak RSS 96.5 → 82.2 MB.
+- **Bottleneck (and its shift):** decode fixed ~6 ms, preprocess ~1 ms across all models;
+  inference is 85 % of the FP32 pipeline (41.2 ms) and collapses **4.0×** to 10.3 ms for M4,
+  moving the bottleneck to the JPEG decode path (decode+preprocess ~41 % of M4). Identified from
+  the per-stage percentiles in every benchmark JSON (`stages_ms`) + P0 op coverage; the
+  `--profile-prefix` ORT trace did not emit a file and was not needed for the bottleneck call.
+- **Thread matrix (Pi-specific):** `threads=3` optimal for ALL three models (t4 regresses via
+  core contention on the 4-core A76) — the **opposite** of E6 on gx10's 20 cores where threads=4
+  regressed. A genuine target-hardware finding emulation could not produce.
+- **Knob matrix:** graph-extended / arena-off / preprocess-reference all within noise → shipping
+  defaults (ALL, arena on, fused) confirmed; reduced decode buys only ~1.05–1.08× and stays
+  REJECTED on accuracy (E6 decode-drift).
+- **Headline: M4 @ threads=3 = 13.81 ms / 72.4 FPS vs M0 @ threads=1 = 48.41 ms / 20.7 FPS =
+  3.50×**, decomposed model **2.80×** (INT8+pruning) × inference **1.25×** (threads).
+- **Safe-fix / parity:** threads=3 is parity-safe for the INT8 winner (int32 accumulation is
+  thread-invariant); for FP32 M0 it changes reduction order, so the frozen FP32 baseline stays
+  threads=1 and the threaded M0 numbers are reported as a measured finding. F3 re-checks parity.
 
 ### F3 — Day 3: repeat validation and freeze
 
