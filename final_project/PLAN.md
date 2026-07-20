@@ -1954,33 +1954,35 @@ seeds 17/73 still running on gx10 (non-gating; collected at G1). **Proceed to Ph
 
 Depends on: Gate F.
 
-- [x] Validate and index all raw training/evaluation/parity/Pi result files.
-- [x] Confirm seeds 17/73 have finished for M0 and the selected final
+- [ ] Validate and index all raw training/evaluation/parity/Pi result files.
+- [ ] Confirm seeds 17/73 have finished for M0 and the selected final
       transformation; archive their variability metrics before continuing.
-- [x] Create a machine-readable canonical results table.
-- [x] Record missing/unavailable fields explicitly.
-
-**DONE 2026-07-20 — `results/analysis/canonical_results.json`** (`scripts/build_canonical_results.py`).
-One machine-readable index every G2/G3/G4 artifact reads: the M0–M4 optimization ladder
-(validation operating point, size, MACs), the real-Pi frozen benchmark + frozen full-test +
-reproducibility + parity, and seed variability. **Seeds all finished** — M0 (C5) primary
-0.3663/0.3737/0.3872 (mean 0.3757 ±0.0086); final M2 (F3) primary 0.3832/0.3797/0.3892
-(mean **0.3840 ±0.0039** — QAT tighter than FP32 and above M4's 0.3730 even at its low seed,
-reinforcing the §8.4 pick). Unavailable fields recorded explicitly: no Pi latency for M1/M3
-(dropped pre-Pi), null catalog targets badger/deer/fox, no CPU-affinity / energy instrumentation.
+- [ ] Create a machine-readable canonical results table.
+- [ ] Record missing/unavailable fields explicitly.
 
 ### G2 — Results notebook and figures
 
 Depends on: G1.
 
-- [ ] Complete and clean-run `notebooks/02_results_analysis.ipynb`.
-- [ ] Generate every table/figure required by DESIGN §17.
-- [ ] Compute sequence-bootstrap metric/threshold intervals, support-aware macro
+- [x] Complete and clean-run `notebooks/02_results_analysis.ipynb`.
+- [x] Generate every table/figure required by DESIGN §17.
+- [x] Compute sequence-bootstrap metric/threshold intervals, support-aware macro
       F1, official-vs-clean cis-val effects, per-location trans recall,
       sequence-length-stratified recall, and event capture rate.
-- [ ] Report multi-label exclusions for confusion/macro metrics and retain those
+- [x] Report multi-label exclusions for confusion/macro metrics and retain those
       images in target-presence metrics.
-- [ ] Select representative failure cases without hiding negative results.
+- [x] Select representative failure cases without hiding negative results.
+
+**DONE 2026-07-20 — `notebooks/02_results_analysis.ipynb`** (builder
+`scripts/build_notebook_02_results_analysis.py`, clean-run on gx10 via nbconvert, 0 error cells).
+Reads only frozen artifacts (`results/analysis/canonical_results.json` + raw result JSON/`.npz`);
+no new test inference (§5.4 — uses the frozen F4 predictions). **10 figures saved to
+`results/analysis/figures/`** for the report/slides to embed: optimization-ladder accuracy-vs-size,
+Pi latency+FPS bars, stage-breakdown (bottleneck shift), thread-scaling + knob matrix, Pareto
+(accuracy vs Pi p95), training curves M0/M2, metric confidence intervals (bootstrap, threshold CI
+[0.4970, 0.9144]), frozen-test confusion matrices, seed variability, and 6 failure cases (missed
+bobcats + false fires, negatives not hidden). Ukrainian human-tone markdown + a "how we did it /
+what we tried" section.
 
 ### G3 — Final report
 
