@@ -1,7 +1,12 @@
 # Wildlife Trigger — Efficient ML Final Project
 
-Status: **Phases A–E complete — Gate E PASSED. The conditional Pi trial (Phase F) is
-next.** The full optimization ladder (M0 FP32 / M1 INT8 PTQ / M2 INT8 QAT / M3
+Status: **Phases A–F complete — Gate F PASSED on the real Raspberry Pi CM5 (2026-07-20).**
+The final optimized model is **M2 (INT8 QAT)**, chosen by the pre-registered DESIGN §8.4 rule:
+on the real Pi it runs **2.27× faster than the FP32 baseline (20.4 → 46.3 FPS) at 3.5× smaller
+size (8.95 → 2.54 MB)**, with Pi↔gx10 decisions bit-identical and F4/F5 reproducible within
+±3.5%. The frozen full test (opened once, post-freeze) shows M2 beats the baseline in-distribution
+(cis-test event-capture 0.858 vs 0.767). **Phase G (analysis, report, release) is next.** The
+full optimization ladder (M0 FP32 / M1 INT8 PTQ / M2 INT8 QAT / M3
 structured-pruned FP32 / M4 pruned+QAT) is trained, gated (P3/P4), carded, and compared
 (Gate D); the deployable pre-Pi shortlist **M0 · M2 · M4** and the fixed
 `benchmark_val_1000.jsonl` are frozen. **Phase E (C++ application + deployment
@@ -14,7 +19,8 @@ ARM64 container (Gate E). The matrix found decode the only latency knob with hea
 but the reduced-decode drift gate **rejected** it (it loses real bobcat detections), so
 shipping stays full decode. The dry-run benchmark (diagnostic, gx10) shows the
 quantization payoff: M0 12.36 ms → M2 6.69 ms → M4 5.45 ms. See the phase table below.
-**Next: the conditional Phase F Pi trial**, then Phase G (analysis, report, release).
+**Phase F then confirmed this on real hardware** — the CM5 numbers above are the ones that
+count (DESIGN §12.4). **Next: Phase G (analysis, report, release).**
 
 **Trans-domain bobcat recall is poor and is reported as such**, per DESIGN §18's registered
 decision rule. M0 catches 86% of bobcat visits at cameras it has seen and 18% at the
@@ -44,7 +50,8 @@ showed it is a property of the frozen recipe, not of seed 42: trans F2 is
 | E6 (correctness + optimization experiment) | **done — Gate E6 PASSED** (`results/e6/e6_gate.json`). QEMU `cortex-a76` ISA parity bit-identical for M0/M2/M4 (`qemu_parity.json`). Optimization matrix (one factor at a time on M0, diagnostic): decode the only latency knob with headroom (half 1.10×, quarter 1.17×), `threads=4` regresses (0.88×), preprocess/graph/arena within noise (`optimization_matrix.json`). Reduced-decode drift gate **REJECTS** half/quarter — they lose real bobcat detections (M0 17–18, M2 10–12, M4 17–19) + add 1.1–3.2% false fires, so shipping stays full decode (`decode_drift.json`). Native-vs-target: gcc 13/glibc 2.39 and gcc 12/glibc 2.36 both 5/5 ctest + self-test, bit-identical decisions over benchmark_val_1000 (`native_vs_target.json`). P1–P4 consolidated + sha-bound for the shortlist; ALL/EXTENDED graphs retained (differ by sha) |
 | E7 (deployment bundle) | **done** — `build_bundle.sh` stages M0/M2/M4 + policies + class map + a 47-frame sample slice + the pinned ORT + `preflight.sh`/`install.sh`/`run_demo.sh`/`run_benchmark.sh` + `BUNDLE.json` (git commit + per-artifact sha) + `MANIFEST.sha256`. OpenCV apt-installed by `install.sh` (the imgcodecs GDAL closure is impractical to carry; Ubuntu 24.04 has the matching 4.6.0 `.406` as `libopencv-*406t64`). Clean-install test in a fresh `ubuntu:24.04` passed: max GLIBC 2.38 ≤ 2.39, all libs resolve, self-test + demo run (`results/e7/e7_bundle.json`). **Fail-closed F1 host preflight (issue #77):** refuses non-aarch64 / non-Ubuntu-24.04 / Cortex-A72 (no `asimddp`) before any mutation and writes a machine-readable `environment.json`; success + all refusal paths proven without a physical Pi (`results/e7/preflight.json`). **Re-targeted Bookworm→Ubuntu 24.04 (E9, 2026-07-20)** to match the rented Pi's OS; all three gates re-passed |
 | E8 (full ARM64 dry run) | **done — Gate E PASSED** (`results/e8/dry_run.json`). The exact Pi commands (`install.sh` + `run_benchmark.sh` + `run_demo.sh`) run unattended in a clean container (exit 0); the one-command benchmark matrix includes the M0 baseline; outputs machine-readable and `measured_on_pi:false`. Diagnostic latency (gx10, not a Pi result): M0 12.36 ms → M2 6.69 ms → M4 5.45 ms |
-| F (Pi trial), G (report/release) | not started — F is conditional, one-shot |
+| F (Raspberry Pi CM5 trial) | **done — Gate F PASSED** (2026-07-20). F1 install+smoke, F2 validation profiling (threads=3 optimal on the 4-core A76, the opposite of gx10), F3 freeze (final model M2), F4 frozen full-test + Pi benchmark, F5 reproducibility. Real-Pi frozen: **M0 49.06 ms / 20.4 FPS → M2 21.61 ms / 46.3 FPS = 2.27×**, 3.5× smaller; Pi↔gx10 parity bit-identical (M0 & M2); frozen test M2 cis event-capture 0.858 > M0 0.767, trans domain-shift limited (`results/f{1,2,3,4,5}/`) |
+| G (report/release) | **in progress** — Phase F numbers now exist; G1 will fold in the M2 confirmation seeds 17/73 (done, seed variability ~0.006 on the selection score) |
 
 ### The optimization ladder (Phase D, validation / deployment ORT)
 
