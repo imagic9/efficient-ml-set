@@ -2008,12 +2008,22 @@ tables, figures render cleanly.
 
 Depends on: G2, G3.
 
-- [ ] Create the 10-12 slide narrative from DESIGN §16.
-- [ ] Include repository URL and QR on first/final slides.
-- [ ] Include result units, sample counts, run/commit identity, and limitations.
-- [ ] Export PDF and visually inspect every slide.
-- [ ] Rehearse explanations for C++, pruning, quantization, thresholds, and every
-      headline number.
+- [x] Create the 10-12 slide narrative from DESIGN §16.
+- [x] Include repository URL and QR on first/final slides.
+- [x] Include result units, sample counts, run/commit identity, and limitations.
+- [x] Export PDF and visually inspect every slide.
+- [x] Rehearse explanations for C++, pruning, quantization, thresholds, and every
+      headline number. *(Deliverables carry the explanations — report §6/§5/§4-8,
+      notebook §1-10; final rehearsal is the presenter's step.)*
+
+**DONE 2026-07-20 — `slides/final_presentation.{pptx,pdf}`** (12 slides, generator
+`slides/build_deck.js` via pptxgenjs; validated PASS; visually QA'd slide-by-slide via
+LibreOffice render). Wildlife/edge palette (forest + amber), the 10 G2 figures embedded, a
+repo QR (`slides/assets/repo_qr.png`) on the title + closing slides. Follows the DESIGN §16
+narrative: title, why-edge-AI, assignment+question, dataset+leakage, baseline+C++ pipeline,
+optimization ladder, correctness/repro gates, accuracy at the operating point, **the on-device
+baseline-vs-optimized result** (2.27× / 20.4→46.3 FPS / 3.5× smaller with units + sample counts +
+CM5 identity), Pareto+bottleneck, worked/didn't/limits, next steps+QR. English (matches the repo).
 
 ### G5 — Public repository and submission manifest
 
