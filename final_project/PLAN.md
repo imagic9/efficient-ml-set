@@ -640,15 +640,15 @@ than inherit this.
 
 Depends on: B1, B2.
 
-- [ ] Implement dataset readers and manifest validation.
-- [ ] Exclude the seven distinct-class multi-label train images from CE while
+- [x] Implement dataset readers and manifest validation.
+- [x] Exclude the seven distinct-class multi-label train images from CE while
       retaining full label sets for target-presence evaluation.
-- [ ] Implement canonical aspect-preserving resize/pad/RGB/NCHW/ImageNet
+- [x] Implement canonical aspect-preserving resize/pad/RGB/NCHW/ImageNet
       normalization from DESIGN §5.5.
-- [ ] Implement training-only photometric augmentation without animal-removing
+- [x] Implement training-only photometric augmentation without animal-removing
       crops.
-- [ ] Make validation/test preprocessing deterministic.
-- [ ] Build the offline preprocessing cache (DESIGN §5.5): steps 1-4 computed once
+- [x] Make validation/test preprocessing deterministic.
+- [x] Build the offline preprocessing cache (DESIGN §5.5): steps 1-4 computed once
       into per-shape uint8 letterbox arrays, so training does not re-decode 57,864
       JPEGs every epoch of every run. Sound only because the augmentation list has
       no random crop/resize; the cache builder must call the *same* preprocessing
@@ -656,13 +656,27 @@ Depends on: B1, B2.
       keyed by a hash of the preprocessing config plus source manifest and verify it
       on load. A cache that outlives its config trains on stale pixels and nothing
       downstream can detect it.
-- [ ] Add unit tests for manifests, labels, missing/corrupt files, and transforms.
-- [ ] Test that the cache builder and the on-the-fly path produce **identical**
+- [x] Add unit tests for manifests, labels, missing/corrupt files, and transforms.
+- [x] Test that the cache builder and the on-the-fly path produce **identical**
       tensors, and that a changed preprocessing config invalidates the cache rather
       than being ignored.
 
 **Output:** tested Python data package, resolved data config, and a
 config-fingerprinted preprocessing cache.
+
+**DONE — checkboxes reconciled 2026-07-20.** The implementation
+(`src/wildlife_trigger/data/{dataset,preprocess,cache,manifests}.py`) shipped back in
+Phase B and has trained every model since (C0-E8 all depend on it); the boxes had
+simply never been ticked. Reconciled after re-verifying against the code and the test
+suite. The two *test* bullets — the genuine gap the Session-13 handoff flagged — are
+now closed by `tests/python/test_cache.py` (11 tests): cache row is **bit-identical**
+to the on-the-fly `letterbox_bgr` path (direct and end-to-end through `WildlifeDataset`);
+a changed geometry is a separate cache; a changed `pad_value`/manifest/row-order is
+**refused as stale** (both `open_cache` and the dataset raise, never serve stale
+pixels); `decode` raises on missing/corrupt files; the augmentation is shape-preserving
+and seed-deterministic. B3-relevant subset green on gx10 (49 passed:
+`test_cache`, `test_preprocess_geometry`, `test_p1_preprocess`, `test_dataset_semantics`,
+`test_calibration_manifest`, `test_golden_tensors`).
 
 ### B4 — Data audit gate
 
