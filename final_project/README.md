@@ -425,6 +425,11 @@ environment variables.
 
 ### Raspberry Pi target (Pi 5 preferred)
 
+**OS: Ubuntu Server 24.04** (the rented Pi's image; the provider offers no other).
+The deployment bundle is built for exactly that (E9, 2026-07-20 — build-env ==
+deploy-env), and `install.sh` fail-closes on any host that is not aarch64 / Ubuntu
+24.04 / `asimddp`-capable.
+
 The Pi is the only valid source of target latency/FPS/resource evidence. Its trial
 is measurement time, not normal
 development time. It receives a frozen deployment archive only after the clean

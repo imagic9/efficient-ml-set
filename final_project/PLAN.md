@@ -1,12 +1,15 @@
 # Final Project — Autonomous Core Execution Plan
 
-Status: **Phases A–E complete (Gate E PASSED); the conditional Pi trial (Phase F) is
-next.** comparison.jsonl holds all five (M0 FP32 / M1 PTQ 0.3527 / M2 QAT 0.3832 /
+Status: **Phases A–E complete (Gate E PASSED); the deployment bundle is re-targeted to
+Ubuntu Server 24.04 (E9, 2026-07-20 — the rented Pi's OS) with all three gates re-passed;
+the conditional Pi trial (Phase F) is next.** comparison.jsonl holds all five (M0 FP32 /
+M1 PTQ 0.3527 / M2 QAT 0.3832 /
 M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
 `recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
 (M1 dominated by M2/M4, M3 by M4), with `benchmark_val_1000.jsonl` and the
 hash-locked `pre_pi_freeze.json` built. **Phase E is complete: E1–E8 DONE, Gate E
-PASSED.** E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the
+PASSED; E9 (2026-07-20) re-targeted the bundle Bookworm → Ubuntu 24.04 and re-passed all
+three deployment gates on `ubuntu:24.04`.** E1 (Gate E1 PASSED) hardened the C++ foundation and exercised it against the
 real M0 (leveled logging convention, `schema_version` on every output, build + ctest +
 self-test/infer(native+QEMU)/benchmark/run-dataset all green on M0 in the target
 container; `results/e1/e1_gate.json`). E2 certified the `Preprocessor` (fused +
