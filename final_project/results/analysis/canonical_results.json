@@ -1,0 +1,357 @@
+{
+  "baseline": "M0 (fp32_baseline)",
+  "design": "PLAN G1 / DESIGN \u00a717",
+  "final_model": "M2 (int8_qat)",
+  "frozen_full_test": {
+    "M0": {
+      "frozen_threshold": 0.5380880236625671,
+      "per_domain": {
+        "cis_test": {
+          "event_capture_rate": 0.7668,
+          "false_fire_rate": 0.0551,
+          "frame_f2": 0.5812,
+          "frame_precision": 0.4137,
+          "frame_recall": 0.6466,
+          "frames_scored": 15827,
+          "positive_frames": 897,
+          "sequence_balanced_recall": 0.6636
+        },
+        "trans_test": {
+          "event_capture_rate": 0.3952,
+          "false_fire_rate": 0.0409,
+          "frame_f2": 0.2517,
+          "frame_precision": 0.3873,
+          "frame_recall": 0.2314,
+          "frames_scored": 23275,
+          "positive_frames": 2338,
+          "sequence_balanced_recall": 0.2919
+        }
+      }
+    },
+    "M2": {
+      "frozen_threshold": 0.650390088558197,
+      "per_domain": {
+        "cis_test": {
+          "event_capture_rate": 0.8575,
+          "false_fire_rate": 0.0551,
+          "frame_f2": 0.6387,
+          "frame_precision": 0.4398,
+          "frame_recall": 0.7202,
+          "frames_scored": 15827,
+          "positive_frames": 897,
+          "sequence_balanced_recall": 0.7604
+        },
+        "trans_test": {
+          "event_capture_rate": 0.3468,
+          "false_fire_rate": 0.0215,
+          "frame_f2": 0.2209,
+          "frame_precision": 0.5017,
+          "frame_recall": 0.1938,
+          "frames_scored": 23275,
+          "positive_frames": 2338,
+          "sequence_balanced_recall": 0.2621
+        }
+      }
+    }
+  },
+  "headline": "M0 FP32 49.06 ms / 20.4 FPS -> M2 INT8 QAT 21.61 ms / 46.3 FPS = 2.27x on the real Raspberry Pi CM5, 3.5x smaller (8.95 -> 2.54 MB), Pi<->gx10 parity bit-identical, accuracy-equivalent (M2 better in-distribution).",
+  "kind": "canonical_results",
+  "optimization_ladder_validation": {
+    "M0": {
+      "bytes": 8950645,
+      "cis_f2_at_0p5": 0.6272189349112426,
+      "kind": "fp32_baseline",
+      "macs": 293402624,
+      "mb": 8.95,
+      "onnx_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+      "operating_point": {
+        "cis_val_clean": {
+          "event_capture_rate": 0.86,
+          "false_fire_rate": 0.049511400651465795,
+          "frame_f2": 0.6354916067146285,
+          "frame_recall": 0.7361111111111112,
+          "sequence_balanced_recall": 0.7333333333333333
+        },
+        "trans_val": {
+          "event_capture_rate": 0.1660377358490566,
+          "false_fire_rate": 0.030042918454935622,
+          "frame_f2": 0.09653692920625193,
+          "frame_recall": 0.07944514501891552,
+          "sequence_balanced_recall": 0.07924528301886792
+        }
+      },
+      "params": 2244368,
+      "selection_score_seed42": 0.3663295163553768,
+      "status": "recall_floor_infeasible",
+      "threshold": 0.5380880236625671,
+      "trans_f2_at_0p5": 0.105440097799511
+    },
+    "M1": {
+      "bytes": 2620130,
+      "cis_f2_at_0p5": 0.6014580801944107,
+      "kind": "int8_ptq",
+      "macs": 293402624,
+      "mb": 2.62,
+      "onnx_sha256": "faf54dde23e4418b2cfb3b79563883624c97e536968d50aee9ee98746e1345c8",
+      "operating_point": {
+        "cis_val_clean": {
+          "event_capture_rate": 0.78,
+          "false_fire_rate": 0.049185667752443,
+          "frame_f2": 0.6045949214026604,
+          "frame_recall": 0.6944444444444444,
+          "sequence_balanced_recall": 0.6933333333333332
+        },
+        "trans_val": {
+          "event_capture_rate": 0.18490566037735848,
+          "false_fire_rate": 0.034334763948497854,
+          "frame_f2": 0.10540788267644363,
+          "frame_recall": 0.08701134930643127,
+          "sequence_balanced_recall": 0.08679245283018867
+        }
+      },
+      "params": 2244368,
+      "selection_score_seed42": 0.35268503031725423,
+      "status": "recall_floor_infeasible",
+      "threshold": 0.4963754415512085,
+      "trans_f2_at_0p5": 0.10391198044009779
+    },
+    "M2": {
+      "bytes": 2536267,
+      "cis_f2_at_0p5": 0.6498829039812647,
+      "kind": "int8_qat",
+      "macs": 293402624,
+      "mb": 2.54,
+      "onnx_sha256": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+      "operating_point": {
+        "cis_val_clean": {
+          "event_capture_rate": 0.84,
+          "false_fire_rate": 0.0498371335504886,
+          "frame_f2": 0.6399521531100478,
+          "frame_recall": 0.7430555555555556,
+          "sequence_balanced_recall": 0.7399999999999999
+        },
+        "trans_val": {
+          "event_capture_rate": 0.16981132075471697,
+          "false_fire_rate": 0.046137339055793994,
+          "frame_f2": 0.09759072888075633,
+          "frame_recall": 0.0807061790668348,
+          "sequence_balanced_recall": 0.08050314465408805
+        }
+      },
+      "params": 2244368,
+      "selection_score_seed42": 0.3832218031865149,
+      "status": "recall_floor_infeasible",
+      "threshold": 0.650390088558197,
+      "trans_f2_at_0p5": 0.11656070239176508
+    },
+    "M3": {
+      "bytes": 7035950,
+      "cis_f2_at_0p5": 0.5879237288135594,
+      "kind": "pruned_fp32",
+      "macs": 205614080,
+      "mb": 7.04,
+      "onnx_sha256": "c7529ee608ed6e393fba517f5c0bc482e54ff5864b549c06d89c7fc4ce7b6a50",
+      "operating_point": {
+        "cis_val_clean": {
+          "event_capture_rate": 0.68,
+          "false_fire_rate": 0.0498371335504886,
+          "frame_f2": 0.5221130221130221,
+          "frame_recall": 0.5902777777777778,
+          "sequence_balanced_recall": 0.58
+        },
+        "trans_val": {
+          "event_capture_rate": 0.045283018867924525,
+          "false_fire_rate": 0.004291845493562232,
+          "frame_f2": 0.021943573667711602,
+          "frame_recall": 0.017654476670870115,
+          "sequence_balanced_recall": 0.017610062893081757
+        }
+      },
+      "params": 1761720,
+      "selection_score_seed42": 0.35833629639708564,
+      "status": "recall_floor_infeasible",
+      "threshold": 0.8000255823135376,
+      "trans_f2_at_0p5": 0.12874886398061192
+    },
+    "M4": {
+      "bytes": 2014806,
+      "cis_f2_at_0p5": 0.6529411764705882,
+      "kind": "pruned_qat",
+      "macs": 205614080,
+      "mb": 2.01,
+      "onnx_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+      "operating_point": {
+        "cis_val_clean": {
+          "event_capture_rate": 0.86,
+          "false_fire_rate": 0.049511400651465795,
+          "frame_f2": 0.6615017878426699,
+          "frame_recall": 0.7708333333333334,
+          "sequence_balanced_recall": 0.7666666666666667
+        },
+        "trans_val": {
+          "event_capture_rate": 0.15471698113207547,
+          "false_fire_rate": 0.046137339055793994,
+          "frame_f2": 0.0901038485033598,
+          "frame_recall": 0.07440100882723834,
+          "sequence_balanced_recall": 0.07421383647798742
+        }
+      },
+      "params": 1761720,
+      "selection_score_seed42": 0.37297866996752954,
+      "status": "recall_floor_infeasible",
+      "threshold": 0.5439130067825317,
+      "trans_f2_at_0p5": 0.09301616346447088
+    }
+  },
+  "pi_latency_frozen": {
+    "M0": {
+      "e2e_ms_p50_max": 49.595,
+      "e2e_ms_p50_mean": 49.063,
+      "e2e_ms_p50_min": 48.457,
+      "e2e_ms_p50_spread": 1.138,
+      "fps_mean": 20.38,
+      "iterations_each": 1000,
+      "kind": "fp32_baseline",
+      "peak_rss_mb": 96.5,
+      "reps": 3,
+      "stages_ms_p50_rep1": {
+        "decode": 6.046,
+        "inference": 41.346,
+        "policy": 0.003,
+        "preprocess": 1.058
+      }
+    },
+    "M2": {
+      "e2e_ms_p50_max": 21.817,
+      "e2e_ms_p50_mean": 21.605,
+      "e2e_ms_p50_min": 21.461,
+      "e2e_ms_p50_spread": 0.356,
+      "fps_mean": 46.29,
+      "iterations_each": 1000,
+      "kind": "int8_qat (FINAL)",
+      "peak_rss_mb": 89.1,
+      "reps": 3,
+      "stages_ms_p50_rep1": {
+        "decode": 6.122,
+        "inference": 14.292,
+        "policy": 0.003,
+        "preprocess": 1.039
+      }
+    },
+    "M4": {
+      "e2e_ms_p50_max": 17.81,
+      "e2e_ms_p50_mean": 17.74,
+      "e2e_ms_p50_min": 17.603,
+      "e2e_ms_p50_spread": 0.206,
+      "fps_mean": 56.37,
+      "iterations_each": 1000,
+      "kind": "pruned_qat_int8",
+      "peak_rss_mb": 82.2,
+      "reps": 3,
+      "stages_ms_p50_rep1": {
+        "decode": 6.075,
+        "inference": 10.602,
+        "policy": 0.004,
+        "preprocess": 1.123
+      }
+    }
+  },
+  "pi_speedups": {
+    "M0_to_M2": 2.271,
+    "M0_to_M4": 2.766
+  },
+  "pi_vs_gx10_parity": {
+    "detail": {
+      "M0": {
+        "decision_disagreements": 0,
+        "frames": 47,
+        "gx10_fired": 5,
+        "max_score_delta": 0.0,
+        "mean_score_delta": 0.0,
+        "pi_fired": 5,
+        "verdict": "PASS",
+        "worst_frame": null
+      },
+      "M2": {
+        "decision_disagreements": 0,
+        "frames": 47,
+        "gx10_fired": 4,
+        "max_score_delta": 0.0,
+        "mean_score_delta": 0.0,
+        "pi_fired": 4,
+        "verdict": "PASS",
+        "worst_frame": null
+      }
+    },
+    "verdict": "PASS"
+  },
+  "reproducibility_f4_vs_f5": {
+    "M0": {
+      "delta_ms": -0.383,
+      "delta_pct": -0.78,
+      "f4_mean_ms": 49.063,
+      "f5_max_ms": 48.847,
+      "f5_mean_ms": 48.68,
+      "f5_min_ms": 48.365
+    },
+    "M2": {
+      "delta_ms": 0.749,
+      "delta_pct": 3.47,
+      "f4_mean_ms": 21.605,
+      "f5_max_ms": 22.897,
+      "f5_mean_ms": 22.354,
+      "f5_min_ms": 21.281
+    },
+    "M4": {
+      "delta_ms": -0.359,
+      "delta_pct": -2.02,
+      "f4_mean_ms": 17.74,
+      "f5_max_ms": 17.457,
+      "f5_mean_ms": 17.381,
+      "f5_min_ms": 17.31
+    }
+  },
+  "schema_version": 1,
+  "seed_variability": {
+    "M0_fp32": {
+      "mean": 0.375735,
+      "per_seed": {
+        "seed17": 0.373673,
+        "seed42": 0.3663295163553768,
+        "seed73": 0.387203
+      },
+      "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+      "std": 0.008645
+    },
+    "M2_int8_qat": {
+      "mean": 0.38401,
+      "per_seed": {
+        "seed17": 0.379652,
+        "seed42": 0.3832218031865149,
+        "seed73": 0.389156
+      },
+      "primary_metric": "mean_bobcat_frame_f2_at_0.5",
+      "std": 0.00392
+    }
+  },
+  "sources": {
+    "frozen_test": "results/f4/frozen_test_{M0,M2}.json",
+    "ladder": "results/model_selection/comparison.jsonl",
+    "model_cards": "artifacts/model_cards/*.md",
+    "parity": "results/f4/parity_comparison.json",
+    "pi_latency": "results/f4/f4_summary.json",
+    "reproducibility": "results/f5/f5_reproducibility.json",
+    "seeds": "results/training/c5 (M0), results/optimize/m2_qat_seed{17,73} (M2)"
+  },
+  "unavailable": {
+    "catalog_note": "no defensible operating point (badger 1 val image; deer/fox 0). See results/f3/threshold_catalog.json.",
+    "catalog_null_targets": [
+      "badger",
+      "deer",
+      "fox"
+    ],
+    "cpu_affinity": "not exposed in the benchmark environment (recorded not-measured at E6).",
+    "energy_power": "not measured \u2014 no power instrumentation on the rented Pi (DESIGN \u00a713 scope).",
+    "pi_latency_M1_M3": "not measured on the Pi \u2014 M1/M3 were dropped from the shortlist pre-Pi (dominated); only M0/M2/M4 were carried to the CM5."
+  }
+}

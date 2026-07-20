@@ -1954,11 +1954,20 @@ seeds 17/73 still running on gx10 (non-gating; collected at G1). **Proceed to Ph
 
 Depends on: Gate F.
 
-- [ ] Validate and index all raw training/evaluation/parity/Pi result files.
-- [ ] Confirm seeds 17/73 have finished for M0 and the selected final
+- [x] Validate and index all raw training/evaluation/parity/Pi result files.
+- [x] Confirm seeds 17/73 have finished for M0 and the selected final
       transformation; archive their variability metrics before continuing.
-- [ ] Create a machine-readable canonical results table.
-- [ ] Record missing/unavailable fields explicitly.
+- [x] Create a machine-readable canonical results table.
+- [x] Record missing/unavailable fields explicitly.
+
+**DONE 2026-07-20 — `results/analysis/canonical_results.json`** (`scripts/build_canonical_results.py`).
+One machine-readable index every G2/G3/G4 artifact reads: the M0–M4 optimization ladder
+(validation operating point, size, MACs), the real-Pi frozen benchmark + frozen full-test +
+reproducibility + parity, and seed variability. **Seeds all finished** — M0 (C5) primary
+0.3663/0.3737/0.3872 (mean 0.3757 ±0.0086); final M2 (F3) primary 0.3832/0.3797/0.3892
+(mean **0.3840 ±0.0039** — QAT tighter than FP32 and above M4's 0.3730 even at its low seed,
+reinforcing the §8.4 pick). Unavailable fields recorded explicitly: no Pi latency for M1/M3
+(dropped pre-Pi), null catalog targets badger/deer/fox, no CPU-affinity / energy instrumentation.
 
 ### G2 — Results notebook and figures
 
