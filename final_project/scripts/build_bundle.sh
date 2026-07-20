@@ -4,8 +4,8 @@
 # A bundle is what actually reaches the Pi. Everything here exists to make that
 # transfer boring and host-independent:
 #
-#   - built inside wildlife-trigger-target:bookworm, so every object links against
-#     glibc 2.36 — gx10's native 2.39 would produce a binary the Pi's loader refuses;
+#   - built inside wildlife-trigger-target:ubuntu2404 — the same Ubuntu 24.04 (glibc
+#     2.39, OpenCV 4.6.0) the rented Pi runs, so build-env == deploy-env exactly;
 #   - libonnxruntime.so travels WITH the bundle (P0: needs only GLIBC_2.27, so the
 #     same file serves the container and the Pi; no apt package exists for it anyway);
 #   - the frozen shortlist M0/M2/M4 (from pre_pi_freeze.json) + their policies + the
@@ -16,10 +16,10 @@
 #
 # Deliberately NOT bundled:
 #   - the session-optimized ONNX graph (ORT: valid only in the env that optimized it);
-#   - OpenCV. Debian's libopencv_imgcodecs drags a ~50-library GDAL/poppler/database
-#     closure that is impractical to carry, so install.sh apt-installs the OpenCV 4.6.0
-#     runtime instead. Pi OS Bookworm is Debian bookworm — the same .406 soname the
-#     binary linked against. (Trixie is a documented contingency; see deploy/pi/README.)
+#   - OpenCV. libopencv_imgcodecs drags a ~50-library GDAL/poppler/database closure
+#     that is impractical to carry, so install.sh apt-installs the OpenCV 4.6.0 runtime
+#     instead. Ubuntu 24.04 ships that 4.6.0 as libopencv-*406t64 — the same .406 soname
+#     the binary linked against. (Another OS is a documented contingency; see deploy/pi/README.)
 #
 # Usage:  scripts/build_bundle.sh [staging_dir]
 
@@ -143,11 +143,11 @@ install -m 0644 "${PROJECT_ROOT}/deploy/pi/README.md" "${STAGING}/README.md"
 
 # --- 5. provenance manifest (git commit, hashes, ORT, glibc) -----------------
 "${PYTHON}" - "${STAGING}" "${FREEZE}" "${ORT_VERSION}" "${TARGET_GLIBC}" \
-             "${TARGET_BASE_DIGEST}" "${QEMU_PI5_CPU}" <<'PY'
+             "${TARGET_BASE_DIGEST}" "${QEMU_PI5_CPU}" "${TARGET_IMAGE_TAG}" <<'PY'
 import hashlib, json, subprocess, sys
 from pathlib import Path
 staging = Path(sys.argv[1]); freeze = json.load(open(sys.argv[2]))
-ort_version, glibc, base_digest, cpu = sys.argv[3:7]
+ort_version, glibc, base_digest, cpu, image_tag = sys.argv[3:8]
 
 def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 commit = subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
@@ -173,13 +173,13 @@ for m in freeze["models"]:
 bundle = {
     "bundle": "wildlife-trigger deployment bundle (PLAN E7)",
     "git_commit": commit,
-    "built_in": {"image": "wildlife-trigger-target:bookworm",
+    "built_in": {"image": image_tag,
                  "base_digest": base_digest, "cpu_target": cpu, "glibc": glibc},
     "onnxruntime_version": ort_version,
     "class_map_sha256": sha(staging / "policies" / "class_map.json"),
     "models": models,
-    "opencv": {"bundled": False, "runtime": "libopencv-{core,imgproc,imgcodecs}406",
-               "installed_by": "install.sh (apt); Pi OS Bookworm ships the matching 4.6.0"},
+    "opencv": {"bundled": False, "runtime": "libopencv-{core,imgproc,imgcodecs}406t64",
+               "installed_by": "install.sh (apt); Ubuntu 24.04 ships the matching 4.6.0 (.406)"},
     "provenance": "Latency is a Pi result only when measured ON a Pi (DESIGN §12.4). "
                   "The session-optimized graph is never bundled.",
 }

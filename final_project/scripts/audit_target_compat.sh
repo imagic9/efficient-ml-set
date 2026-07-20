@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Prove a binary can load on the Raspberry Pi (PLAN A2, gate for E7 packaging).
 #
-# The failure this prevents is total, not subtle: a binary built on gx10 natively
-# requests GLIBC_2.38/2.39 symbols that Pi OS Bookworm's 2.36 cannot resolve, and
-# the loader refuses it outright. Discovering that during a five-day rental would
-# cost a day; discovering it here costs a second.
+# The failure this prevents is total, not subtle: a binary that requests GLIBC_x.y
+# symbols newer than the target's glibc will not load — the loader refuses it
+# outright. The target is now Ubuntu 24.04 (glibc 2.39), the same as gx10, so a build
+# on gx10 is in-contract; this stays as defense-in-depth against an accidental build
+# on a newer host. Discovering a mismatch here costs a second, not a rental day.
 #
 # Checks, for the binary and every library it carries:
 #   1. no required GLIBC_* symbol version exceeds the target's glibc;
@@ -12,7 +13,7 @@
 #   3. the ELF really is aarch64.
 #
 # Usage:  scripts/audit_target_compat.sh <binary-or-so> [more...]
-#         TARGET_GLIBC=2.36 scripts/audit_target_compat.sh build/wildlife_trigger
+#         TARGET_GLIBC=2.39 scripts/audit_target_compat.sh build/wildlife_trigger
 
 set -uo pipefail
 
@@ -23,7 +24,7 @@ if [[ -f "${PROJECT_ROOT}/configs/env/pins.env" ]]; then
     # shellcheck source=../configs/env/pins.env
     source "${PROJECT_ROOT}/configs/env/pins.env"
 fi
-TARGET_GLIBC="${TARGET_GLIBC:-2.36}"
+TARGET_GLIBC="${TARGET_GLIBC:-2.39}"
 
 if [[ $# -eq 0 ]]; then
     echo "usage: $0 <binary-or-so> [more...]" >&2

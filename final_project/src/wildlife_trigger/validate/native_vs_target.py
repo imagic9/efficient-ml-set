@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """E6 native-vs-target build-and-test (PLAN E6, DESIGN §11).
 
+HISTORICAL NOTE (added 2026-07-20): this gate ran when the deployment **target** was
+Debian bookworm (gcc 12 / glibc 2.36) and the native toolchain was Ubuntu 24.04 (gcc 13
+/ glibc 2.39). Its finding — the two builds are **bit-identical** — is precisely what
+made it safe to later move the target itself to Ubuntu 24.04 (the rented Pi's OS). The
+gate is sealed; the labels below describe the E6-era comparison, not today's target.
+
 E6 requires the whole test suite to pass under a clean **native** CPU-only build as
 well as the **target-compatible** ARM64 build. gx10's host is Ubuntu 24.04 (gcc 13,
 glibc 2.39); the target is Debian bookworm (gcc 12, glibc 2.36). Building and testing

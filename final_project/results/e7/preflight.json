@@ -33,7 +33,7 @@
       "detail": "exit 1"
     },
     {
-      "check": "R4 Trixie refused with reason",
+      "check": "R4 wrong-OS refused with reason",
       "passed": true,
       "detail": "exit 1"
     },
@@ -43,7 +43,7 @@
       "detail": "exit 1"
     }
   ],
-  "note": "The gate accepts any asimddp-capable aarch64 Bookworm host (so the E8 dry run runs on gx10) and records whether it is a literal Pi 5; it refuses Pi 4 / Trixie / non-aarch64 before any mutation.",
+  "note": "The gate accepts any asimddp-capable aarch64 Ubuntu 24.04 host (so the E8 dry run runs on gx10) and records whether it is a literal Pi 5; it refuses Pi 4 / wrong-OS / non-aarch64 before any mutation.",
   "verdict": {
     "passed": true,
     "failures": []

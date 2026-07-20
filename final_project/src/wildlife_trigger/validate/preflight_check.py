@@ -8,10 +8,11 @@ Reads the raw scenario outputs `scripts/run_e7_preflight.sh` produced (one `.rc`
     the gate accepts an ISA-compatible host for the E8 dry run while still flagging that
     it is not a literal Pi 5 (never confused with a Pi result, DESIGN §12.4);
   - a simulated Pi 5 (A76 cpuinfo) passes AND records `is_pi5_a76=1`;
-  - a Pi 4 (A72 cpuinfo, no `asimddp`), a Trixie host, and a non-aarch64 host each
-    REFUSE with a non-zero exit and an actionable, on-topic reason — before any change.
+  - a Pi 4 (A72 cpuinfo, no `asimddp`), a wrong-OS host (not Ubuntu 24.04), and a
+    non-aarch64 host each REFUSE with a non-zero exit and an actionable, on-topic reason
+    — before any change.
 
-This proves issue #77's Definition of Done without a physical Pi 4 or Trixie host.
+This proves issue #77's Definition of Done without a physical Pi 4 or wrong-OS host.
 
 Usage (driven by scripts/run_e7_preflight.sh):
     python -m wildlife_trigger.validate.preflight_check --raw-dir R --output O
@@ -69,8 +70,8 @@ def main() -> int:
         rc(raw, "R2") == 0 and r2_pi5 == "1", f"exit {rc(raw, 'R2')}, is_pi5_a76={r2_pi5}")
     chk("R3 Pi 4 (no asimddp) refused with reason",
         rc(raw, "R3") != 0 and "asimddp" in r3_err, f"exit {rc(raw, 'R3')}")
-    chk("R4 Trixie refused with reason",
-        rc(raw, "R4") != 0 and "Bookworm" in r4_err, f"exit {rc(raw, 'R4')}")
+    chk("R4 wrong-OS refused with reason",
+        rc(raw, "R4") != 0 and "Ubuntu 24.04" in r4_err, f"exit {rc(raw, 'R4')}")
     chk("R5 non-aarch64 refused with reason",
         rc(raw, "R5") != 0 and "aarch64" in r5_err, f"exit {rc(raw, 'R5')}")
 
@@ -80,9 +81,9 @@ def main() -> int:
         "exit_codes": {n: rc(raw, n) for n in ("R1", "R2", "R3", "R4", "R5")},
         "is_pi5_a76": {"R1_real_host": r1_pi5, "R2_pi5_sim": r2_pi5},
         "checks": checks,
-        "note": "The gate accepts any asimddp-capable aarch64 Bookworm host (so the E8 "
-                "dry run runs on gx10) and records whether it is a literal Pi 5; it "
-                "refuses Pi 4 / Trixie / non-aarch64 before any mutation.",
+        "note": "The gate accepts any asimddp-capable aarch64 Ubuntu 24.04 host (so the "
+                "E8 dry run runs on gx10) and records whether it is a literal Pi 5; it "
+                "refuses Pi 4 / wrong-OS / non-aarch64 before any mutation.",
         "verdict": {"passed": passed, "failures": [c["check"] for c in checks if not c["passed"]]},
     }
     atomic_write_json(args.output, report)

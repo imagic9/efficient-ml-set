@@ -1,17 +1,18 @@
 #!/bin/sh
 # Wildlife Trigger — F1 host preflight (issue #77). FAIL CLOSED.
 #
-# Gate E proved the bundle on clean Debian Bookworm ARM64. It did NOT prove that an
-# arbitrary rented physical host matches the Pi 5 / Bookworm contract the prebuilt
-# binary was built for (`-mcpu=cortex-a76`, OpenCV `.406`). This runs BEFORE
+# Gate E proved the bundle on clean Ubuntu 24.04 ARM64. It did NOT prove that an
+# arbitrary rented physical host matches the Pi 5 / Ubuntu 24.04 contract the prebuilt
+# binary was built for (`-mcpu=cortex-a76`, glibc 2.39, OpenCV `.406`). This runs BEFORE
 # install.sh mutates anything and refuses, loudly and non-zero, on a host outside that
 # contract — so a mismatch costs a message here, not a day of rental time after `apt`
 # has already changed the target and `ldd` fails late.
 #
 # Three gates:
 #   1. architecture is aarch64;
-#   2. OS is Debian/Raspberry Pi OS **Bookworm** (the prebuilt bundle's proven contract;
-#      Trixie ships OpenCV .410 — a different soname);
+#   2. OS is **Ubuntu 24.04** (the build target: glibc 2.39 + apt OpenCV 4.6.0 as
+#      libopencv-*406t64). Another distro/version ships a different glibc and OpenCV
+#      soname, so the prebuilt binary would fault or fail to load;
 #   3. the CPU provides **asimddp** — the ARMv8.2 dot-product feature Cortex-A76 (Pi 5)
 #      has and Cortex-A72 (Pi 4) lacks, and which the INT8 kernels dispatch on. Gating on
 #      the ISA feature (not the literal CPU part) is deliberate: it accepts a Pi 5 AND a
@@ -24,7 +25,7 @@
 # all gates pass.
 #
 # Inputs are overridable for testing (the refusal paths must be provable without a real
-# Pi 4 / Trixie host):
+# Pi 4 / wrong-OS host):
 #   WT_UNAME_M    (default `uname -m`)
 #   WT_OS_RELEASE (default /etc/os-release)
 #   WT_CPUINFO    (default /proc/cpuinfo)
@@ -69,8 +70,8 @@ add() { reasons="${reasons}${reasons:+; }$1"; }
 
 [ "${ARCH}" = "aarch64" ] || add "architecture is '${ARCH}', not aarch64"
 
-[ "${OS_CODENAME}" = "bookworm" ] || add \
-"OS is '${OS_ID:-?} ${OS_CODENAME:-?}', not Bookworm. The prebuilt bundle links OpenCV .406, which only Bookworm ships; a Trixie Pi has .410. Rebuild on the Pi against its apt OpenCV, or build minimal OpenCV from source (see README) — do not run this bundle here"
+{ [ "${OS_ID}" = "ubuntu" ] && [ "${OS_VERSION}" = "24.04" ]; } || add \
+"OS is '${OS_ID:-?} ${OS_VERSION:-?} (${OS_CODENAME:-?})', not Ubuntu 24.04. The prebuilt bundle is built on Ubuntu 24.04 (glibc 2.39) and apt-installs OpenCV 4.6.0 from Ubuntu's libopencv-*406t64; another distro/version ships a different glibc and/or OpenCV soname. Rebuild the app on the Pi against its apt OpenCV (see README) — do not run this bundle here"
 
 [ "${HAS_ASIMDDP}" = "1" ] || add \
 "CPU lacks the 'asimddp' feature (ARMv8.2 dot-product). This bundle targets Cortex-A76 (Pi 5); Cortex-A72 (Pi 4) lacks it and the binary may fault or mis-execute. Use the documented Pi 4 contingency (see README) — do not run this bundle here"
@@ -99,7 +100,7 @@ EOF
     echo "  preflight: arch=${ARCH} os=${OS_ID:-?}/${OS_CODENAME:-?} cpu=${CPU_MODEL:-part ${CPU_PART:-?}}"
     echo "             asimddp=${HAS_ASIMDDP} is_pi5_a76=${IS_PI5_A76} glibc=${GLIBC}"
     if [ "${PASSED}" = "1" ]; then
-        echo "  preflight PASSED (host satisfies the Pi 5 / Bookworm ISA contract)"
+        echo "  preflight PASSED (host satisfies the Pi 5 / Ubuntu 24.04 ISA contract)"
         [ "${IS_PI5_A76}" = "1" ] || echo "  note: this is NOT a literal Cortex-A76 Pi 5 — a run here is diagnostic, never a Pi result (DESIGN 12.4)"
     else
         echo "  preflight FAILED — refusing before any change to this host:"

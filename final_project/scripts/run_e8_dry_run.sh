@@ -2,8 +2,8 @@
 # Gate E — full ARM64 dry run of the deployment bundle (PLAN E8).
 #
 # Runs the EXACT future Pi commands — install.sh, run_benchmark.sh (the one-command
-# benchmark matrix), run_demo.sh — UNATTENDED, in a clean debian:bookworm-slim
-# container with only the bundle mounted (no repo, no training env). Then parses the
+# benchmark matrix), run_demo.sh — UNATTENDED, in a clean ubuntu:24.04 container
+# (the rented Pi's OS) with only the bundle mounted (no repo, no training env). Then parses the
 # machine-readable outputs with the reporting code (e8_dry_run.py) and records a
 # known-good dry-run log for later diffing against the real Pi (Phase F).
 #

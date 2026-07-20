@@ -273,11 +273,11 @@ cost about 366 MB and `dcgm-exporter` is a useful GPU metrics source. Record all
 co-tenants in every run's provenance; §12.4 forbids benchmarking beside a heavy
 workload, and `results/provenance/` is where that is proved rather than asserted.
 
-ARM64 instruction-set compatibility alone does not prove Raspberry Pi OS binary
+ARM64 instruction-set compatibility alone does not prove the Pi's binary
 compatibility. The pre-Pi C++ build and bundle-install test must therefore run on
-`gx10` inside a clean target-compatible ARM64 container. Record the target
+`gx10` inside a clean target-matching ARM64 container. Record the target
 `/etc/os-release`, `uname -a`, compiler, and `ldd --version`; pin the container base
-image by digest to the same distro release and a glibc no newer than the target.
+image by digest to the target's exact distro release (Ubuntu 24.04) and glibc.
 Before packaging, run `ldd` plus ELF/required-`GLIBC_*` symbol inspection on the
 executable and every bundled shared library, then execute the clean install/smoke
 test. If exact compatibility cannot be proved before rental, the deployment bundle
@@ -291,13 +291,17 @@ project arrives at Day 4 of a rental with a surprise, so each gets its own contr
 
 | Layer | Divergence | Control | Speed |
 |---|---|---|---|
-| ABI / glibc | Ubuntu 24.04 glibc 2.39 vs Pi OS Bookworm glibc 2.36 | `debian:bookworm-slim` container, pinned by digest | native |
+| ABI / glibc | none — the Pi and `gx10` both run **Ubuntu 24.04** (glibc 2.39) | `ubuntu:24.04` container, pinned by digest — build-env == deploy-env | native |
 | ISA features | X925/A725 has `i8mm`+`sve2`; Cortex-A76 has neither | `qemu-aarch64 -cpu cortex-a76` | ~30x slower |
 | Microarchitecture, latency, thermals | out-of-order width, caches, memory bandwidth, throttling | **the real Pi, and nothing else** | — |
 
-Layer 1 needs no emulation: `gx10` is already `aarch64`, so a bookworm container
-runs natively at full speed. Build against the *oldest* plausible target — a binary
-linked against glibc 2.36 still loads on a newer Pi OS, while the reverse fails.
+Layer 1 all but disappears now that the rented Pi runs **Ubuntu Server 24.04** — the
+same OS as `gx10` (decided 2026-07-20; the provider offers no other image). The build
+happens in an `ubuntu:24.04` container pinned by digest, so build-env == deploy-env:
+same glibc 2.39, same apt OpenCV 4.6.0 (`libopencv-*406t64`, the same `.406` soname).
+There is no forward-compat bet and no soname bet. E6's native-vs-target gate — which
+proved the Ubuntu 24.04 build bit-identical to the earlier bookworm build — is what
+made moving the target itself onto Ubuntu 24.04 safe.
 
 Layer 2 is what emulation is for. Measured on `gx10`, `qemu-aarch64 -cpu cortex-a76`
 advertises exactly `asimd` + `asimddp` and withholds `sve`, `sve2`, `i8mm`, `bf16` —

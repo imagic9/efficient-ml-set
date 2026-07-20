@@ -1,21 +1,23 @@
-# Target-compatible ARM64 build/test environment.
+# Target build/test environment — Ubuntu 24.04 aarch64, matching the rented Pi.
 #
-# Why this exists: gx10 is Ubuntu 24.04 with glibc 2.39; Raspberry Pi OS Bookworm
-# ships 2.36. A binary built natively on gx10 requests GLIBC_2.38/2.39 symbols the
-# Pi cannot resolve and will not load at all. Building here, against the oldest
-# plausible target, produces a binary that loads on Bookworm *and* on a newer Pi
-# OS -- glibc is backward compatible, so building against the newer one is the
-# only direction that fails.
+# Why Ubuntu 24.04: the rented Raspberry Pi 5 runs **Ubuntu Server 24.04** (the
+# provider offers no other image; decided 2026-07-20). The build environment is
+# therefore the deployment environment — same glibc 2.39, same gcc 13, same apt
+# OpenCV 4.6.0 (`libopencv-*406t64`, the `.406` soname the binary links). No
+# cross-distro forward-compat or soname bet is being made: what compiles here is
+# byte-for-byte what the Pi runs. E6 already proved this Ubuntu 24.04 build
+# bit-identical to the previous bookworm build (see Dockerfile.native / pins.env).
 #
 # No emulation is involved in the build: gx10 is already aarch64, so this runs
-# natively at full speed. qemu-user is installed for a different purpose -- see
-# below.
+# natively at full speed. qemu-user is installed for a different purpose -- it runs
+# the finished binary under -cpu cortex-a76 so ORT dispatches the Pi's kernels and
+# parity can be rehearsed. Correctness only; never timing.
 #
 # Build with scripts/build_target_container.sh, which passes the pins from
 # configs/env/pins.env so this file and the scripts cannot drift apart.
 
-ARG TARGET_BASE_IMAGE=debian:bookworm-slim
-ARG TARGET_BASE_DIGEST=sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818
+ARG TARGET_BASE_IMAGE=ubuntu:24.04
+ARG TARGET_BASE_DIGEST=sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
 FROM ${TARGET_BASE_IMAGE}@${TARGET_BASE_DIGEST}
 
 ARG ORT_VERSION
@@ -27,11 +29,11 @@ ARG GID=1000
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# build-essential/cmake: the C++ toolchain, at bookworm's versions (g++ 12.2,
-#   cmake 3.25.1) rather than gx10's, so what compiles here is what the Pi can run.
-# libopencv-dev: bookworm ships 4.6.0, the same version Pi OS Bookworm's apt
-#   offers. E7 must still decide whether to bundle the .so or link statically --
-#   a Trixie Pi would carry a different soname.
+# build-essential/cmake: the C++ toolchain at Ubuntu 24.04's versions (g++ 13,
+#   cmake 3.28) — the same the Pi runs, so what compiles here is what the Pi runs.
+# libopencv-dev: Ubuntu 24.04 ships OpenCV 4.6.0, the same version and `.406`
+#   soname the Pi's apt offers (as libopencv-*406t64). install.sh apt-installs the
+#   runtime on the Pi rather than bundling the ~50-lib imgcodecs closure.
 # qemu-user: NOT for building. It runs the finished aarch64 binary with the Pi's
 #   HWCAP (-cpu cortex-a76), so ORT dispatches the Pi's kernels and parity can be
 #   rehearsed before the rental. Correctness only; never timing.

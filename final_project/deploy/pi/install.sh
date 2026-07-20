@@ -1,8 +1,8 @@
 #!/bin/sh
 # Wildlife Trigger — Raspberry Pi installer (E7, hardened for F1 by issue #77).
 #
-# Runs ON the Pi (or any clean glibc-2.36+ ARM64 host), with no access to the
-# training machine. It fails closed on a host outside the Pi 5 / Bookworm contract
+# Runs ON the Pi (or any clean Ubuntu 24.04 ARM64 host), with no access to the
+# training machine. It fails closed on a host outside the Pi 5 / Ubuntu 24.04 contract
 # BEFORE touching the system, then proves the bundle arrived intact, installs OpenCV,
 # resolves libraries, and records a machine-readable environment.json.
 #
@@ -10,14 +10,14 @@
 #   - libonnxruntime.so travels IN the bundle (no apt package exists for the pinned
 #     build; P0 proved it needs only GLIBC_2.27, so the same file that ran in the
 #     build container runs here). run.sh points the loader at it.
-#   - OpenCV does NOT travel in the bundle: Debian's libopencv_imgcodecs drags a
+#   - OpenCV does NOT travel in the bundle: its libopencv_imgcodecs drags a
 #     ~50-library GDAL/poppler/database closure that is impractical to carry. Instead
-#     this installs the OpenCV 4.6.0 runtime from apt. Raspberry Pi OS Bookworm is
-#     Debian bookworm, so its libopencv-*406 packages are the SAME version the binary
-#     was linked against — a byte-compatible soname (.406). (A Trixie Pi ships a
-#     different soname; preflight refuses it. See README for that contingency.)
+#     this installs the OpenCV 4.6.0 runtime from apt. Ubuntu 24.04 ships that 4.6.0 as
+#     the libopencv-*406t64 packages (the t64 = 64-bit time_t rename), which carry the
+#     SAME .406 soname the binary was linked against. (Another distro/version ships a
+#     different soname; preflight refuses it. See README for the rebuild contingency.)
 #
-# POSIX sh, no bashisms: a fresh Pi OS /bin/sh is dash.
+# POSIX sh, no bashisms: a fresh Ubuntu /bin/sh is dash.
 #
 # Usage:  ./install.sh [--no-apt]      (--no-apt skips the OpenCV apt step)
 
@@ -35,19 +35,20 @@ echo "--- verifying MANIFEST.sha256"
     && echo "    all files verified" \
     || { echo "    FAIL: checksum mismatch — the bundle is corrupt or altered" >&2; exit 1; }
 
-# 2. FAIL-CLOSED preflight (issue #77): refuse a host outside the Pi 5 / Bookworm
+# 2. FAIL-CLOSED preflight (issue #77): refuse a host outside the Pi 5 / Ubuntu 24.04
 #    contract BEFORE apt mutates anything. preflight.sh prints KEY=VALUE facts on
 #    stdout and the human summary / refusal reason on stderr.
 echo "--- host preflight (fail closed)"
 if ! facts="$("${HERE}/preflight.sh")"; then
-    echo "    install refused: this host is not the validated Pi 5 / Bookworm target." >&2
+    echo "    install refused: this host is not the validated Pi 5 / Ubuntu 24.04 target." >&2
     echo "    Nothing was changed. See the reasons above and deploy/pi/README.md." >&2
     exit 1
 fi
 eval "${facts}"
 
 # 3. OpenCV runtime from apt (unless suppressed). The exact 4.6.0 .406 soname; the
-#    preflight already proved this host is Bookworm, where it is available.
+#    preflight already proved this host is Ubuntu 24.04, where it is available as the
+#    t64-renamed packages. Names must match configs/env/pins.env OPENCV_RUNTIME_PKGS.
 DID_APT=false
 if [ "${NO_APT}" -eq 0 ]; then
     echo "--- installing the OpenCV 4.6.0 runtime (apt)"
@@ -55,18 +56,18 @@ if [ "${NO_APT}" -eq 0 ]; then
         SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo"
         ${SUDO} apt-get update -qq
         # Confirm the .406 candidate exists before mutating (belt-and-suspenders on
-        # top of the Bookworm gate).
-        if ! apt-cache policy libopencv-core406 2>/dev/null | grep -q 'Candidate:'; then
-            echo "    FAIL: libopencv-core406 has no apt candidate on this host" >&2
-            echo "    (expected on Bookworm; if you see this, the apt sources are wrong)" >&2
+        # top of the Ubuntu 24.04 gate).
+        if ! apt-cache policy libopencv-core406t64 2>/dev/null | grep -q 'Candidate:'; then
+            echo "    FAIL: libopencv-core406t64 has no apt candidate on this host" >&2
+            echo "    (expected on Ubuntu 24.04; if you see this, the apt sources are wrong)" >&2
             exit 1
         fi
         ${SUDO} apt-get install -y --no-install-recommends \
-            libopencv-core406 libopencv-imgproc406 libopencv-imgcodecs406
+            libopencv-core406t64 libopencv-imgproc406t64 libopencv-imgcodecs406t64
         DID_APT=true
         echo "    OpenCV runtime installed"
     else
-        echo "    apt-get absent; install libopencv-{core,imgproc,imgcodecs}406 by hand" >&2
+        echo "    apt-get absent; install libopencv-{core,imgproc,imgcodecs}406t64 by hand" >&2
     fi
 else
     echo "--- skipping apt (per --no-apt); OpenCV must already be present"
@@ -80,7 +81,7 @@ if LD_LIBRARY_PATH="${HERE}/lib" ldd "${HERE}/bin/wildlife_trigger" | grep -q 'n
     LIBS_OK=false
     echo "    FAIL: unresolved libraries:" >&2
     LD_LIBRARY_PATH="${HERE}/lib" ldd "${HERE}/bin/wildlife_trigger" | grep 'not found' >&2
-    echo "    (on Bookworm run without --no-apt; on Trixie see README)" >&2
+    echo "    (on Ubuntu 24.04 run without --no-apt; on another OS see README)" >&2
 fi
 ${LIBS_OK} && echo "    all libraries resolve"
 
@@ -88,7 +89,7 @@ ${LIBS_OK} && echo "    all libraries resolve"
 #    identity/features, glibc, OpenCV/ORT versions, and the install outcome. This is
 #    the artifact a real F1 install leaves for the Phase F evidence.
 ORT_VER="$(grep -m1 '"onnxruntime_version"' "${HERE}/BUNDLE.json" 2>/dev/null | sed 's/.*: *"//; s/".*//')"
-OPENCV_VER="$(dpkg-query -W -f='${Version}' libopencv-core406 2>/dev/null || echo 'not-installed')"
+OPENCV_VER="$(dpkg-query -W -f='${Version}' libopencv-core406t64 2>/dev/null || echo 'not-installed')"
 bool() { if [ "$1" = "1" ] || [ "$1" = "true" ]; then echo true; else echo false; fi; }
 OUTCOME=installed; ${LIBS_OK} || OUTCOME=libraries_unresolved
 cat > "${HERE}/environment.json" <<EOF

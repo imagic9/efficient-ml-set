@@ -24,12 +24,12 @@
   "missing_paths": [],
   "checksums_verified": true,
   "file_count": 64,
-  "max_glibc": "2.34",
-  "max_glibc_allowed": "2.36",
+  "max_glibc": "2.38",
+  "max_glibc_allowed": "2.39",
   "glibc_per_object": {
-    "./bin/wildlife_trigger": "2.34",
+    "./bin/wildlife_trigger": "2.38",
     "./lib/libonnxruntime.so.1.27.0": "2.27"
   },
   "passed": true,
-  "note": "The session-optimized graph is deliberately NOT bundled: ORT warns a graph serialized above ORT_ENABLE_EXTENDED is only valid in the environment that optimized it. The Pi optimizes the ordinary model itself. OpenCV is not bundled either \u2014 install.sh apt-installs the matching 4.6.0 runtime (E7 decision; Debian's imgcodecs closure is impractical to carry)."
+  "note": "The session-optimized graph is deliberately NOT bundled: ORT warns a graph serialized above ORT_ENABLE_EXTENDED is only valid in the environment that optimized it. The Pi optimizes the ordinary model itself. OpenCV is not bundled either \u2014 install.sh apt-installs the matching 4.6.0 runtime on Ubuntu 24.04 (E7 decision; the imgcodecs closure is impractical to carry)."
 }

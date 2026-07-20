@@ -182,6 +182,7 @@ REL_BUNDLE="${BUNDLE#"${PROJECT_ROOT}"/}"
     --bundle "${BUNDLE}" \
     --project-root "${PROJECT_ROOT}" \
     --image-tag "${TARGET_IMAGE_TAG}" \
+    --max-glibc "${TARGET_GLIBC}" \
     --report "${EVIDENCE}/bundle_audit.json"
 
 # --- 8. the gate --------------------------------------------------------------
