@@ -677,11 +677,19 @@ Depends on: B3.
       validation positives are exactly `deer` and `fox`, while `badger` has
       exactly one positive image / one sequence. Record all three as unavailable
       targets with null thresholds.
-- [ ] Render/inspect representative RGB, IR-like, empty, bobcat, small, portrait,
-      and landscape samples.
-- [ ] Complete and execute `notebooks/01_data_audit.ipynb` from a clean kernel.
-- [x] Store machine-readable audit output and figures. *(audit output done;
-      figures belong with the notebook item above)*
+- [x] Render/inspect representative RGB, IR-like, empty, bobcat, small, portrait,
+      and landscape samples. **DONE 2026-07-20** — a deterministic 6-frame gallery
+      (daytime-RGB animal, night-IR, CCT empty, supplement empty, trans-val bobcat,
+      small bobcat with a scaled train bbox showing why no centre-crop) plus a
+      letterbox demo rendering the dominant 1024×747 frame at 97.4% utilisation vs
+      224×224's 72.8%, using the real `preprocess.py` path.
+- [x] Complete and execute `notebooks/01_data_audit.ipynb` from a clean kernel.
+      **DONE 2026-07-20** — built by `scripts/build_notebook_01_data_audit.py`,
+      executed on gx10 through `jupyter nbconvert --execute` (clean kernel, 15 code
+      cells, 9 figures, 0 errors). Reads only frozen artifacts; touches no test
+      labels (DESIGN §5.4); the final cell asserts the Gate B artifact still passes.
+- [x] Store machine-readable audit output and figures. *(audit output done at Gate B;
+      figures now embedded in the executed notebook)*
 
 **Gate B:** every DESIGN §5.3 count, known-overlap fingerprint, clean-split,
 category, multi-label, ID/sequence/location, path, and hash assertion passes. No
@@ -709,9 +717,10 @@ The gate prints the recorded source hashes on any failure, because DESIGN §5.3'
 that these counts fingerprint a specific upstream download: if one breaks, the first
 question is whether LILA republished — never edit an expected number to make it pass.
 
-**Outstanding (does not gate training):** the two notebook/figure items above are
-presentation deliverables. Gate B's condition is the assertion suite, which passes, so
-Phase C is permitted. The notebook is scheduled with the other reporting work in G.
+**Notebook DONE 2026-07-20.** The two presentation items above are now complete:
+`notebooks/01_data_audit.ipynb` was built and clean-run on gx10. Gate B's condition
+was always the assertion suite (passed), so Phase C was never blocked on this; the
+notebook is the readable audit deliverable (DESIGN §9.3, §17 tables 1-3).
 
 ---
 
