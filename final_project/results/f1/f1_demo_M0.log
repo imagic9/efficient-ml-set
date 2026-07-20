@@ -1,0 +1,33 @@
+=== Wildlife Trigger demo — model M0 ===
+    binary : /opt/bundle/bin/run.sh
+    sample : /opt/bundle/data/images/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg
+
+--- self-test (asserts contract on this host; no fixtures)
+[0;93m2026-07-20 14:05:07.225925416 [W:onnxruntime:wildlife_trigger, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card1": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card1/device/vendor"[m
+[0;93m2026-07-20 14:05:07.226043083 [W:onnxruntime:wildlife_trigger, device_discovery.cc:283 GetGpuDevices] Failed to detect devices under "/sys/class/drm/card0": device_discovery.cc:93 ReadFileContents Failed to open file: "/sys/class/drm/card0/device/vendor"[m
+  PASS  model class count matches the class map
+  PASS  policy has at least one target
+  PASS  target 'bobcat' maps to a valid class index
+  PASS  preprocessed tensor has the contracted element count
+  PASS  model returns one logit per class
+  PASS  softmax sums to 1
+  PASS  every configured target is scored and reported
+self-test PASSED
+    self-test PASSED
+
+--- infer on one frame
+        "SHUTTER_TRIGGER": 0,
+            "class": "bobcat",
+            "score": 2.5814117634581635e-06,
+        "top1": {
+          "class": "empty",
+          "score": 0.9992573857307434
+
+--- benchmark (SMOKE CHECK — a Pi result only if this is a Pi; DESIGN §12.4)
+    end-to-end p50=50.15ms p95=50.37ms  (19.94 FPS)
+
+--- run-dataset over the sample slice (47 frames)
+    run-dataset: 47 frames (0 skipped), 5 fired -> /opt/bundle/demo_predictions.jsonl
+
+=== demo complete. Predictions -> /opt/bundle/demo_predictions.jsonl
+    For a real benchmark on a Pi, see the F-phase profiling in PLAN §8.

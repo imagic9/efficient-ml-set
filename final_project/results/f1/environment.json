@@ -1,0 +1,14 @@
+{
+  "kind": "f1_host_environment",
+  "os": {"id": "ubuntu", "version_id": "24.04", "codename": "noble"},
+  "kernel": "6.8.0-1060-raspi",
+  "arch": "aarch64",
+  "cpu": {"implementer": "0x41", "part": "0xd0b", "model": "Raspberry Pi Compute Module 5 Rev 1.0",
+          "asimddp": true, "is_pi5_a76": true},
+  "glibc": "2.39",
+  "onnxruntime_version": "1.27.0",
+  "opencv_runtime_installed": "4.6.0+dfsg-13.1ubuntu1",
+  "preflight": {"passed": true, "reasons": ""},
+  "install": {"outcome": "installed", "opencv_apt": true, "libraries_resolved": true},
+  "note": "A latency is a Pi result only when measured on a Pi (DESIGN 12.4). is_pi5_a76=false is a diagnostic host, never a Pi verdict."
+}

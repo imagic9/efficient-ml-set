@@ -2,7 +2,9 @@
 
 Status: **Phases A–E complete (Gate E PASSED); the deployment bundle is re-targeted to
 Ubuntu Server 24.04 (E9, 2026-07-20 — the rented Pi's OS) with all three gates re-passed;
-the conditional Pi trial (Phase F) is next.** comparison.jsonl holds all five (M0 FP32 /
+the Pi trial (Phase F) is UNDERWAY — F1 PASSED 2026-07-20 on the real Raspberry Pi CM5
+(Ubuntu 24.04, Cortex-A76, `is_pi5_a76=true`); F2 (validation profiling) is next.**
+comparison.jsonl holds all five (M0 FP32 /
 M1 PTQ 0.3527 / M2 QAT 0.3832 /
 M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
 `recall_floor_infeasible`. The pre-Pi shortlist is frozen: **M0 · M2 · M4**
@@ -45,8 +47,9 @@ re-targeted Bookworm → Ubuntu Server 24.04 (2026-07-20)** because the rented P
 Ubuntu 24.04 (the provider offers no other image); build-env == deploy-env now, and all
 three gates re-passed on `ubuntu:24.04` (E7 preflight 6/6, E7 bundle max GLIBC 2.38 ≤
 2.39, Gate E dry run — diagnostic M0 13.62 → M2 7.25 → M4 6.10 ms p50 on gx10).
-**Next: the conditional Pi trial (Phase F)** — one-shot, unscheduled, never early — then
-Phase G (analysis, report, release). The next task is always the first `[ ]` in phase order.
+**Next: Phase F is underway** — F1 (provision + smoke) PASSED on the real CM5 2026-07-20;
+F2 (validation profiling) is next, then F3–F5, then Phase G (analysis, report, release). The
+next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1741,18 +1744,44 @@ banner `OpenSSH_9.6p1 Ubuntu-3ubuntu13.18`, a Noble/24.04 package). Connection d
 
 ### F1 — Day 1: provision and smoke test
 
-- [ ] Use `gx10` as the control/evidence host and verify the remote Pi connection.
-- [ ] Record hardware/OS/kernel/governor/compiler/ORT/OpenCV/environment. *(The
+- [x] Use `gx10` as the control/evidence host and verify the remote Pi connection.
+- [x] Record hardware/OS/kernel/governor/compiler/ORT/OpenCV/environment. *(The
       bundle's `install.sh` runs `preflight.sh` first and writes `environment.json` —
       OS/kernel/arch, CPU identity+features, glibc, OpenCV/ORT versions — automatically;
       on a real Pi 5 it records `is_pi5_a76=true`. Issue #77.)*
-- [ ] Record exposed frequency, temperature, and throttling interfaces.
-- [ ] Install the frozen bundle. *(The fail-closed preflight refuses a non-aarch64 /
+- [x] Record exposed frequency, temperature, and throttling interfaces.
+- [x] Install the frozen bundle. *(The fail-closed preflight refuses a non-aarch64 /
       non-Ubuntu-24.04 / Cortex-A72 (no `asimddp`) host before any change — so a
       provisioning mismatch is a message in the first minute, not a lost rental day.
       Issue #77; contract re-targeted to Ubuntu 24.04 at E9.)*
-- [ ] Run self-test and a short validation smoke test.
-- [ ] Do not tune models or inspect test labels.
+- [x] Run self-test and a short validation smoke test.
+- [x] Do not tune models or inspect test labels.
+
+**DONE 2026-07-20 — F1 PASSED on the real Raspberry Pi CM5.** Key auth `gx10 → cm5-pi`
+(alias, host key cross-verified against the Mac's pin), then the frozen bundle was rsynced
+`gx10 → Pi:/opt/bundle` (pristine — E8 gx10 dry-run outputs excluded) and installed. Evidence
+in `results/f1/` (`f1_install.log`, `f1_demo_M0.log`, `f1_host_interfaces.txt`,
+`environment.json`, `demo_predictions.jsonl`).
+
+- **Host (`environment.json`, real CM5):** Ubuntu 24.04 (noble), kernel `6.8.0-1060-raspi`,
+  aarch64, CPU `0x41`/`0xd0b` **"Raspberry Pi Compute Module 5 Rev 1.0"**, `asimddp=true`,
+  **`is_pi5_a76=true`**, glibc 2.39, ORT 1.27.0, OpenCV `4.6.0+dfsg-13.1ubuntu1`. The install
+  is **byte-for-structure identical** to the E8 known-good `dry_run.log`; the *only* diff is
+  the honest `is_pi5_a76` flag flipping `0` (gx10 diagnostic, part `0xd87`) → `1` (real
+  Cortex-A76). Validates the whole E9 Ubuntu-24.04 contract end-to-end on real hardware.
+- **install.sh:** MANIFEST verified, preflight PASSED, apt pulled the OpenCV 4.6.0 `.406`
+  t64 runtime (53 pkgs), all libraries resolve, `INSTALL_EXIT=0`.
+- **Smoke (`run_demo.sh M0`):** self-test 7/7; infer on the sample empty frame →
+  `SHUTTER_TRIGGER=0`, top1 `empty` 0.9993 (correct no-fire); run-dataset 47 frames, 5 fired;
+  **M2 and M4 self-test also PASSED** (whole shortlist loads and runs on the Pi).
+- **First real Pi latency (diagnostic single-frame smoke, not the F2/F4 benchmark):** M0 FP32
+  end-to-end **p50 50.15 ms / p95 50.37 ms (~19.9 FPS)** — measured under the **default
+  `ondemand` governor at ~1.9 GHz** (max 2.4 GHz), temp 39.5 °C, `throttled=0x0`. The F2/F4
+  benchmarks pin the `performance` governor (documented DVFS control, not model tuning) so
+  the M0-vs-M2/M4 comparison is not confounded by frequency scaling.
+- **Interfaces recorded:** governor `ondemand` (4× A76), cpufreq 1.5–2.4 GHz, thermal zone
+  `cpu-thermal`, `vcgencmd` present (`measure_temp`/`measure_clock arm`/`get_throttled`).
+  `gcc`/`cmake` absent (the rebuild contingency is unneeded — the prebuilt binary runs).
 
 ### F2 — Day 2: validation performance profiling
 
