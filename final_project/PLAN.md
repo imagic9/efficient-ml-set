@@ -2,12 +2,13 @@
 
 Status: **Phases A–E complete (Gate E PASSED); the deployment bundle is re-targeted to
 Ubuntu Server 24.04 (E9, 2026-07-20 — the rented Pi's OS) with all three gates re-passed;
-the Pi trial (Phase F) is UNDERWAY — F1–F4 done 2026-07-20 on the real Raspberry Pi CM5
-(Ubuntu 24.04, Cortex-A76, `is_pi5_a76=true`). **Final model FROZEN = M2 (INT8 QAT)** per the
-pre-registered DESIGN §8.4 rule. Real-Pi frozen benchmark: **M0 49.06 ms / 20.4 FPS → M2
-21.61 ms / 46.3 FPS = 2.27× faster, 3.5× smaller**; Pi↔gx10 parity bit-identical; frozen
-full-test opened once (M2 cis-test event-capture 0.858 > M0 0.767; trans-test domain-shift
-limited). F5 (reproducibility repeat) is next.**
+the Pi trial (Phase F) is COMPLETE — F1–F5 done and **Gate F PASSED** 2026-07-20 on the real
+Raspberry Pi CM5 (Ubuntu 24.04, Cortex-A76, `is_pi5_a76=true`). **Final model = M2 (INT8 QAT)**
+(pre-registered DESIGN §8.4). Real-Pi frozen benchmark: **M0 49.06 ms / 20.4 FPS → M2 21.61 ms /
+46.3 FPS = 2.27× faster, 3.5× smaller**; Pi↔gx10 parity bit-identical; F4+F5 reproducible ±3.5%;
+frozen full-test opened once (M2 cis-test event-capture 0.858 > M0 0.767; trans-test domain-shift
+limited). **Phase G (analysis, report, release) is next** (G2 needs these F numbers; confirmation
+seeds 17/73 still running on gx10, non-gating, collected at G1).**
 comparison.jsonl holds all five (M0 FP32 /
 M1 PTQ 0.3527 / M2 QAT 0.3832 /
 M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
@@ -51,10 +52,9 @@ re-targeted Bookworm → Ubuntu Server 24.04 (2026-07-20)** because the rented P
 Ubuntu 24.04 (the provider offers no other image); build-env == deploy-env now, and all
 three gates re-passed on `ubuntu:24.04` (E7 preflight 6/6, E7 bundle max GLIBC 2.38 ≤
 2.39, Gate E dry run — diagnostic M0 13.62 → M2 7.25 → M4 6.10 ms p50 on gx10).
-**Next: Phase F is underway** — F1 (smoke), F2 (profiling), F3 (freeze; final model M2), and
-F4 (frozen full test + Pi benchmark) done on the real CM5 2026-07-20; F5 (reproducibility repeat)
-is next, then Phase G (analysis, report, release). The next task is always the first `[ ]` in
-phase order.
+**Next: Phase F COMPLETE** — F1–F5 done, Gate F PASSED on the real CM5 2026-07-20 (final model
+M2, 2.27× on-device speedup, parity bit-identical, reproducible). **Phase G (analysis, report,
+release) is next.** The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1915,15 +1915,36 @@ Depends on: F3.
 
 Depends on: F4.
 
-- [ ] Repeat the frozen Pi benchmark/parity run without changes.
-- [ ] Compare runs and investigate only measurement anomalies, without tuning.
-- [ ] Back up every result, log, environment file, binary, and model.
-- [ ] Copy and checksum all raw Pi evidence back to `gx10`.
-- [ ] Verify result schemas and hashes before the trial expires.
+- [x] Repeat the frozen Pi benchmark/parity run without changes.
+- [x] Compare runs and investigate only measurement anomalies, without tuning.
+- [x] Back up every result, log, environment file, binary, and model.
+- [x] Copy and checksum all raw Pi evidence back to `gx10`.
+- [x] Verify result schemas and hashes before the trial expires.
+
+**DONE 2026-07-20 — F5 REPRODUCIBLE.** The exact frozen benchmark + parity slice re-run
+unchanged on the CM5 (`deploy/pi/run_f4_pi_benchmark.sh … f5`), compared to F4 by
+`scripts/summarize_f5.py` → `results/f5/f5_reproducibility.json`.
+
+- **Latency spread F4 vs F5 (Pi p50):** M0 −0.8 %, M2 +3.5 %, M4 −2.0 % — all within ±5 %, no
+  tuning, measurement noise only. (M0 49.06→48.68 ms, M2 21.61→22.35 ms, M4 17.74→17.38 ms.)
+- **Parity re-check:** F5 Pi predictions vs the deterministic frozen gx10 reference —
+  **bit-identical again** (max score Δ 0.0, 0 decision disagreements) for M0 and M2.
+- All Pi evidence copied to `gx10` `results/f5/`; schemas/JSON verified. No config or artifact
+  change (freeze held throughout F4–F5).
 
 **Gate F:** baseline and optimized Pi evidence contains latency, FPS, RSS, CPU
 utilization, model size, available thermal/frequency data, parity, and raw
 repetitions under a frozen protocol; full frozen test accuracy exists from gx10.
+
+**PASSED 2026-07-20.** All criteria met on the real Raspberry Pi CM5: latency + FPS + peak RSS
+per model over 3 reps (`results/f4/f4_summary.json`), model size (M0 8.95 → M2 2.54 MB), thermal
++ frequency + `throttled=0x0` recorded (`results/f1/f1_host_interfaces.txt`, per-run `system`
+blocks), CPU seconds in every benchmark JSON, Pi↔gx10 parity **bit-identical** for M0 and M2
+(`results/f4/parity_comparison.json`), raw repetitions F4+F5 reproducible within ±3.5%
+(`results/f5/f5_reproducibility.json`), and the full frozen cis-test/trans-test accuracy from
+gx10 (`results/f4/frozen_test_{M0,M2}.json`). **Headline: M0 20.4 FPS → M2 46.3 FPS = 2.27× on
+real Pi hardware, 3.5× smaller, accuracy-equivalent (better in-distribution).** Confirmation
+seeds 17/73 still running on gx10 (non-gating; collected at G1). **Proceed to Phase G.**
 
 ---
 

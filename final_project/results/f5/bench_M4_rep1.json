@@ -1,0 +1,91 @@
+{
+  "environment": {
+    "cpu_features": "asimd,asimddp",
+    "looks_like_pi5": true,
+    "onnxruntime_version": "1.27.0"
+  },
+  "fps": {
+    "end_to_end_from_p50": 57.76989321437434,
+    "inference_from_p50": 98.74849612212188
+  },
+  "image": "/opt/bundle/data/images/5858bfa6-23d2-11e8-a6a3-ec086b02610b.jpg",
+  "intra_op_threads": 1,
+  "measured_iterations": 1000,
+  "model": "/opt/bundle/models/M4.onnx",
+  "model_sha256": "2c9d53b41fcf88c3a1df1a986a8ceccc5fe8f96965bcf8a46d4f2a7d9bc770da",
+  "performance_targets": {
+    "aspirational": {
+      "met_on_this_host": true,
+      "min_fps": 10.0,
+      "p95_end_to_end_ms": 100.0
+    },
+    "measured_on_pi": false,
+    "note": "targets are Pi targets (DESIGN §11); the _on_this_host flags are diagnostic only -- not a Pi verdict until Phase F (§12.4).",
+    "p95_end_to_end_ms": 17.42555475,
+    "primary": {
+      "met_on_this_host": true,
+      "min_fps": 5.0,
+      "p95_end_to_end_ms": 200.0
+    }
+  },
+  "pipeline_config": {
+    "cpu_arena": "on",
+    "decode_reduction": 1,
+    "graph_optimization": "all",
+    "intra_op_threads": 1,
+    "preprocess": "fused"
+  },
+  "provenance": "DESIGN §12.4: a latency number is a Pi result only when measured ON a Pi. Measured on any other host -- gx10 natively or under QEMU -- this is a smoke check of the timing path, never a performance claim.",
+  "schema_version": 1,
+  "stages_ms": {
+    "decode": {
+      "max": 6.44154,
+      "mean": 6.131806585000002,
+      "min": 6.086447,
+      "p50": 6.1232155,
+      "p95": 6.20401,
+      "p99": 6.232921739999999
+    },
+    "end_to_end": {
+      "max": 17.582361,
+      "mean": 17.32334968900002,
+      "min": 17.227748,
+      "p50": 17.3100545,
+      "p95": 17.42555475,
+      "p99": 17.47912525
+    },
+    "inference": {
+      "max": 10.373449,
+      "mean": 10.135066378,
+      "min": 10.054431,
+      "p50": 10.1267365,
+      "p95": 10.2208838,
+      "p99": 10.27898593
+    },
+    "policy": {
+      "max": 0.027445,
+      "mean": 0.004253737,
+      "min": 0.003297,
+      "p50": 0.00413,
+      "p95": 0.004833,
+      "p99": 0.005148929999999999
+    },
+    "preprocess": {
+      "max": 1.161279,
+      "mean": 1.051734587,
+      "min": 1.012964,
+      "p50": 1.0505840000000002,
+      "p95": 1.06462405,
+      "p99": 1.1099486600000001
+    }
+  },
+  "system": {
+    "cpu_frequency_khz": 2400000,
+    "cpu_temperature_c": 47.95,
+    "peak_rss_kib": 84180,
+    "system_cpu_seconds": 0.747829,
+    "throttling": "unavailable",
+    "user_cpu_seconds": 17.591994
+  },
+  "warmup_iterations": 50
+}

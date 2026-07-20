@@ -1,0 +1,22 @@
+=== F4 Pi benchmark (frozen config: threads=1, full decode, ALL, arena on, fused) ===
+governor=performance freq_kHz=2400000
+--- latency: >=1000 iters x 3 reps, threads=1 (frozen)
+    M0  rep1: end-to-end p50=48.85ms p95=48.97ms  (20.47 FPS)
+    M0  rep2: end-to-end p50=48.83ms p95=48.97ms  (20.48 FPS)
+    M0  rep3: end-to-end p50=48.36ms p95=48.49ms  (20.68 FPS)
+    thermal: temp=47.7'C
+    throttled=0x0
+    M2  rep1: end-to-end p50=22.90ms p95=22.98ms  (43.67 FPS)
+    M2  rep2: end-to-end p50=21.28ms p95=21.34ms  (46.99 FPS)
+    M2  rep3: end-to-end p50=22.88ms p95=22.97ms  (43.70 FPS)
+    thermal: temp=48.3'C
+    throttled=0x0
+    M4  rep1: end-to-end p50=17.31ms p95=17.43ms  (57.77 FPS)
+    M4  rep2: end-to-end p50=17.46ms p95=17.60ms  (57.28 FPS)
+    M4  rep3: end-to-end p50=17.38ms p95=17.49ms  (57.55 FPS)
+    thermal: temp=48.3'C
+    throttled=0x0
+--- parity: run-dataset over the bundled slice (47 frames), threads=1
+    M0: run-dataset: 47 frames (0 skipped), 5 fired -> /opt/bundle/f5/pi_parity_M0.jsonl
+    M2: run-dataset: 47 frames (0 skipped), 4 fired -> /opt/bundle/f5/pi_parity_M2.jsonl
+=== F4 Pi benchmark done -> /opt/bundle/f5 ===
