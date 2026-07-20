@@ -1727,6 +1727,18 @@ E9-regenerated known-good `results/e8/dry_run.log` (Ubuntu 24.04). If the provid
 substitutes a different OS, do not run the prebuilt binary — use the rebuild-on-the-Pi
 path in `deploy/pi/README.md`.
 
+**Hardware (2026-07-20): the rented target is a Raspberry Pi Compute Module 5 (CM5, 8 GB)**
+— the Pi 5 (16 GB) board was out of stock. This is **not** the Pi 4 contingency: the CM5
+uses the **same BCM2712 SoC and Cortex-A76 @ 2.4 GHz** as the Pi 5 board, with the same
+`asimddp` ISA, so `preflight.sh` accepts it and `is_pi5_a76` reads **true** (it is a
+Cortex-A76). CPU-bound inference latency is therefore representative of the Pi 5. Report
+results labelled **"Raspberry Pi CM5 (BCM2712 / Cortex-A76 @ 2.4 GHz, 8 GB)"** — real
+Pi-class hardware, so a latency measured on it is a valid target result (§12.4), and
+`environment.json` records the exact CPU model + OS to keep the board identity honest.
+8 GB RAM is ample (model ~2 MB). Reachability + Ubuntu 24.04 confirmed 2026-07-20 (SSH
+banner `OpenSSH_9.6p1 Ubuntu-3ubuntu13.18`, a Noble/24.04 package). Connection details
+(host/user) live out-of-repo (support ticket / `~/.ssh`), never committed.
+
 ### F1 — Day 1: provision and smoke test
 
 - [ ] Use `gx10` as the control/evidence host and verify the remote Pi connection.

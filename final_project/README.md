@@ -425,10 +425,13 @@ environment variables.
 
 ### Raspberry Pi target (Pi 5 preferred)
 
-**OS: Ubuntu Server 24.04** (the rented Pi's image; the provider offers no other).
-The deployment bundle is built for exactly that (E9, 2026-07-20 — build-env ==
-deploy-env), and `install.sh` fail-closes on any host that is not aarch64 / Ubuntu
-24.04 / `asimddp`-capable.
+**Hardware: Raspberry Pi Compute Module 5 (CM5, 8 GB)**, rented 2026-07-20 (the Pi 5
+16 GB board was out of stock). The CM5 is a Pi-5-**class** target, not the Pi 4
+contingency: same **BCM2712 / Cortex-A76 @ 2.4 GHz** SoC with `asimddp` as the Pi 5
+board, so CPU-bound latency is representative. Results are labelled explicitly as CM5
+(DESIGN §12.1/§12.4). **OS: Ubuntu Server 24.04** (confirmed via the SSH banner) — the
+deployment bundle is built for exactly that (E9 — build-env == deploy-env), and
+`install.sh` fail-closes on any host that is not aarch64 / Ubuntu 24.04 / `asimddp`-capable.
 
 The Pi is the only valid source of target latency/FPS/resource evidence. Its trial
 is measurement time, not normal

@@ -1518,6 +1518,14 @@ professional camera-trigger latency.
   takes a slower path there and the M1/M2/M4 conclusions may differ. Treat RPi 4 as
   a permitted degraded target, label its numbers as such, and never merge them into
   a Pi 5 table;
+- **the Raspberry Pi Compute Module 5 (CM5) counts as a Pi-5-class target, not a
+  degraded one** (rented 2026-07-20 when the Pi 5 board was out of stock). The CM5
+  carries the **same BCM2712 SoC and Cortex-A76 @ 2.4 GHz with `asimddp`** as the Pi 5
+  board, so CPU-bound inference latency is representative and INT8 dispatches the same
+  kernels — the `asimddp` distinction above is what separates Pi 5 / CM5 from the Pi 4.
+  Label numbers explicitly as **"Raspberry Pi CM5 (BCM2712 / Cortex-A76 @ 2.4 GHz, 8 GB)"**
+  (real Pi hardware, so §12.4 is satisfied; `environment.json` records the exact CPU model
+  and OS so the board identity — CM5 vs Pi 5 board — is never blurred). 8 GB RAM is ample;
 - no physical camera/GPIO/power meter;
 - batch size 1;
 - exact OS, kernel, compiler, OpenCV, ORT, CPU governor, cooling exposure, and
