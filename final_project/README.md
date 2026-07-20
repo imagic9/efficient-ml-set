@@ -77,9 +77,10 @@ The Core input is **frozen at 256x192** and the head contract at **16 outputs wi
 `results/ablations/data_input_decision.md`. `PLAN.md` is the task tracker and is the
 authority on what is done; this table is a summary of it.
 
-Public repository: `REPO_URL`
+Public repository: <https://github.com/imagic9/efficient-ml-set>
 
-Final release: `RELEASE_URL`
+Final release: `v1.0-final` — <https://github.com/imagic9/efficient-ml-set/releases/tag/v1.0-final>
+(pending final review; see `SUBMISSION.md` → Release)
 
 Final report: `REPORT_URL`
 

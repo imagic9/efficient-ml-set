@@ -165,3 +165,6 @@ id_rsa*
 # scripts/run_e7_preflight.sh. Committed evidence: preflight.json.
 /final_project/results/e7/preflight_raw/
 /final_project/report/final_report.html
+
+# Release bundle tarball — 25 MB, uploaded to the GitHub Release, not git (SHA256SUMS is committed)
+/final_project/results/analysis/release/*.tar.gz

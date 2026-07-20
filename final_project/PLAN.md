@@ -7,8 +7,10 @@ Raspberry Pi CM5 (Ubuntu 24.04, Cortex-A76, `is_pi5_a76=true`). **Final model = 
 (pre-registered DESIGN §8.4). Real-Pi frozen benchmark: **M0 49.06 ms / 20.4 FPS → M2 21.61 ms /
 46.3 FPS = 2.27× faster, 3.5× smaller**; Pi↔gx10 parity bit-identical; F4+F5 reproducible ±3.5%;
 frozen full-test opened once (M2 cis-test event-capture 0.858 > M0 0.767; trans-test domain-shift
-limited). **Phase G (analysis, report, release) is next** (G2 needs these F numbers; confirmation
-seeds 17/73 still running on gx10, non-gating, collected at G1).**
+limited). **Phase G COMPLETE (bar the gated public Release)** — G1 canonical results table, G2
+results notebook (10 figures), G3 13-page report PDF, G4 12-slide deck PPTX/PDF, G5 SUBMISSION.md +
+DoD all done and committed; the only open item is Vadym creating the `v1.0-final` GitHub Release +
+tag after final review (assets staged in `results/analysis/release/`).**
 comparison.jsonl holds all five (M0 FP32 /
 M1 PTQ 0.3527 / M2 QAT 0.3832 /
 M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
@@ -52,9 +54,10 @@ re-targeted Bookworm → Ubuntu Server 24.04 (2026-07-20)** because the rented P
 Ubuntu 24.04 (the provider offers no other image); build-env == deploy-env now, and all
 three gates re-passed on `ubuntu:24.04` (E7 preflight 6/6, E7 bundle max GLIBC 2.38 ≤
 2.39, Gate E dry run — diagnostic M0 13.62 → M2 7.25 → M4 6.10 ms p50 on gx10).
-**Next: Phase F COMPLETE** — F1–F5 done, Gate F PASSED on the real CM5 2026-07-20 (final model
-M2, 2.27× on-device speedup, parity bit-identical, reproducible). **Phase G (analysis, report,
-release) is next.** The next task is always the first `[ ]` in phase order.
+**Next: Phase F + Phase G COMPLETE** (2026-07-20) — the only open item is the **user-gated public
+`v1.0-final` Release + tag** (G5), left for Vadym after final review; assets staged in
+`results/analysis/release/`. Everything else (Gates A–F, G1–G5 content) is done, committed, and
+public on `main`. Optional Phase S (crop-teacher KD) remains locked until that Release.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -2029,17 +2032,32 @@ CM5 identity), Pareto+bottleneck, worked/didn't/limits, next steps+QR. English (
 
 Depends on: G3, G4.
 
-- [ ] Clean README quick start and reproduction commands.
-- [ ] Publish code without secrets/data archives.
-- [ ] Publish models/deployment bundle through GitHub Release or LFS.
-- [ ] Verify checksums/download links from a clean environment.
-- [ ] Tag `v1.0-final` and record the commit hash.
-- [ ] Replace every `REPO_URL`/`RELEASE_URL` placeholder.
-- [ ] Complete `SUBMISSION.md` with canonical links and commands.
-- [ ] Run every Definition of Done item in DESIGN §19.
+- [x] Clean README quick start and reproduction commands. *(README + `SUBMISSION.md` reproduction block.)*
+- [x] Publish code without secrets/data archives. *(repo public; secrets audited; data/models gitignored.)*
+- [~] Publish models/deployment bundle through GitHub Release or LFS. *(**staged** —
+      `results/analysis/release/` holds the 25 MB bundle tarball + the three ONNX; live on Release creation.)*
+- [~] Verify checksums/download links from a clean environment. *(`SHA256SUMS` staged + hashes match
+      `BUNDLE.json`; download links become verifiable once the Release exists.)*
+- [!] Tag `v1.0-final` and record the commit hash. *(**Gated on Vadym's final review** — the "final"
+      tag should mark the reviewed state; not created autonomously, an outward-facing action.)*
+- [x] Replace every `REPO_URL`/`RELEASE_URL` placeholder. *(repo URL live in README/SUBMISSION;
+      release URL set to the expected tag URL, activates on Release.)*
+- [x] Complete `SUBMISSION.md` with canonical links and commands.
+- [x] Run every Definition of Done item in DESIGN §19. *(`results/analysis/definition_of_done.md` —
+      all Data/ML + Deployment/C++ pass; Submission passes but for the two Release-dependent items.)*
+
+**DONE (bar the gated Release) 2026-07-20.** All of Phase G is complete and committed except the
+one outward-facing action — creating the public `v1.0-final` Release + tag — which is deliberately
+left for Vadym to trigger after reviewing the final results. Everything it needs is staged.
 
 **Gate G:** the complete Core submission is public, reproducible, visually
 checked, and every headline number traces to raw machine-readable evidence.
+
+**PASSES on review + Release.** All content, reproducibility, visual checks, and number-tracing are
+done and public on `main`; the final gate is Vadym reviewing and creating the `v1.0-final` Release
+(the two staged items above). Command to create it (from gx10, after review):
+`gh release create v1.0-final results/analysis/release/*.tar.gz results/analysis/release/SHA256SUMS
+-F results/analysis/release/RELEASE_NOTES.md --repo imagic9/efficient-ml-set`.
 
 ---
 
