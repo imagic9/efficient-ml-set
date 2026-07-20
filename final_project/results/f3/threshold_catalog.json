@@ -1,0 +1,280 @@
+{
+  "candidate": "results/optimize/m2_qat/lr5e-5",
+  "class_map_sha256": "b38e8bb9ef6188871dba247cde4eb152c73755d2c8dd37cfdba1bcdb6c0a9128",
+  "counts": {
+    "animal_classes": 14,
+    "selectable": 11,
+    "unavailable": 3
+  },
+  "design": "DESIGN \u00a74/\u00a76.3, PLAN F3",
+  "entries": [
+    {
+      "note": "DESIGN \u00a74: no defensible operating point (badger 1 val image; deer/fox 0).",
+      "selectable": false,
+      "status": "unavailable_insufficient_validation_support",
+      "target": "badger",
+      "threshold": null
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.006975,
+          "fire_rate": 0.021157,
+          "frame_f2": 0.746753,
+          "frame_recall": 0.766667,
+          "sequence_balanced_recall": 0.787879
+        },
+        "trans_val": {
+          "false_fire_rate": 0.0,
+          "fire_rate": 0.0,
+          "frame_f2": 0.0,
+          "frame_recall": 0.0,
+          "sequence_balanced_recall": 0.0
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "bird",
+      "threshold": 0.5416514277458191
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.049837,
+          "fire_rate": 0.080896,
+          "frame_f2": 0.639952,
+          "frame_recall": 0.743056,
+          "sequence_balanced_recall": 0.74
+        },
+        "trans_val": {
+          "false_fire_rate": 0.046137,
+          "fire_rate": 0.062029,
+          "frame_f2": 0.097591,
+          "frame_recall": 0.080706,
+          "sequence_balanced_recall": 0.080503
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "bobcat",
+      "threshold": 0.650390088558197
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.022149,
+          "fire_rate": 0.072806,
+          "frame_f2": 0.843434,
+          "frame_recall": 0.883598,
+          "sequence_balanced_recall": 0.883598
+        },
+        "trans_val": {
+          "false_fire_rate": 0.048397,
+          "fire_rate": 0.051014,
+          "frame_f2": 0.106383,
+          "frame_recall": 0.111111,
+          "sequence_balanced_recall": 0.111111
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "cat",
+      "threshold": 0.693362295627594
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.031123,
+          "fire_rate": 0.098009,
+          "frame_f2": 0.827765,
+          "frame_recall": 0.864341,
+          "sequence_balanced_recall": 0.872549
+        },
+        "trans_val": {
+          "false_fire_rate": 0.037634,
+          "fire_rate": 0.044638,
+          "frame_f2": 0.24911,
+          "frame_recall": 0.27451,
+          "sequence_balanced_recall": 0.27451
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "coyote",
+      "threshold": 0.1423318088054657
+    },
+    {
+      "note": "DESIGN \u00a74: no defensible operating point (badger 1 val image; deer/fox 0).",
+      "selectable": false,
+      "status": "unavailable_insufficient_validation_support",
+      "target": "deer",
+      "threshold": null
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.018141,
+          "fire_rate": 0.052271,
+          "frame_f2": 0.828402,
+          "frame_recall": 0.88189,
+          "sequence_balanced_recall": 0.883721
+        },
+        "trans_val": {
+          "false_fire_rate": 0.010436,
+          "fire_rate": 0.012174,
+          "frame_f2": 0.049383,
+          "frame_recall": 0.041667,
+          "sequence_balanced_recall": 0.041667
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "dog",
+      "threshold": 0.49114301800727844
+    },
+    {
+      "note": "DESIGN \u00a74: no defensible operating point (badger 1 val image; deer/fox 0).",
+      "selectable": false,
+      "status": "unavailable_insufficient_validation_support",
+      "target": "fox",
+      "threshold": null
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.049635,
+          "fire_rate": 0.167082,
+          "frame_f2": 0.824085,
+          "frame_recall": 0.845992,
+          "sequence_balanced_recall": 0.845992
+        },
+        "trans_val": {
+          "false_fire_rate": 0.042935,
+          "fire_rate": 0.129275,
+          "frame_f2": 0.42021,
+          "frame_recall": 0.378378,
+          "sequence_balanced_recall": 0.378378
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "opossum",
+      "threshold": 0.6905697584152222
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.04961,
+          "fire_rate": 0.143746,
+          "frame_f2": 0.793103,
+          "frame_recall": 0.821429,
+          "sequence_balanced_recall": 0.823232
+        },
+        "trans_val": {
+          "false_fire_rate": 0.004834,
+          "fire_rate": 0.004638,
+          "frame_f2": 0.0,
+          "frame_recall": 0.0,
+          "sequence_balanced_recall": 0.0
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "rabbit",
+      "threshold": 0.8815382719039917
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.043621,
+          "fire_rate": 0.085563,
+          "frame_f2": 0.759358,
+          "frame_recall": 0.860606,
+          "sequence_balanced_recall": 0.860606
+        },
+        "trans_val": {
+          "false_fire_rate": 0.048246,
+          "fire_rate": 0.070145,
+          "frame_f2": 0.345369,
+          "frame_recall": 0.341085,
+          "sequence_balanced_recall": 0.341085
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "raccoon",
+      "threshold": 0.1719590574502945
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.018837,
+          "fire_rate": 0.059428,
+          "frame_f2": 0.909713,
+          "frame_recall": 0.985185,
+          "sequence_balanced_recall": 0.985185
+        },
+        "trans_val": {
+          "false_fire_rate": 0.0,
+          "fire_rate": 0.0,
+          "frame_f2": 0.0,
+          "frame_recall": 0.0,
+          "sequence_balanced_recall": 0.0
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "rodent",
+      "threshold": 0.694273054599762
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.004394,
+          "fire_rate": 0.009956,
+          "frame_f2": 0.625,
+          "frame_recall": 0.642857,
+          "sequence_balanced_recall": 0.666667
+        },
+        "trans_val": {
+          "false_fire_rate": 0.016847,
+          "fire_rate": 0.034783,
+          "frame_f2": 0.512821,
+          "frame_recall": 0.507937,
+          "sequence_balanced_recall": 0.507937
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "skunk",
+      "threshold": 0.4909096658229828
+    },
+    {
+      "per_domain": {
+        "cis_val_clean": {
+          "false_fire_rate": 0.04985,
+          "fire_rate": 0.085874,
+          "frame_f2": 0.574818,
+          "frame_recall": 0.614634,
+          "sequence_balanced_recall": 0.608696
+        },
+        "trans_val": {
+          "false_fire_rate": 0.00058,
+          "fire_rate": 0.00058,
+          "frame_f2": 0.0,
+          "frame_recall": 0.0,
+          "sequence_balanced_recall": 0.0
+        }
+      },
+      "selectable": true,
+      "status": "recall_floor_infeasible",
+      "target": "squirrel",
+      "threshold": 0.9996131658554077
+    }
+  ],
+  "final_model": "M2 (int8_qat)",
+  "kind": "threshold_catalog",
+  "model_sha256": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+  "rule": "frozen \u00a76.3: largest threshold inside the 5% per-domain false-fire budget meeting the 90% sequence-balanced recall floor on both domains; status recorded verbatim. recall_floor_infeasible ships an operating point and is NOT a pass.",
+  "schema_version": 1
+}

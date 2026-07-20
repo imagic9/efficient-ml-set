@@ -1,0 +1,98 @@
+{
+  "baseline_model": {
+    "kind": "fp32_baseline",
+    "model_id": "M0",
+    "onnx": "results/training/c2/c2_m0_fp32_seed42_20260716T061203Z/m0_fp32_seed42.onnx",
+    "onnx_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+    "onnx_sha256_matches_freeze": true,
+    "onnx_sha256_ondisk": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+    "policy": "artifacts/policies/bobcat_v1.json",
+    "policy_id": "bobcat_v1",
+    "status": "recall_floor_infeasible",
+    "threshold": 0.5380880236625671
+  },
+  "benchmark_manifest": {
+    "manifest": "data/manifests/benchmark_val_1000.jsonl",
+    "note": "validation-only; test manifests stay sealed (\u00a75.4)",
+    "provenance": "data/manifests/benchmark_val_1000.provenance.json",
+    "provenance_sha256": "4caf9ab346fd28be8936004df23d4cf2cc8df26d159468294001f1ed91ea1acf",
+    "sha256": "c6297263b8656b1c76d633eda569db9eaf9c2b4ba4bc0526cdf37fa4dac8b833"
+  },
+  "class_map": {
+    "path": "artifacts/class_map.json",
+    "sha256": "b38e8bb9ef6188871dba247cde4eb152c73755d2c8dd37cfdba1bcdb6c0a9128"
+  },
+  "confirmation_seeds": {
+    "gating": false,
+    "note": "variability measurement only; never replaces the seed-42 deployment artifact; must finish before Gate G (PLAN F3).",
+    "seeds": [
+      17,
+      73
+    ],
+    "transformation": "M2 QAT (lr 5e-5, 6 epochs) from the frozen M0 checkpoint"
+  },
+  "decision": "results/model_selection/final_decision.md",
+  "design": "PLAN F3 / DESIGN \u00a78.4-\u00a78.5, \u00a712.3",
+  "final_optimized_model": {
+    "kind": "int8_qat",
+    "macs": 293402624,
+    "model_id": "M2",
+    "onnx": "results/optimize/m2_qat/lr5e-5/model.onnx",
+    "onnx_sha256": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+    "onnx_sha256_matches_freeze": true,
+    "onnx_sha256_ondisk": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+    "params": 2244368,
+    "policy": "artifacts/policies/bobcat_m2_qat_lr5e-5_v1.json",
+    "policy_id": "bobcat_m2_qat_lr5e-5_v1",
+    "policy_sha256": "1c50c5c4fe707b81849ad3f3424125db8ef338cde194e51de4e4b6ed459825c4",
+    "status": "recall_floor_infeasible",
+    "threshold": 0.650390088558197
+  },
+  "frozen_at_git_commit": "0b06337ad72a7e4930a60501dd723512b962de61",
+  "invariant": "No artifact or configuration change is permitted after this manifest (PLAN F3).",
+  "kind": "f3_freeze_manifest",
+  "pi_latency_f2": {
+    "M0_fp32_fps_t1": 20.7,
+    "M0_fp32_p50_ms_t1": 48.23,
+    "M2_int8qat_fps_t1": 47.0,
+    "M2_int8qat_p50_ms_t1": 21.3,
+    "host": "Raspberry Pi CM5 (BCM2712 / Cortex-A76 @ 2.4 GHz, 8 GB), Ubuntu 24.04",
+    "source": "results/f2/f2_summary.json",
+    "speedup_end_to_end_t1": 2.26
+  },
+  "preprocessing": {
+    "fingerprint": {
+      "height": 192,
+      "interpolation": "INTER_LINEAR",
+      "pad_value": 114,
+      "steps_cached": "1-4 (decode, BGR->RGB, aspect-preserving resize, pad)",
+      "width": 256
+    },
+    "height": 192,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "pad_value": 114,
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "width": 256
+  },
+  "runtime_config_frozen": {
+    "cpu_arena": "on",
+    "decode": "full",
+    "graph_optimization": "all (ORT_ENABLE_ALL)",
+    "height": 192,
+    "intra_op_threads": 1,
+    "note": "the exact config every P1-P4 parity gate validated; F4 Pi-vs-gx10 parity is config-matched. threads=3 measured better (F2) but not folded in, to keep the FP32-baseline comparison parity-clean.",
+    "onnxruntime_version": "1.27.0",
+    "preprocess": "fused",
+    "width": 256
+  },
+  "schema_version": 1,
+  "test_labels": "SEALED \u2014 no test manifest named; opened only after this freeze (F4)."
+}

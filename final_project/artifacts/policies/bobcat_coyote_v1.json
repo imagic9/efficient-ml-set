@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "policy_id": "bobcat_coyote_v1",
+  "model_sha256": "499bc3ecb30853b8592fc6077af706d26026fc2eb08ee12512fd2f4706d45ecc",
+  "class_map_sha256": "b38e8bb9ef6188871dba247cde4eb152c73755d2c8dd37cfdba1bcdb6c0a9128",
+  "mode": "any",
+  "targets": [
+    {
+      "class": "bobcat",
+      "threshold": 0.650390088558197
+    },
+    {
+      "class": "coyote",
+      "threshold": 0.1423318088054657
+    }
+  ],
+  "note": "DESIGN \u00a74 generic multi-target example on the final model M2; both targets recall_floor_infeasible individually (see threshold_catalog.json). mode 'any' fires if EITHER target clears its own threshold.",
+  "calibration": "results/f3/threshold_catalog.json",
+  "status_bobcat": "recall_floor_infeasible",
+  "status_coyote": "recall_floor_infeasible"
+}

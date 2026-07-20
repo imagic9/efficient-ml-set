@@ -2,10 +2,11 @@
 
 Status: **Phases A–E complete (Gate E PASSED); the deployment bundle is re-targeted to
 Ubuntu Server 24.04 (E9, 2026-07-20 — the rented Pi's OS) with all three gates re-passed;
-the Pi trial (Phase F) is UNDERWAY — F1+F2 PASSED 2026-07-20 on the real Raspberry Pi CM5
-(Ubuntu 24.04, Cortex-A76, `is_pi5_a76=true`): M4 pruned+QAT runs **3.50× faster** than the
-M0 FP32 baseline end-to-end (48.4→13.8 ms, 20.7→72.4 FPS). F3 (freeze + final-model selection)
-is next.**
+the Pi trial (Phase F) is UNDERWAY — F1+F2+F3 done 2026-07-20 on the real Raspberry Pi CM5
+(Ubuntu 24.04, Cortex-A76, `is_pi5_a76=true`). **Final model FROZEN = M2 (INT8 QAT)** per the
+pre-registered DESIGN §8.4 rule (M4 faster/smaller but not more accurate → the simpler QAT stack
+wins): M0 48.23 ms / 20.7 FPS → M2 21.30 ms / 47.0 FPS = **2.26× faster, 3.5× smaller**, at
+equivalent accuracy (threads=1, frozen). F4 (frozen full test + Pi benchmark) is next.**
 comparison.jsonl holds all five (M0 FP32 /
 M1 PTQ 0.3527 / M2 QAT 0.3832 /
 M3 pruned-FP32 0.3583 / M4 pruned+QAT 0.373, 2.01 MB), all past P3/P4, all
@@ -49,9 +50,10 @@ re-targeted Bookworm → Ubuntu Server 24.04 (2026-07-20)** because the rented P
 Ubuntu 24.04 (the provider offers no other image); build-env == deploy-env now, and all
 three gates re-passed on `ubuntu:24.04` (E7 preflight 6/6, E7 bundle max GLIBC 2.38 ≤
 2.39, Gate E dry run — diagnostic M0 13.62 → M2 7.25 → M4 6.10 ms p50 on gx10).
-**Next: Phase F is underway** — F1 (provision + smoke) and F2 (validation profiling) PASSED on
-the real CM5 2026-07-20; F3 (freeze + final-model selection) is next, then F4–F5, then Phase G
-(analysis, report, release). The next task is always the first `[ ]` in phase order.
+**Next: Phase F is underway** — F1 (smoke), F2 (validation profiling), and F3 (freeze;
+final model M2) done on the real CM5 2026-07-20; F4 (frozen full test + Pi benchmark) is next,
+then F5, then Phase G (analysis, report, release). The next task is always the first `[ ]` in
+phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -1823,18 +1825,20 @@ Drivers `deploy/pi/run_f2_profile.sh` + `run_f2_threads.sh`, consolidated by
 
 Depends on: F2.
 
-- [ ] Repeat validation after any safe fix.
-- [ ] Select the final optimized model using validation accuracy, real Pi latency,
+- [x] Repeat validation after any safe fix. *(No fix was folded in: the only candidate,
+      threads=3, was kept OUT of the freeze — the frozen config stays at the parity-validated
+      threads=1, so the F4 Pi-vs-gx10 parity comparison is config-matched. threads=3 is reported
+      as a measured optional inference optimization, F2.)*
+- [x] Select the final optimized model using validation accuracy, real Pi latency,
       model size, and simplicity; write `final_decision.md`.
-- [ ] Build 14 threshold-catalog status entries. Emit numeric thresholds for the
-      **11 selectable targets** (nine two-domain and two single-domain fallbacks)
-      and null thresholds for unavailable `badger`, `deer`, and `fox`. Generate
-      `threshold_catalog.json`, the bobcat policy, and validated
+- [x] Build 14 threshold-catalog status entries. Emit numeric thresholds for the
+      **11 selectable targets** and null thresholds for unavailable `badger`, `deer`, and
+      `fox`. Generate `threshold_catalog.json`, the bobcat policy, and validated
       `bobcat_coyote_v1.json`; record combined validation false-fire metrics.
-- [ ] Freeze git commit, binary, selected model, policies, preprocessing/decode
+- [x] Freeze git commit, binary, selected model, policies, preprocessing/decode
       mode, ORT options, and thread count.
-- [ ] Archive freeze manifest before test evaluation.
-- [ ] **Only after the freeze:** launch confirmation seeds 17/73 for the selected
+- [x] Archive freeze manifest before test evaluation.
+- [x] **Only after the freeze:** launch confirmation seeds 17/73 for the selected
       transformation on `gx10` in the background with frozen hyperparameters. They
       measure variability, never replace the seed-42 deployment artifact, and must
       not gate this freeze, any later trial day, or Gate F. Retraining a
@@ -1842,6 +1846,34 @@ Depends on: F2.
       trial expires but must finish before Gate G and final submission.
 
 **Freeze gate:** no artifact or configuration changes after this point.
+
+**DONE 2026-07-20 — F3 complete; final model FROZEN = M2 (INT8 QAT).**
+
+- **Decision (`results/model_selection/final_decision.md`):** the pre-registered DESIGN §8.4
+  rule governs — *"if M4 is slower OR less accurate than M2, M2 remains the final model; a more
+  complicated stack does not win by default."* M4 is faster (13.81 vs 20.28 ms @ t3) and smaller
+  (2.01 vs 2.54 MB) but **less accurate on the pre-registered metric** (mean bobcat F2 selection
+  score M2 0.3832 > M4 0.3730; the gap is within the C1a bootstrap noise band, i.e. tied). §8.4
+  fires on "less accurate" and §8.5.5 breaks a tie toward the simpler transform → **M2**. M4's
+  aggressive result (3.50× over baseline) is fully reported but not selected. Both models clear
+  real-time on the Pi by a wide margin, so latency is not the binding constraint.
+- **Freeze (`results/f3/freeze_manifest.json`):** M2 ONNX + `bobcat_m2_qat_lr5e-5_v1` policy +
+  class map, on-disk sha256 **re-verified to match the frozen bundle**; runtime frozen at
+  threads=1 / full decode / `ORT_ENABLE_ALL` / arena on / fused / 256×192; commit recorded.
+  Baseline for the comparison is M0 at the identical config. Test labels stay sealed until F4.
+- **Threshold catalog (`results/f3/threshold_catalog.json`):** 14 animal-class entries — **11
+  selectable** with numeric thresholds (all `recall_floor_infeasible`, per-domain false-fire
+  recorded, all within the 5% budget) + **3 null** (`badger`/`deer`/`fox`, insufficient validation
+  support). Built read-only via the canonical `metrics.select_threshold` (frozen §6.3 rule) —
+  the frozen bobcat calibration/policy were NOT touched. Multi-target example
+  `artifacts/policies/bobcat_coyote_v1.json` (bobcat@0.6504 + coyote@0.1423, M2-bound) validated
+  by `build_policy`.
+- **Confirmation seeds 17/73** launched on gx10 (`scripts/run_confirmation_seeds.sh`, PID logged,
+  isolated `output_root`s `results/optimize/m2_qat_seed{17,73}`), GPU engaged. **Non-gating**;
+  collected at G1. Do not wait on them.
+
+**Headline (frozen, both threads=1, real CM5): M0 FP32 48.23 ms / 20.7 FPS → M2 INT8 QAT
+21.30 ms / 47.0 FPS = 2.26× faster, 3.5× smaller (8.95 → 2.54 MB), accuracy-equivalent.**
 
 ### F4 — Day 4: frozen full test and Pi benchmark
 
