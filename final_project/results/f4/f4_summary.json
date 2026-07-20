@@ -1,0 +1,139 @@
+{
+  "frozen_config": "threads=1, full decode, ORT_ENABLE_ALL, arena on, fused, 256x192",
+  "frozen_test_accuracy": {
+    "M0": {
+      "frozen_threshold": 0.5380880236625671,
+      "per_domain": {
+        "cis_test": {
+          "event_capture_rate": 0.7668,
+          "false_fire_rate": 0.0551,
+          "frame_f2": 0.5812,
+          "frame_precision": 0.4137,
+          "frame_recall": 0.6466,
+          "sequence_balanced_recall": 0.6636
+        },
+        "trans_test": {
+          "event_capture_rate": 0.3952,
+          "false_fire_rate": 0.0409,
+          "frame_f2": 0.2517,
+          "frame_precision": 0.3873,
+          "frame_recall": 0.2314,
+          "sequence_balanced_recall": 0.2919
+        }
+      },
+      "positives": {
+        "cis_test": 897,
+        "trans_test": 2338
+      }
+    },
+    "M2": {
+      "frozen_threshold": 0.650390088558197,
+      "per_domain": {
+        "cis_test": {
+          "event_capture_rate": 0.8575,
+          "false_fire_rate": 0.0551,
+          "frame_f2": 0.6387,
+          "frame_precision": 0.4398,
+          "frame_recall": 0.7202,
+          "sequence_balanced_recall": 0.7604
+        },
+        "trans_test": {
+          "event_capture_rate": 0.3468,
+          "false_fire_rate": 0.0215,
+          "frame_f2": 0.2209,
+          "frame_precision": 0.5017,
+          "frame_recall": 0.1938,
+          "sequence_balanced_recall": 0.2621
+        }
+      },
+      "positives": {
+        "cis_test": 897,
+        "trans_test": 2338
+      }
+    }
+  },
+  "host_accuracy": "gx10 C++/ORT of the frozen bundle artifacts (accuracy only; \u00a712.4)",
+  "host_latency": "Raspberry Pi CM5 (BCM2712 / Cortex-A76 @ 2.4 GHz, 8 GB), Ubuntu 24.04, performance governor",
+  "kind": "f4_summary",
+  "parity_detail": {
+    "M0": {
+      "decision_disagreements": 0,
+      "frames": 47,
+      "gx10_fired": 5,
+      "max_score_delta": 0.0,
+      "mean_score_delta": 0.0,
+      "pi_fired": 5,
+      "verdict": "PASS",
+      "worst_frame": null
+    },
+    "M2": {
+      "decision_disagreements": 0,
+      "frames": 47,
+      "gx10_fired": 4,
+      "max_score_delta": 0.0,
+      "mean_score_delta": 0.0,
+      "pi_fired": 4,
+      "verdict": "PASS",
+      "worst_frame": null
+    }
+  },
+  "pi_latency": {
+    "M0": {
+      "e2e_ms_p50_max": 49.595,
+      "e2e_ms_p50_mean": 49.063,
+      "e2e_ms_p50_min": 48.457,
+      "e2e_ms_p50_spread": 1.138,
+      "fps_mean": 20.38,
+      "iterations_each": 1000,
+      "kind": "fp32_baseline",
+      "peak_rss_mb": 96.5,
+      "reps": 3,
+      "stages_ms_p50_rep1": {
+        "decode": 6.046,
+        "inference": 41.346,
+        "policy": 0.003,
+        "preprocess": 1.058
+      }
+    },
+    "M2": {
+      "e2e_ms_p50_max": 21.817,
+      "e2e_ms_p50_mean": 21.605,
+      "e2e_ms_p50_min": 21.461,
+      "e2e_ms_p50_spread": 0.356,
+      "fps_mean": 46.29,
+      "iterations_each": 1000,
+      "kind": "int8_qat (FINAL)",
+      "peak_rss_mb": 89.1,
+      "reps": 3,
+      "stages_ms_p50_rep1": {
+        "decode": 6.122,
+        "inference": 14.292,
+        "policy": 0.003,
+        "preprocess": 1.039
+      }
+    },
+    "M4": {
+      "e2e_ms_p50_max": 17.81,
+      "e2e_ms_p50_mean": 17.74,
+      "e2e_ms_p50_min": 17.603,
+      "e2e_ms_p50_spread": 0.206,
+      "fps_mean": 56.37,
+      "iterations_each": 1000,
+      "kind": "pruned_qat_int8",
+      "peak_rss_mb": 82.2,
+      "reps": 3,
+      "stages_ms_p50_rep1": {
+        "decode": 6.075,
+        "inference": 10.602,
+        "policy": 0.004,
+        "preprocess": 1.123
+      }
+    }
+  },
+  "pi_speedups": {
+    "M0_to_M2": 2.271,
+    "M0_to_M4": 2.766
+  },
+  "pi_vs_gx10_parity": "PASS",
+  "schema_version": 1
+}

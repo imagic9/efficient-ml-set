@@ -1,0 +1,29 @@
+{
+  "design": "PLAN F4 / DESIGN \u00a712.4",
+  "kind": "f4_pi_vs_gx10_parity",
+  "models": {
+    "M0": {
+      "decision_disagreements": 0,
+      "frames": 47,
+      "gx10_fired": 5,
+      "max_score_delta": 0.0,
+      "mean_score_delta": 0.0,
+      "pi_fired": 5,
+      "verdict": "PASS",
+      "worst_frame": null
+    },
+    "M2": {
+      "decision_disagreements": 0,
+      "frames": 47,
+      "gx10_fired": 4,
+      "max_score_delta": 0.0,
+      "mean_score_delta": 0.0,
+      "pi_fired": 4,
+      "verdict": "PASS",
+      "worst_frame": null
+    }
+  },
+  "overall_verdict": "PASS",
+  "schema_version": 1,
+  "target": "bobcat"
+}

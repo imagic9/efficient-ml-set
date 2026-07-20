@@ -1,0 +1,52 @@
+{
+  "design": "PLAN F4 / DESIGN \u00a75.4, \u00a76.3",
+  "frozen_threshold": 0.5380880236625671,
+  "kind": "f4_frozen_test_metrics",
+  "model_id": "M0",
+  "note": "One-time test-set opening AFTER the F3 freeze. Threshold is the frozen validation-calibrated value; test labels are only scored, never used to select.",
+  "per_domain": {
+    "cis_test": {
+      "event_capture_rate": 0.7668393782383419,
+      "false_fire_rate": 0.0550569323509712,
+      "false_negatives": 317,
+      "false_positives": 822,
+      "fire_rate": 0.0885828015416693,
+      "frame_f2": 0.5811623246492986,
+      "frame_precision": 0.4136947218259629,
+      "frame_recall": 0.6465997770345596,
+      "frames_scored": 15827,
+      "frames_skipped": 0,
+      "header_model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+      "header_policy_id": "bobcat_v1",
+      "negative_frames": 14930,
+      "positive_frames": 897,
+      "positive_sequences": 386,
+      "sequence_balanced_recall": 0.6636442141623488,
+      "threshold": 0.5380880236625671,
+      "true_positives": 580
+    },
+    "trans_test": {
+      "event_capture_rate": 0.3951612903225806,
+      "false_fire_rate": 0.04088455843721641,
+      "false_negatives": 1797,
+      "false_positives": 856,
+      "fire_rate": 0.060021482277121375,
+      "frame_f2": 0.2516513164015257,
+      "frame_precision": 0.38725841088045815,
+      "frame_recall": 0.23139435414884515,
+      "frames_scored": 23275,
+      "frames_skipped": 0,
+      "header_model_sha256": "c3102764b6ab3bf9f5c8984b7cbdb80b581458db1e668d1e6d9e88df25ce5154",
+      "header_policy_id": "bobcat_v1",
+      "negative_frames": 20937,
+      "positive_frames": 2338,
+      "positive_sequences": 868,
+      "sequence_balanced_recall": 0.29185867895545314,
+      "threshold": 0.5380880236625671,
+      "true_positives": 541
+    }
+  },
+  "policy_id": "bobcat_v1",
+  "schema_version": 1,
+  "target": "bobcat"
+}

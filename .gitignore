@@ -116,6 +116,12 @@ onnxruntime_profile_*.json
 /final_project/results/e6/optimization_matrix/
 /final_project/results/e6/decode_drift/
 
+# F4 frozen full-test: the per-frame test predictions (cis_test/trans_test) are large
+# (5-8 MB each) and reproducible by scripts/run_f4_frozen_test.sh. The committed evidence
+# is frozen_test_<M>.json + f4_summary.json + F4_ANALYSIS.md; the 47-frame parity JSONL
+# (pi_parity_*/gx10_parity_*) stays committed as it is small and is the equivalence proof.
+/final_project/results/f4/gx10_test_*.jsonl
+
 # Key material. Public keys are safe to share, but they are still clutter in a
 # public repo — and the broader patterns stop a private key from ever being
 # swept up by `git add -A`.

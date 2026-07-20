@@ -1,0 +1,17 @@
+=== F4 frozen full-test — C++ run-dataset inside wildlife-trigger-target:ubuntu2404 (test set opened once) ===
+--- M0 cis_test
+run-dataset: 15827 frames (0 skipped), 1402 fired -> /work/results/f4/gx10_test_M0_cis_test.jsonl
+--- M0 trans_test
+run-dataset: 23275 frames (0 skipped), 1397 fired -> /work/results/f4/gx10_test_M0_trans_test.jsonl
+--- M2 cis_test
+run-dataset: 15827 frames (0 skipped), 1469 fired -> /work/results/f4/gx10_test_M2_cis_test.jsonl
+--- M2 trans_test
+run-dataset: 23275 frames (0 skipped), 903 fired -> /work/results/f4/gx10_test_M2_trans_test.jsonl
+=== metrics at the frozen threshold (host venv) ===
+wrote results/f4/frozen_test_M0.json
+  M0 cis_test    F2=0.5812 seqRecall=0.6636 eventCapture=0.7668 falseFire=0.0551 (pos 897/15827)
+  M0 trans_test  F2=0.2517 seqRecall=0.2919 eventCapture=0.3952 falseFire=0.0409 (pos 2338/23275)
+wrote results/f4/frozen_test_M2.json
+  M2 cis_test    F2=0.6387 seqRecall=0.7604 eventCapture=0.8575 falseFire=0.0551 (pos 897/15827)
+  M2 trans_test  F2=0.2209 seqRecall=0.2621 eventCapture=0.3468 falseFire=0.0215 (pos 2338/23275)
+=== F4 frozen full-test done -> /home/deploy/efficientml/efficient-ml-set/final_project/results/f4 ===
