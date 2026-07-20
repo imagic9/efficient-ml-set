@@ -4,7 +4,7 @@
   "audit": {
     "file_count": 64,
     "checksums_verified": true,
-    "max_glibc": "2.34",
+    "max_glibc": "2.38",
     "missing_paths": []
   },
   "clean_install": {

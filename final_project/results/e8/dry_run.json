@@ -10,22 +10,22 @@
   "benchmarks": {
     "M0": {
       "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e7/bundle/benchmark_M0.json",
-      "end_to_end_p50_ms": 12.744539,
-      "end_to_end_p95_ms": 13.132516599999999,
+      "end_to_end_p50_ms": 13.6233045,
+      "end_to_end_p95_ms": 14.602247749999998,
       "measured_iterations": 100,
       "problems": []
     },
     "M2": {
       "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e7/bundle/benchmark_M2.json",
-      "end_to_end_p50_ms": 6.766518,
-      "end_to_end_p95_ms": 6.9389658,
+      "end_to_end_p50_ms": 7.250901,
+      "end_to_end_p95_ms": 7.5860436,
       "measured_iterations": 100,
       "problems": []
     },
     "M4": {
       "path": "/home/deploy/efficientml/efficient-ml-set/final_project/results/e7/bundle/benchmark_M4.json",
-      "end_to_end_p50_ms": 5.593638,
-      "end_to_end_p95_ms": 5.6979771999999995,
+      "end_to_end_p50_ms": 6.101859,
+      "end_to_end_p95_ms": 8.033154999999999,
       "measured_iterations": 100,
       "problems": []
     }
@@ -34,8 +34,8 @@
   "f1_preflight": {
     "preflight_passed": true,
     "is_pi5_a76": false,
-    "os_codename": "bookworm",
-    "opencv_runtime_installed": "4.6.0+dfsg-12"
+    "os_codename": "noble",
+    "opencv_runtime_installed": "4.6.0+dfsg-13.1ubuntu1"
   },
   "provenance": "gx10 dry-run latency is diagnostic only; a latency is a Pi result only when measured on a Pi (DESIGN \u00a712.4). Phase F is still mandatory.",
   "verdict": {

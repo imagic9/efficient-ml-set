@@ -412,12 +412,12 @@ and publish the exact observed environment rather than rely on this README. Long
 runs must be checkpointed, logged, and safely resumable. GPU acceleration is for
 training; the final C++ inference path is still ONNX Runtime CPU EP.
 
-Pi compatibility is tested on `gx10` in a clean target-compatible ARM64 container.
-ARM64 alone does not guarantee matching Raspberry Pi OS/glibc dependencies. The
-pipeline pins a matching container base by digest and audits `ldd`/required
-`GLIBC_*` symbols. If a portable binary cannot be proven, the bundle includes
-pinned source/build scripts and compiles the C++ executable while provisioning the
-Pi.
+Pi compatibility is tested on `gx10` in a clean target-matching ARM64 container. The
+rented Pi runs **Ubuntu Server 24.04**, the same OS as `gx10`, so the container is
+`ubuntu:24.04` pinned by digest — build-env == deploy-env (glibc 2.39, apt OpenCV
+4.6.0). The pipeline still audits `ldd`/required `GLIBC_*` symbols as defense-in-depth.
+If a portable binary cannot be proven, the bundle includes pinned source/build scripts
+and compiles the C++ executable while provisioning the Pi.
 
 Do not hard-code private hostnames, usernames, SSH keys, tokens, or paths into the
 public repository. Private deployment values belong in ignored local config or
