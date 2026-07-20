@@ -34,13 +34,16 @@ EXTENDED graphs retained (`e6_gate.json`). E1–E5 were consolidation of A4/C4/P
 new measurement. **E7** packaged the deployment bundle (frozen M0/M2/M4 + policies +
 class map + a 47-frame sample slice + the pinned ORT + `install.sh`/`run_demo.sh`/
 `run_benchmark.sh` + `BUNDLE.json` + `MANIFEST.sha256`); OpenCV is apt-installed by
-`install.sh` (Debian's imgcodecs closure is impractical to carry; Pi OS Bookworm has
-the matching `.406`), and the clean-container install test passed. **E8 — GATE E
-PASSED**: the exact Pi commands run unattended in a clean `debian:bookworm-slim`, the
-one-command benchmark matrix includes the M0 baseline (diagnostic: M0 12.36 ms → M2
-6.69 ms → M4 5.45 ms on gx10), machine-readable outputs parse. **Next: the conditional
-Pi trial (Phase F)** — one-shot, unscheduled, never early — then Phase G (analysis,
-report, release). The next task is always the first `[ ]` in phase order.
+`install.sh` (the imgcodecs closure is impractical to carry; the Pi's apt has the
+matching `.406`), and the clean-container install test passed. **E8 — GATE E PASSED**:
+the exact Pi commands run unattended in a clean container, the one-command benchmark
+matrix includes the M0 baseline, machine-readable outputs parse. **E9 — deployment
+re-targeted Bookworm → Ubuntu Server 24.04 (2026-07-20)** because the rented Pi runs
+Ubuntu 24.04 (the provider offers no other image); build-env == deploy-env now, and all
+three gates re-passed on `ubuntu:24.04` (E7 preflight 6/6, E7 bundle max GLIBC 2.38 ≤
+2.39, Gate E dry run — diagnostic M0 13.62 → M2 7.25 → M4 6.10 ms p50 on gx10).
+**Next: the conditional Pi trial (Phase F)** — one-shot, unscheduled, never early — then
+Phase G (analysis, report, release). The next task is always the first `[ ]` in phase order.
 
 This file converts [`DESIGN.md`](DESIGN.md) into executable work. It is the task
 tracker for an implementation agent; `DESIGN.md` remains authoritative for every
@@ -167,10 +170,11 @@ model. The E chain therefore overlaps phases B-D rather than preceding them.
 **Done 2026-07-15.** Captured by `scripts/capture_provenance.py`; run log at
 `results/provenance/RUNS.md`. Key facts that shape later tasks:
 
-- gx10 is Ubuntu 24.04 / **glibc 2.39**, but Raspberry Pi OS Bookworm ships glibc
-  2.36. A natively-built binary would request `GLIBC_2.38/2.39` symbols the target
-  cannot resolve, so A2's container must be `debian:bookworm-slim`. A binary built
-  against 2.36 still loads on a newer Pi OS; the reverse is false.
+- gx10 is Ubuntu 24.04 / **glibc 2.39**. *(A0 originally noted a Pi OS Bookworm target
+  at glibc 2.36 and picked a `debian:bookworm-slim` container. **Superseded by E9,
+  2026-07-20:** the rented Pi runs **Ubuntu Server 24.04** — the same glibc 2.39 as gx10
+  — so the target container is now `ubuntu:24.04` and build-env == deploy-env; there is no
+  cross-glibc forward-compat bet left to make.)*
 - gx10 CPU is Cortex-X925 + A725 with `i8mm`, `sve`, `sve2`. Pi 5 Cortex-A76 has
   none of these. This is the measured basis for the DESIGN §12.2 parity strata.
 - 20 cores, GB10 / CUDA 13.0 / torch 2.11.0+cu130, 502.8 GiB free, 117.8 GiB RAM
@@ -237,9 +241,10 @@ Depends on: A1.
 - [x] Record the target distro/glibc/compiler contract, pin the matching container
       base by digest, and add `ldd` plus required-`GLIBC_*` symbol checks. If exact
       compatibility cannot be proved, make the pinned on-Pi source build the
-      deployment path. A0 measured gx10 at glibc **2.39** against Pi OS Bookworm's
-      **2.36**, so the base is `debian:bookworm-slim`: a binary linked against 2.36
-      loads on a newer Pi OS, and the reverse does not.
+      deployment path. *(A2 originally used a `debian:bookworm-slim` base for a Pi OS
+      Bookworm target; **E9, 2026-07-20** re-targeted to `ubuntu:24.04` — the rented Pi
+      runs Ubuntu Server 24.04, glibc 2.39, same as gx10 — so build-env == deploy-env
+      and the base now matches the Pi exactly.)*
 - [x] Install and pin `qemu-user` in that container for ISA-level checks. A0
       measured `-cpu cortex-a76` advertising exactly the Pi 5 feature set
       (`asimd`+`asimddp`, no `sve`/`sve2`/`i8mm`/`bf16`) and `-cpu cortex-a72` the
@@ -258,7 +263,7 @@ single source of truth both the Dockerfile and the setup scripts read.
 
 *ORT is not a compatibility risk.* The official aarch64 tarball needs at most
 `GLIBC_2.27` / `GLIBCXX_3.4.21` and links only standard system libraries — far
-below bookworm's 2.36. One identical ORT binary therefore serves the gx10
+below the target's 2.39. One identical ORT binary therefore serves the gx10
 container and the Pi, which is the cheapest de-risking available. Re-verify on any
 bump: it is a property of their build, not a promise.
 
@@ -270,8 +275,8 @@ about the distance between two upstream releases rather than between our own two
 call sites. ORT is now 1.27.0 on both sides (PyPI publishes no 1.27.1 wheel;
 matching beats newer). OpenCV Python is pinned to the newest 4.x.
 
-*One gap is left open on purpose.* C++ OpenCV stays at bookworm's 4.6.0 because
-that is what the Pi can have, against Python's 4.13. Only the `INTER_LINEAR`
+*One gap is left open on purpose.* C++ OpenCV stays at the Pi's apt 4.6.0 (Ubuntu
+24.04's `libopencv-*406t64`), against Python's 4.13. Only the `INTER_LINEAR`
 resize could differ — decode, BGR→RGB, pad, scale and normalise are trivially
 defined. **P1 must quantify it**; if drift exceeds tolerance, the answer is to
 build a matching OpenCV in the container and bundle those `.so` to the Pi. Measure
@@ -283,41 +288,44 @@ from there would describe an environment we neither control nor can reproduce.
 `setup_gx10.sh` asserts the isolation before installing and fails if CUDA is
 missing rather than silently training on CPU.
 
-**Verified state.**
+**Verified state.** *(A2 originally verified against a bookworm target on 2026-07-15;
+**E9 re-targeted the C++ column to Ubuntu 24.04 on 2026-07-20** — the rented Pi's OS —
+so the table now reflects `ubuntu:24.04`. glibc between gx10 and the Pi is now the same.)*
 
-| | Python (`~/venvs/wildlife_trigger`) | C++ (`wildlife-trigger-target:bookworm`) |
+| | Python (`~/venvs/wildlife_trigger`) | C++ (`wildlife-trigger-target:ubuntu2404`) |
 |---|---|---|
 | ONNX Runtime | 1.27.0 | 1.27.0 |
-| OpenCV | 4.13.0 | 4.6.0 (bookworm apt) |
+| OpenCV | 4.13.0 | 4.6.0 (Ubuntu 24.04 apt, `libopencv-*406t64`) |
 | torch | 2.11.0+cu130, CUDA on GB10 cap 12.1 | — |
-| glibc | 2.39 (gx10, never shipped) | **2.36**, matching Pi OS Bookworm |
-| compiler | — | gcc 12.2, cmake 3.25.1 |
+| glibc | 2.39 (gx10) | **2.39**, matching the Pi's Ubuntu 24.04 |
+| compiler | — | gcc 13, cmake 3.28 |
 
 Commands:
 
 ```bash
 scripts/setup_gx10.sh              # isolated venv + requirements.lock (49 pins)
-scripts/build_target_container.sh  # bookworm image, ORT verified at build time
+scripts/build_target_container.sh  # ubuntu:24.04 image, ORT verified at build time
 scripts/verify_target_env.sh       # the A2 gate, unattended
-python -m pytest tests/python      # 40 passed
+python -m pytest tests/python      # green
 ```
 
-`verify_target_env.sh` proves, end to end: our binary needs GLIBC ≤ 2.34 and
-libonnxruntime ≤ 2.27 against a 2.36 target; ORT links, reports 1.27.0 and
-constructs a session **under `qemu -cpu cortex-a76`**. So the ISA rehearsal works
-with real ORT, not only with the probe.
+`verify_target_env.sh` proves, end to end: our binary and libonnxruntime resolve
+against the target glibc (E9 re-validation: max GLIBC required 2.38 ≤ 2.39); ORT links,
+reports 1.27.0 and constructs a session **under `qemu -cpu cortex-a76`**. So the ISA
+rehearsal works with real ORT, not only with the probe.
 
 Secrets audit: no key material or credential-shaped string anywhere in history,
 not merely at HEAD. A dotfile `.env` is now ignored — deliberately `.env` and not
 `*.env`, since `configs/env/pins.env` must be committed — and the token-pattern
 check is a test rather than a one-off.
 
-**Resolved in E7:** OpenCV soname. Bookworm apt gives 4.6.0; a Trixie Pi would give
-another. E7's decision (bundling the `.so` was ruled out — Debian's `libopencv_imgcodecs`
-drags a ~50-library GDAL/poppler/database closure): `install.sh` apt-installs the OpenCV
-4.6.0 runtime, which on Pi OS Bookworm (Debian bookworm) is the byte-compatible `.406`
-soname the binary linked against. The Trixie-soname contingency (rebuild on the Pi, or
-minimal OpenCV from source) is documented in `deploy/pi/README.md`.
+**Resolved in E7, re-confirmed in E9:** OpenCV soname. E7's decision (bundling the `.so`
+was ruled out — `libopencv_imgcodecs` drags a ~50-library GDAL/poppler/database closure):
+`install.sh` apt-installs the OpenCV 4.6.0 runtime. On the rented Pi's **Ubuntu 24.04**
+that runtime is `libopencv-*406t64` (E9, 2026-07-20) — the same 4.6.0 with the
+byte-compatible `.406` soname the binary linked against (verified in a fresh
+`ubuntu:24.04` container). A wrong-OS host (different glibc/soname) is refused by
+`preflight.sh`; the rebuild-on-the-Pi contingency is documented in `deploy/pi/README.md`.
 
 ### A3 — P0 toolchain spike
 
@@ -468,8 +476,8 @@ Judgement calls:
   vectors including the multi-block padding case.
 - **The session-optimized graph is deliberately not bundled**, per P0's finding that
   ORT considers it valid only in the environment that produced it.
-- **OpenCV is not bundled** — a known E7 gap, since bookworm gives 4.6.0 and a Trixie
-  Pi would give another soname.
+- **OpenCV is not bundled** — `install.sh` apt-installs it; the Pi's Ubuntu 24.04 gives
+  the matching 4.6.0 / `.406` (`libopencv-*406t64`), and preflight refuses a wrong OS.
 - The fixture JPEG is **synthetic** and says so; a bright shape sits near the frame
   edge so a centre-cropping preprocessor would visibly lose it.
 
@@ -1650,8 +1658,19 @@ Pi 4 lacks). The gate is the ISA feature, not the literal CPU part, so it still 
 gx10 for the E8 dry run; whether the host is a *literal* Pi 5 (`is_pi5_a76`) is recorded
 in the machine-readable `environment.json` a successful install writes, never confused
 with a Pi result (§12.4). `scripts/run_e7_preflight.sh` + `validate/preflight_check.py`
-prove the success path and all refusal paths (Pi 4 / Trixie / x86_64) without a physical
+prove the success path and all refusal paths without a physical
 Pi — **all 6 checks pass** (`results/e7/preflight.json`).
+
+**E9 amendment (2026-07-20) — re-targeted Bookworm → Ubuntu 24.04.** The rented Pi runs
+**Ubuntu Server 24.04** (the provider offers no other image), so the whole contract above
+moved off Debian Bookworm: build image `wildlife-trigger-target:ubuntu2404`, OpenCV via
+apt as `libopencv-*406t64` (still 4.6.0 / `.406`), glibc ceiling 2.39, preflight gates on
+Ubuntu 24.04, and the R4 refusal scenario is now a non-Ubuntu container. Everything above
+re-passed on `ubuntu:24.04`: preflight 6/6, bundle audit **max GLIBC 2.38 ≤ 2.39** (the
+Ubuntu build legitimately links GLIBC_2.38 — exactly why the ceiling had to leave 2.36),
+clean-install self-test + demo green. Safe because E6 already proved the Ubuntu 24.04
+build bit-identical to the bookworm one. The bookworm details in the checkboxes above are
+the original E7 record; the shipping contract is now Ubuntu 24.04.
 
 **Output:** versioned ARM64 deployment archive (staged at `results/e7/bundle/`,
 gitignored; `bundle_audit.json` + `e7_bundle.json` + `preflight.json` +
@@ -1696,6 +1715,15 @@ RPi 4 provider if necessary. The assignment permits both. If no Pi is available,
 Gate F fails and the result is a partial submission rather than completed Core;
 never replace Pi measurements with `gx10` timings.
 
+**OS contract (E9, 2026-07-20): the rented Pi runs Ubuntu Server 24.04** (the provider
+offers no other image), and the bundle is built for exactly that (build-env == deploy-env,
+glibc 2.39, apt OpenCV 4.6.0 `.406`). `install.sh` runs the fail-closed `preflight.sh`
+first: it **refuses** any host that is not aarch64 / not Ubuntu 24.04 / lacks `asimddp`
+before mutating anything. On Day 1, diff the Pi's `install`/`dry_run` against the
+E9-regenerated known-good `results/e8/dry_run.log` (Ubuntu 24.04). If the provider ever
+substitutes a different OS, do not run the prebuilt binary — use the rebuild-on-the-Pi
+path in `deploy/pi/README.md`.
+
 ### F1 — Day 1: provision and smoke test
 
 - [ ] Use `gx10` as the control/evidence host and verify the remote Pi connection.
@@ -1704,9 +1732,10 @@ never replace Pi measurements with `gx10` timings.
       OS/kernel/arch, CPU identity+features, glibc, OpenCV/ORT versions — automatically;
       on a real Pi 5 it records `is_pi5_a76=true`. Issue #77.)*
 - [ ] Record exposed frequency, temperature, and throttling interfaces.
-- [ ] Install the frozen bundle. *(The fail-closed preflight refuses a non-Pi-5 /
-      non-Bookworm / Cortex-A72 host before any change — so a provisioning mismatch is a
-      message in the first minute, not a lost rental day. Issue #77.)*
+- [ ] Install the frozen bundle. *(The fail-closed preflight refuses a non-aarch64 /
+      non-Ubuntu-24.04 / Cortex-A72 (no `asimddp`) host before any change — so a
+      provisioning mismatch is a message in the first minute, not a lost rental day.
+      Issue #77; contract re-targeted to Ubuntu 24.04 at E9.)*
 - [ ] Run self-test and a short validation smoke test.
 - [ ] Do not tune models or inspect test labels.
 
