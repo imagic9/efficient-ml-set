@@ -370,6 +370,19 @@ python -m wildlife_trigger.calibrate --run results/training/c2/RUN_ID --target b
 ./wildlife_trigger self-test --fixtures tests/fixtures/
 ```
 
+### Notebooks
+
+Notebooks are read-only inspection deliverables (DESIGN §9.3), not the engine.
+Each is regenerated from a builder script, then executed from a clean kernel; the
+`notebooks` extra (`pip install -e ".[notebooks]"`) supplies jupyter/matplotlib/pandas.
+
+```bash
+# 01 — data audit (reads frozen manifests + results/data_audit/*.json; no test labels)
+python scripts/build_notebook_01_data_audit.py
+jupyter nbconvert --to notebook --execute --inplace \
+  --ExecutePreprocessor.timeout=1200 notebooks/01_data_audit.ipynb
+```
+
 ### Intended one-command workflows
 
 ```bash
