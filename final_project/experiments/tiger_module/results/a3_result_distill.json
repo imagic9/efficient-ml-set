@@ -1,0 +1,28 @@
+{
+  "method": "distillation_imagenet_teacher_zero_label",
+  "teacher": "convnext_tiny(IMAGENET1K_V1)",
+  "n_distill_pool": 3260,
+  "tiger_labels_used": 0,
+  "teacher_zeroshot": {
+    "auc": 0.9565296453069595,
+    "ap": 0.941869037236541,
+    "pos_mean": 0.4232408404350281,
+    "neg_mean": 0.0012621989008039236
+  },
+  "student_distilled": {
+    "auc": 0.99526761651081,
+    "ap": 0.9865627766110546,
+    "f2opt": {
+      "precision": 0.8553654743390358,
+      "recall": 0.9945750452079566,
+      "fpr": 0.05772811918063315,
+      "f2": 0.9632224168126094
+    },
+    "ff5": {
+      "precision": 0.8553654743390358,
+      "recall": 0.9945750452079566,
+      "fpr": 0.05772811918063315,
+      "f2": 0.9632224168126094
+    }
+  }
+}

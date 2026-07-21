@@ -168,3 +168,6 @@ id_rsa*
 
 # Release bundle tarball — 25 MB, uploaded to the GitHub Release, not git (SHA256SUMS is committed)
 /final_project/results/analysis/release/*.tar.gz
+
+# Local-only learning notes (kept out of the public repo)
+final_project_learn/
