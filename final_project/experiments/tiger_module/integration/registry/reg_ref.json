@@ -1,0 +1,92 @@
+{
+  "tiger": {
+    "tiger": {
+      "score": 1.9902992749157975,
+      "fired": true
+    },
+    "bobcat": {
+      "score": -0.8323662485928842,
+      "fired": false
+    },
+    "coyote": {
+      "score": -0.5676154001978273,
+      "fired": false
+    },
+    "raccoon": {
+      "score": -3.4492123170234716,
+      "fired": false
+    }
+  },
+  "bobcat": {
+    "tiger": {
+      "score": -3.655969248783775,
+      "fired": false
+    },
+    "bobcat": {
+      "score": 1.4891671983927988,
+      "fired": true
+    },
+    "coyote": {
+      "score": -0.42771713809078227,
+      "fired": false
+    },
+    "raccoon": {
+      "score": -0.6920992559610757,
+      "fired": false
+    }
+  },
+  "coyote": {
+    "tiger": {
+      "score": -2.1242053583368623,
+      "fired": false
+    },
+    "bobcat": {
+      "score": 0.6128703400442452,
+      "fired": true
+    },
+    "coyote": {
+      "score": 3.1833349936241855,
+      "fired": true
+    },
+    "raccoon": {
+      "score": -1.2548131863985996,
+      "fired": false
+    }
+  },
+  "raccoon": {
+    "tiger": {
+      "score": -4.150855251948254,
+      "fired": false
+    },
+    "bobcat": {
+      "score": 1.0030170145528636,
+      "fired": true
+    },
+    "coyote": {
+      "score": -1.6445887024823493,
+      "fired": false
+    },
+    "raccoon": {
+      "score": 1.6616667035430512,
+      "fired": true
+    }
+  },
+  "empty": {
+    "tiger": {
+      "score": -6.65438710726289,
+      "fired": false
+    },
+    "bobcat": {
+      "score": -4.570534605819715,
+      "fired": false
+    },
+    "coyote": {
+      "score": -3.605813864027769,
+      "fired": false
+    },
+    "raccoon": {
+      "score": -2.1271386815150493,
+      "fired": false
+    }
+  }
+}

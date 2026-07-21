@@ -19,6 +19,10 @@ input → … MobileNetV2 INT8 backbone … → GlobalAveragePool → (pool_quan
 The weights `w[1280]`, bias `b`, and `threshold` are the A2 linear head, recomputed in **M2's own
 embedding space** (see `tiger_head_M2.json`). A new animal is another such row — no backbone retrain.
 
+**For the "configurable to any animal" product, see [`registry/REGISTRY.md`](registry/REGISTRY.md)** —
+the general form: one exposed embedding + a JSON registry of any number of targets, scored in C++,
+verified multi-target on the real Pi. The tiger bake below is the single-target proof of the path.
+
 Two graph variants are produced:
 - **`M2_plus_lean.onnx`** — outputs `logits` + `tiger_score` (embedding stays internal). **This is the
   one to deploy**: ORT still fuses the classifier tail, so latency is indistinguishable from base M2.
