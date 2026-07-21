@@ -1,0 +1,40 @@
+{
+  "what": "Tiger side-head embedded into the deployed M2 INT8 graph (branch tiger-module-embed)",
+  "additive": "released M2.onnx / bundle / v1.0-final untouched; work on a branch only",
+  "T1_head_in_M2_space": {
+    "embedding_tap": "/Flatten_output_0 (pooled 1280-d, L2-normalised)",
+    "method": "A2 linear head (logistic regression) recomputed in M2 space",
+    "eval": "ATRW tiger (detection) vs CCT cis_val_clean background, held-out test",
+    "roc_auc": 0.9999,
+    "ap": 0.9997,
+    "f2_opt": 0.992,
+    "recall_at_5pct_false_fire": 1.000,
+    "precision_at_5pct_false_fire": 0.865
+  },
+  "T2_graph_correctness_python_ort": {
+    "logits_bit_identical_vs_released_M2": "max|delta| = 0.0",
+    "in_graph_tiger_score_vs_sklearn_head": "max|delta| = 3.96e-6"
+  },
+  "T3_parity": {
+    "input": "identical golden preprocessed tensors (tiger / CCT empty / CCT bobcat)",
+    "python_ort_gx10": {"tiger": 1.9013987, "cct_empty": -5.4706335, "cct_bobcat": -5.1206145},
+    "cpp_ort_gx10": {"tiger": 1.9013987, "cct_empty": -5.4706335, "cct_bobcat": -5.1206145},
+    "cpp_ort_pi_cm5": {"tiger": 1.9013987, "cct_empty": -5.4706335, "cct_bobcat": -5.1206145},
+    "verdict": "bit-identical across Python, C++ (gx10), C++ (real Pi)",
+    "threshold": -1.4077,
+    "triggers": {"tiger": true, "cct_empty": false, "cct_bobcat": false},
+    "note": "16-class head is blind to tiger (argmax=empty); the side-head catches it and does not fire on a real CCT cat (bobcat)"
+  },
+  "T3_pi_latency": {
+    "host": "Raspberry Pi CM5, governor performance, throttled=0x0, threads=1, ORT infer only",
+    "run_to_run_noise_ms": 2.0,
+    "M2_base_ms_range": [14.0, 15.7],
+    "M2_plus_lean_ms_range": [14.1, 16.1],
+    "M2_plus_embexposed_ms_range": [14.3, 15.9],
+    "conclusion": "variants statistically indistinguishable; head cost ~1-2 us per bench_head.c (~0.01% of infer)",
+    "logits_bit_identical_lean_vs_M2": "max|delta| = 0.0"
+  },
+  "deploy_recommendation": "M2_plus_lean.onnx (logits + tiger_score, embedding internal)",
+  "artifacts_on_gx10": "~/efficientml/tiger_embed/ (M2_plus*.onnx, golden_*.bin, tiger_probe, ort1270/)",
+  "next_step": "wire cpp/src/session.cpp to read tiger_score + a target-registry/policy entry to emit the shutter"
+}
