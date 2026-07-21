@@ -80,7 +80,7 @@ authority on what is done; this table is a summary of it.
 Public repository: <https://github.com/imagic9/efficient-ml-set>
 
 Final release: `v1.0-final` — <https://github.com/imagic9/efficient-ml-set/releases/tag/v1.0-final>
-(pending final review; see `SUBMISSION.md` → Release)
+(published 2026-07-21, pins commit `043d396`; see `SUBMISSION.md` → Release)
 
 Final report: `REPORT_URL`
 

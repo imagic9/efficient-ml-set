@@ -9,14 +9,14 @@
 | Item | Location |
 |---|---|
 | Public repository | <https://github.com/imagic9/efficient-ml-set> |
-| Release tag | `v1.0-final` — **pending final review** (see "Release" below) |
-| Final commit | tag `v1.0-final` will pin the reviewed commit on `main` |
+| Release tag | [`v1.0-final`](https://github.com/imagic9/efficient-ml-set/releases/tag/v1.0-final) — published 2026-07-21 |
+| Final commit | `043d396dd29054b2fe1e115f5e7a157acecdb0be` (pinned by tag `v1.0-final` on `main`) |
 | Report | `final_project/report/final_report.pdf` (13 pp) |
 | Slides | `final_project/slides/final_presentation.pptx` / `.pdf` (12 slides) |
 | Results notebook | `final_project/notebooks/02_results_analysis.ipynb` (clean-run) |
 | Data-audit notebook | `final_project/notebooks/01_data_audit.ipynb` (clean-run) |
 | Canonical results | `final_project/results/analysis/canonical_results.json` |
-| Pi deployment bundle | GitHub Release asset — **pending** (staged: `results/e7/bundle/`) |
+| Pi deployment bundle | [GitHub Release asset](https://github.com/imagic9/efficient-ml-set/releases/download/v1.0-final/wildlife-trigger-deployment-bundle-v1.0-final.tar.gz) (24 MB, `v1.0-final`) |
 
 ## Models (frozen, opset 17)
 
@@ -88,14 +88,14 @@ Full per-phase commands and gate outputs are in `README.md` and `PLAN.md`.
 ## Definition of Done (DESIGN §19)
 
 Status recorded in `results/analysis/definition_of_done.md` — Data/ML and Deployment/C++ items all
-pass (Gates A–F); Submission items pass except the two that require the public Release
-(**model release links/checksums** and **tagged repo**), which are staged and gated on final review.
+pass (Gates A–F); the two Submission items that required the public Release
+(**model release links/checksums** and **tagged repo**) now also pass — the Release is live.
 
 ## Release
 
-The public GitHub Release `v1.0-final` (tag + the M0/M2/M4 ONNX + policies + the C++ deployment
-bundle + `SHA256SUMS`) is **prepared but not yet created** — it is deliberately left for
-`Vadym` to create after reviewing the final results, so the "final" tag marks the reviewed state.
-Once created, this manifest's Release-tag / final-commit / bundle-URL rows and the README
-`RELEASE_URL` are filled with the live URLs. Assets + checksums are staged at
-`results/analysis/release/`.
+The public GitHub Release [`v1.0-final`](https://github.com/imagic9/efficient-ml-set/releases/tag/v1.0-final)
+was **published 2026-07-21**, pinning the reviewed commit `043d396` on `main`. Assets: the C++
+deployment bundle (`wildlife-trigger-deployment-bundle-v1.0-final.tar.gz`, 24 MB — C++ binary +
+pinned ONNX Runtime + M0/M2/M4 ONNX + policies + install/run scripts) and `SHA256SUMS` (the
+tarball plus the three standalone ONNX models inside it; all three verified to match before
+publishing). Staging source: `results/analysis/release/`.
